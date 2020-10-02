@@ -49,6 +49,12 @@ trait Client[F[_]] {
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]]
+
+  def scan[T: Decoder](
+    tableName: TableName,
+    consistentRead: Boolean,
+    parallelism: Int
+  ): fs2.Stream[F, Option[T]]
 }
 
 object Client {

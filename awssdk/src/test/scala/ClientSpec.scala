@@ -86,4 +86,6 @@ class ClientSpec extends AnyFlatSpec with Matchers {
       r => IO(r)
     ).unsafeRunSync() should contain theSameElementsAs List(test1, test2)
   }
+
+  it should "scan whole table" in {}
 }

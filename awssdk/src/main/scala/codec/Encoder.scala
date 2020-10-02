@@ -6,7 +6,6 @@ import java.time.Instant
 
 import cats._
 import cats.implicits._
-
 import software.amazon.awssdk.services.dynamodb.model._
 
 trait Encoder[A] {

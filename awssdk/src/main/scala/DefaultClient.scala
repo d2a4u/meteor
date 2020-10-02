@@ -14,6 +14,7 @@ import scala.jdk.CollectionConverters._
 class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   jClient: DynamoDbAsyncClient
 ) extends Client[F] {
+
   def get[T: Decoder, P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
@@ -87,17 +88,17 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     (() => jClient.deleteItem(req)).liftF[F].void
   }
 
+  private case class SegmentPassThrough[U](
+    u: U,
+    segment: Int
+  )
+
   def scan[T: Decoder, P: Encoder, S: Encoder](
     query: Query[P, S],
     tableName: TableName,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]] = {
-    case class SegmentPassThrough[U](
-      u: U,
-      segment: Int
-    )
-
     def requestBuilder(
       cond: meteor.Condition,
       startKey: Option[java.util.Map[String, AttributeValue]]
@@ -164,7 +165,7 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
               )
             )
         } else {
-          fs2.Stream.empty
+          fs2.Stream.emit(SegmentPassThrough(resp, req.segment))
         }
       }
     }
@@ -174,6 +175,83 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
         Concurrent[F].fromOption(query.condition, InvalidCondition)
       )
       resp <- sendPipe(cond)(initRequests(cond))
+      attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
+      optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
+    } yield optT
+  }
+
+  def scan[T: Decoder](
+    tableName: TableName,
+    consistentRead: Boolean,
+    parallelism: Int
+  ): fs2.Stream[F, Option[T]] = {
+
+    def requestBuilder(
+      startKey: Option[java.util.Map[String, AttributeValue]]
+    ) = {
+      val builder =
+        ScanRequest.builder().tableName(tableName.value).consistentRead(
+          consistentRead
+        ).totalSegments(parallelism)
+
+      startKey.fold(builder)(builder.exclusiveStartKey)
+    }
+
+    lazy val initRequests =
+      fs2.Stream.emits[F, SegmentPassThrough[ScanRequest]](
+        List.fill(parallelism)(
+          requestBuilder(None)
+        ).zipWithIndex.map {
+          case (builder, index) =>
+            SegmentPassThrough(builder.segment(index).build(), index)
+        }
+      )
+
+    lazy val sendPipe: Pipe[
+      F,
+      SegmentPassThrough[ScanRequest],
+      SegmentPassThrough[ScanResponse]
+    ] =
+      in => {
+        val segmentResponses = in.mapAsync(parallelism) { req =>
+          (() => jClient.scan(req.u)).liftF[F].map(resp =>
+            SegmentPassThrough(resp, req.segment))
+        }
+        segmentResponses ++ segmentResponses.flatMap { resp =>
+          doScan(
+            SegmentPassThrough(
+              requestBuilder(Some(resp.u.lastEvaluatedKey())).segment(
+                resp.segment
+              ).build(),
+              resp.segment
+            )
+          )
+        }
+      }
+
+    def doScan(
+      req: SegmentPassThrough[ScanRequest]
+    ): fs2.Stream[F, SegmentPassThrough[ScanResponse]] = {
+      val respF = (() => jClient.scan(req.u)).liftF[F]
+      fs2.Stream.eval(respF).flatMap { resp =>
+        if (resp.hasLastEvaluatedKey) {
+          fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++
+            doScan(
+              SegmentPassThrough(
+                requestBuilder(Some(resp.lastEvaluatedKey())).segment(
+                  req.segment
+                ).build(),
+                req.segment
+              )
+            )
+        } else {
+          fs2.Stream.emit(SegmentPassThrough(resp, req.segment))
+        }
+      }
+    }
+
+    for {
+      resp <- sendPipe(initRequests)
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
       optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
     } yield optT
