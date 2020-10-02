@@ -70,7 +70,7 @@ class ClientSpec extends AnyFlatSpec with Matchers {
         client
       )
       retrieval = client.retrieve[TestData, Id, Range](
-        Query(partitionKey, Empty[Range]()),
+        Query(partitionKey, SortKeyQuery.Empty[Range]()),
         tableName,
         consistentRead = false
       )

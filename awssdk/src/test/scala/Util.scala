@@ -47,7 +47,7 @@ object Util {
     client: Client[F]
   ): Resource[F, G[T]] =
     Resource.make {
-      gt.traverse(t => client.put(t, tableName).as(t))
+      gt.traverse(t => client.put[T, Unit](t, tableName).as(t))
     } { gt =>
       gt.traverse(
         t => client.delete(partitionKey(t), sortKey(t), tableName)
