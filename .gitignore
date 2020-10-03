@@ -145,3 +145,5 @@ tmp/
 temp/
 
 website/build/
+
+Main.scala

@@ -26,7 +26,7 @@ object Range {
 case class TestData(
   id: Id,
   range: Range,
-  data: Int
+  data: String
 )
 object TestData {
   implicit val decoder: Decoder[TestData] = Decoder.instance { av =>
@@ -34,7 +34,7 @@ object TestData {
     for {
       id <- Decoder[String].read(obj.get("id"))
       range <- Decoder[String].read(obj.get("range"))
-      data <- Decoder[Int].read(obj.get("data"))
+      data <- Decoder[String].read(obj.get("data"))
     } yield TestData(Id(id), Range(range), data)
   }
 
@@ -42,7 +42,7 @@ object TestData {
     val jMap = Map(
       "id" -> Encoder[String].write(t.id.value),
       "range" -> Encoder[String].write(t.range.value),
-      "data" -> Encoder[Int].write(t.data)
+      "data" -> Encoder[String].write(t.data)
     ).asJava
     AttributeValue.builder().m(jMap).build()
   }

@@ -1,5 +1,7 @@
 package meteor
 
+import cats.implicits._
+import cats.effect.concurrent.Ref
 import cats.effect.{ContextShift, IO, Resource, Timer}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,7 +17,7 @@ class ClientSpec extends AnyFlatSpec with Matchers {
 
   it should "put item" in {
     val tableName = TableName("test")
-    val test = TestData(Id("abc"), Range("123"), 1)
+    val test = TestData(Id("abc"), Range("123"), "1")
     val result = for {
       client <- Client.resource[IO]
       _ <- Util.dataResource[IO, cats.Id, TestData, Id, Range](
@@ -58,8 +60,8 @@ class ClientSpec extends AnyFlatSpec with Matchers {
   it should "retrieve items" in {
     val tableName = TableName("test")
     val partitionKey = Id("def")
-    val test1 = TestData(partitionKey, Range("123"), 1)
-    val test2 = TestData(partitionKey, Range("456"), 2)
+    val test1 = TestData(partitionKey, Range("123"), "1")
+    val test2 = TestData(partitionKey, Range("456"), "2")
     val result = for {
       client <- Client.resource[IO]
       _ <- Util.dataResource[IO, List, TestData, Id, Range](
@@ -87,5 +89,26 @@ class ClientSpec extends AnyFlatSpec with Matchers {
     ).unsafeRunSync() should contain theSameElementsAs List(test1, test2)
   }
 
-  it should "scan whole table" in {}
+  it should "scan whole table" in {
+    val tableName = TableName("test_scan")
+    val ref = Ref.of[IO, Int](0)
+    val client = Client.resource[IO]
+    def updated(ref: Ref[IO, Int]) =
+      for {
+        c <- fs2.Stream.resource(client)
+        void <- c.scan[TestData](tableName, false, 1024).collect {
+          case Some(a) => a
+        }.evalMap { _ =>
+          ref.update(_ + 1)
+        }
+      } yield void
+
+    val result =
+      for {
+        r <- ref
+        _ <- updated(r).compile.drain
+        i <- r.get
+      } yield i
+    result.unsafeRunSync() shouldEqual 1000
+  }
 }

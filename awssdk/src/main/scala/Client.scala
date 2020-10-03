@@ -13,6 +13,7 @@ import software.amazon.awssdk.core.client.config.{
   SdkAdvancedAsyncClientOption
 }
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+import software.amazon.awssdk.services.dynamodb.model.TableDescription
 
 import scala.jdk.CollectionConverters._
 
@@ -55,6 +56,8 @@ trait Client[F[_]] {
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]]
+
+  def describe(tableName: TableName): F[TableDescription]
 }
 
 object Client {

@@ -129,43 +129,31 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
       SegmentPassThrough[ScanRequest],
       SegmentPassThrough[ScanResponse]
     ] =
-      in => {
-        val segmentResponses = in.mapAsync(parallelism) { req =>
-          (() => jClient.scan(req.u)).liftF[F].map(resp =>
-            SegmentPassThrough(resp, req.segment))
-        }
-        segmentResponses ++ segmentResponses.flatMap { resp =>
-          doScan(
-            cond,
-            SegmentPassThrough(
-              requestBuilder(cond, Some(resp.u.lastEvaluatedKey())).segment(
-                resp.segment
-              ).build(),
-              resp.segment
-            )
-          )
-        }
-      }
+      _.mapAsyncUnordered(parallelism)(req => doScan(cond, req)).parJoin(
+        parallelism
+      )
 
     def doScan(
       cond: meteor.Condition,
       req: SegmentPassThrough[ScanRequest]
-    ): fs2.Stream[F, SegmentPassThrough[ScanResponse]] = {
-      val respF = (() => jClient.scan(req.u)).liftF[F]
-      fs2.Stream.eval(respF).flatMap { resp =>
+    ): F[fs2.Stream[F, SegmentPassThrough[ScanResponse]]] = {
+      (() => jClient.scan(req.u)).liftF[F].flatMap { resp =>
         if (resp.hasLastEvaluatedKey) {
-          fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++
-            doScan(
-              cond,
-              SegmentPassThrough(
-                requestBuilder(cond, Some(resp.lastEvaluatedKey())).segment(
-                  req.segment
-                ).build(),
+          doScan(
+            cond,
+            SegmentPassThrough(
+              requestBuilder(cond, Some(resp.lastEvaluatedKey())).segment(
                 req.segment
-              )
+              ).build(),
+              req.segment
             )
+          ).map { stream =>
+            fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ stream
+          }
         } else {
-          fs2.Stream.emit(SegmentPassThrough(resp, req.segment))
+          fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
+            SegmentPassThrough(resp, req.segment)
+          ).pure[F]
         }
       }
     }
@@ -212,40 +200,27 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
       SegmentPassThrough[ScanRequest],
       SegmentPassThrough[ScanResponse]
     ] =
-      in => {
-        val segmentResponses = in.mapAsync(parallelism) { req =>
-          (() => jClient.scan(req.u)).liftF[F].map(resp =>
-            SegmentPassThrough(resp, req.segment))
-        }
-        segmentResponses ++ segmentResponses.flatMap { resp =>
-          doScan(
-            SegmentPassThrough(
-              requestBuilder(Some(resp.u.lastEvaluatedKey())).segment(
-                resp.segment
-              ).build(),
-              resp.segment
-            )
-          )
-        }
-      }
+      _.mapAsyncUnordered(parallelism)(doScan).parJoin(parallelism)
 
     def doScan(
       req: SegmentPassThrough[ScanRequest]
-    ): fs2.Stream[F, SegmentPassThrough[ScanResponse]] = {
-      val respF = (() => jClient.scan(req.u)).liftF[F]
-      fs2.Stream.eval(respF).flatMap { resp =>
+    ): F[fs2.Stream[F, SegmentPassThrough[ScanResponse]]] = {
+      (() => jClient.scan(req.u)).liftF[F].flatMap { resp =>
         if (resp.hasLastEvaluatedKey) {
-          fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++
-            doScan(
-              SegmentPassThrough(
-                requestBuilder(Some(resp.lastEvaluatedKey())).segment(
-                  req.segment
-                ).build(),
+          doScan(
+            SegmentPassThrough(
+              requestBuilder(Some(resp.lastEvaluatedKey())).segment(
                 req.segment
-              )
+              ).build(),
+              req.segment
             )
+          ).map { stream =>
+            fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ stream
+          }
         } else {
-          fs2.Stream.emit(SegmentPassThrough(resp, req.segment))
+          fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
+            SegmentPassThrough(resp, req.segment)
+          ).pure[F]
         }
       }
     }
@@ -255,5 +230,12 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
       optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
     } yield optT
+  }
+
+  def describe(tableName: TableName): F[TableDescription] = {
+    val req = DescribeTableRequest.builder().tableName(tableName.value).build()
+    (() => jClient.describeTable(req)).liftF[F].map { resp =>
+      resp.table()
+    }
   }
 }
