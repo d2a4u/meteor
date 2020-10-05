@@ -40,5 +40,6 @@ Please see `ClientSpec.scala` in integration tests for more code example.
 
 ## Credit
 
-The project is inspired by (comms-deduplication project)[https://github.com/ovotech/comms-deduplication].
-Thanks @filosganga for his contribution and permission to use his code in this project.
+The project is inspired by [comms-deduplication project](https://github.com/ovotech/comms-deduplication).
+Thanks [@filosganga](https://github.com/filosganga) for his contribution and permission to use his 
+code in this project.
