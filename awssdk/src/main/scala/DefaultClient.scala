@@ -18,15 +18,18 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   def get[T: Decoder, P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
-    tableName: TableName,
+    table: Table,
     consistentRead: Boolean
   ): F[Option[T]] = {
     val query = Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
       sortKey
     ).m().asScala
-    val req = GetItemRequest.builder().consistentRead(consistentRead).tableName(
-      tableName.value
-    ).key(query.asJava).build()
+    val req =
+      GetItemRequest.builder()
+        .consistentRead(consistentRead)
+        .tableName(table.name)
+        .key(query.asJava)
+        .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
       Concurrent[F].fromEither(resp.item().attemptDecode[T])
     }
@@ -34,17 +37,20 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
 
   def retrieve[T: Decoder, P: Encoder, S: Encoder](
     query: Query[P, S],
-    tableName: TableName,
-    consistentRead: Boolean
+    table: Table,
+    consistentRead: Boolean,
+    index: Option[Index]
   ): F[List[T]] = {
     Concurrent[F].fromOption(query.condition, InvalidCondition).flatMap {
       cond =>
+        val builder =
+          QueryRequest.builder()
+            .tableName(table.name)
+            .consistentRead(consistentRead)
+            .keyConditionExpression(cond.expression)
+            .expressionAttributeValues(cond.attributes.asJava)
         val req =
-          QueryRequest.builder().tableName(
-            tableName.value
-          ).keyConditionExpression(cond.expression).expressionAttributeValues(
-            cond.attributes.asJava
-          ).build()
+          index.fold(builder)(index => builder.indexName(index.name)).build()
         (() => jClient.query(req)).liftF[F].map { resp =>
           resp.items().asScala.toList.traverse(_.attemptDecode[T]).map(
             _.flatten
@@ -55,16 +61,19 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
 
   def put[T: Encoder, U: Decoder](
     t: T,
-    tableName: TableName,
+    table: Table,
     returnValue: PutItemReturnValue = PutItemReturnValue.None
   ): F[Option[U]] = {
     val returnVal = returnValue match {
       case PutItemReturnValue.None => ReturnValue.NONE
       case PutItemReturnValue.AllOld => ReturnValue.ALL_OLD
     }
-    val req = PutItemRequest.builder().tableName(tableName.value).item(
-      Encoder[T].write(t).m()
-    ).returnValues(returnVal).build()
+    val req =
+      PutItemRequest.builder()
+        .tableName(table.name)
+        .item(Encoder[T].write(t).m())
+        .returnValues(returnVal)
+        .build()
     (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
       returnValue match {
         case PutItemReturnValue.None => none[U].pure[F]
@@ -77,14 +86,15 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   def delete[P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
-    tableName: TableName
+    table: Table
   ): F[Unit] = {
     val req =
-      DeleteItemRequest.builder().tableName(
-        tableName.value
-      ).key((Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
-        sortKey
-      ).m().asScala).asJava).build()
+      DeleteItemRequest.builder()
+        .tableName(table.name)
+        .key((Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
+          sortKey
+        ).m().asScala).asJava)
+        .build()
     (() => jClient.deleteItem(req)).liftF[F].void
   }
 
@@ -95,7 +105,7 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
 
   def scan[T: Decoder, P: Encoder, S: Encoder](
     query: Query[P, S],
-    tableName: TableName,
+    table: Table,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]] = {
@@ -104,11 +114,12 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
       startKey: Option[java.util.Map[String, AttributeValue]]
     ) = {
       def builder(cond: meteor.Condition) = {
-        ScanRequest.builder().tableName(tableName.value).consistentRead(
-          consistentRead
-        ).filterExpression(cond.expression).expressionAttributeValues(
-          cond.attributes.asJava
-        ).totalSegments(parallelism)
+        ScanRequest.builder()
+          .tableName(table.name)
+          .consistentRead(consistentRead)
+          .filterExpression(cond.expression)
+          .expressionAttributeValues(cond.attributes.asJava)
+          .totalSegments(parallelism)
       }
 
       startKey.fold(builder(cond))(builder(cond).exclusiveStartKey)
@@ -169,7 +180,7 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   }
 
   def scan[T: Decoder](
-    tableName: TableName,
+    table: Table,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]] = {
@@ -178,9 +189,10 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
       startKey: Option[java.util.Map[String, AttributeValue]]
     ) = {
       val builder =
-        ScanRequest.builder().tableName(tableName.value).consistentRead(
-          consistentRead
-        ).totalSegments(parallelism)
+        ScanRequest.builder()
+          .tableName(table.name)
+          .consistentRead(consistentRead)
+          .totalSegments(parallelism)
 
       startKey.fold(builder)(builder.exclusiveStartKey)
     }
@@ -232,8 +244,8 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     } yield optT
   }
 
-  def describe(tableName: TableName): F[TableDescription] = {
-    val req = DescribeTableRequest.builder().tableName(tableName.value).build()
+  def describe(table: Table): F[TableDescription] = {
+    val req = DescribeTableRequest.builder().tableName(table.name).build()
     (() => jClient.describeTable(req)).liftF[F].map { resp =>
       resp.table()
     }

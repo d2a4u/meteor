@@ -134,7 +134,7 @@ object Decoder {
     }
 
   implicit def dynamoDecoderForMap[A: Decoder]: Decoder[Map[String, A]] =
-    instance {
+    Decoder.instance {
       av =>
         if (av.hasM) {
           av.m()

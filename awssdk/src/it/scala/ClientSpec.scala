@@ -16,7 +16,7 @@ class ClientSpec extends AnyFlatSpec with Matchers {
   behavior.of("Client")
 
   it should "put item" in {
-    val tableName = TableName("test")
+    val tableName = Table("test")
     val test = TestData(Id("abc"), Range("123"), "1")
     val result = for {
       client <- Client.resource[IO]
@@ -45,7 +45,7 @@ class ClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return None if key does not exist" in {
-    val tableName = TableName("test")
+    val tableName = Table("test")
     val result = Client.resource[IO].use { client =>
       client.get[TestData, Id, Range](
         Id("id"),
@@ -58,7 +58,7 @@ class ClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "retrieve items" in {
-    val tableName = TableName("test")
+    val tableName = Table("test")
     val partitionKey = Id("def")
     val test1 = TestData(partitionKey, Range("123"), "1")
     val test2 = TestData(partitionKey, Range("456"), "2")
@@ -74,7 +74,8 @@ class ClientSpec extends AnyFlatSpec with Matchers {
       retrieval = client.retrieve[TestData, Id, Range](
         Query(partitionKey, SortKeyQuery.Empty[Range]()),
         tableName,
-        consistentRead = false
+        consistentRead = false,
+        None
       )
       r <- Resource.liftF(Util.retryOf[IO, List[TestData]](
         retrieval,
@@ -90,7 +91,7 @@ class ClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "scan whole table" in {
-    val tableName = TableName("test_scan")
+    val tableName = Table("test_scan")
     val ref = Ref.of[IO, Int](0)
     val client = Client.resource[IO]
     def updated(ref: Ref[IO, Int]) =

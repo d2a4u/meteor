@@ -22,42 +22,43 @@ trait Client[F[_]] {
   def get[T: Decoder, P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
-    tableName: TableName,
+    table: Table,
     consistentRead: Boolean
   ): F[Option[T]]
 
   def retrieve[T: Decoder, P: Encoder, S: Encoder](
     query: Query[P, S],
-    tableName: TableName,
-    consistentRead: Boolean
+    table: Table,
+    consistentRead: Boolean,
+    index: Option[Index]
   ): F[List[T]]
 
   def put[T: Encoder, U: Decoder](
     t: T,
-    tableName: TableName,
+    table: Table,
     returnValue: PutItemReturnValue = PutItemReturnValue.None
   ): F[Option[U]]
 
   def delete[P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
-    tableName: TableName
+    table: Table
   ): F[Unit]
 
   def scan[T: Decoder, P: Encoder, S: Encoder](
     query: Query[P, S],
-    tableName: TableName,
+    table: Table,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]]
 
   def scan[T: Decoder](
-    tableName: TableName,
+    table: Table,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]]
 
-  def describe(tableName: TableName): F[TableDescription]
+  def describe(table: Table): F[TableDescription]
 }
 
 object Client {

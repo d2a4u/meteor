@@ -11,7 +11,9 @@ object PutItemReturnValue {
   case object AllOld extends PutItemReturnValue
 }
 
-case class TableName(value: String) extends AnyVal
+case class Table(name: String) extends AnyVal
+
+case class Index(name: String) extends AnyVal
 
 case object EmptySortKey {
   implicit val emptySortKeyEncoder: Encoder[EmptySortKey.type] =

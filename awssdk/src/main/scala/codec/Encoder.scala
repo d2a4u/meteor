@@ -8,6 +8,8 @@ import cats._
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model._
 
+import scala.jdk.CollectionConverters._
+
 trait Encoder[A] {
   def write(a: A): AttributeValue
 }
@@ -30,6 +32,9 @@ object Encoder {
       fa.fold(AttributeValue.builder().nul(true).build())(Encoder[A].write)
     }
 
+  implicit val dynamoEncoderForAttributeValue: Encoder[AttributeValue] =
+    Encoder.instance(identity)
+
   implicit val dynamoEncoderForBoolean: Encoder[Boolean] =
     Encoder.instance(bool => AttributeValue.builder().bool(bool).build())
 
@@ -47,4 +52,10 @@ object Encoder {
 
   implicit val dynamoEncoderForInstant: Encoder[Instant] =
     dynamoEncoderForLong.contramap(instant => instant.toEpochMilli)
+
+  implicit def dynamoEncoderForMap[A: Encoder]: Encoder[Map[String, A]] =
+    Encoder.instance { mapOfA =>
+      val mapOfAttr = mapOfA.view.mapValues(Encoder[A].write).toMap.asJava
+      AttributeValue.builder().m(mapOfAttr).build()
+    }
 }

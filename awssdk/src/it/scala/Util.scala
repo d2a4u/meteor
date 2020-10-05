@@ -43,7 +43,7 @@ object Util {
     gt: G[T],
     partitionKey: T => P,
     sortKey: T => S,
-    tableName: TableName,
+    tableName: Table,
     client: Client[F]
   ): Resource[F, G[T]] =
     Resource.make {
