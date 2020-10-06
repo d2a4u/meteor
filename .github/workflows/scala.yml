@@ -1,0 +1,29 @@
+name: Scala CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 13
+      uses: actions/setup-java@v1
+      with:
+        java-version: 13
+    - name: Cache
+      uses: actions/cache@v2.1.1
+      with:
+        key: sbt-${{ hashFiles('.sbt_cache_key') }}
+        path: |
+          ~/.ivy2
+          ~/.sbt
+          ~/.cache/coursier
+    - name: Run tests
+      run: sbt test
