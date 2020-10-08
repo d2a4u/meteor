@@ -6,10 +6,31 @@ on:
       - master
 
 jobs:
-  build-test:
-
+  build:
     runs-on: ubuntu-20.04
-
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 13
+        uses: actions/setup-java@v1
+        with:
+          java-version: 13
+      - name: Gen cache key
+        run: |
+          md5sum project/build.properties project/plugins.sbt build.sbt > $GITHUB_WORKSPACE/.sbt_cache_key
+          cat $GITHUB_WORKSPACE/.sbt_cache_key
+      - name: Check cache
+        uses: actions/cache@v2.1.1
+        with:
+          key: sbt-${{ hashFiles('**/.sbt_cache_key') }}
+          path: |
+            ~/.ivy2
+            ~/.sbt
+            ~/.cache/coursier
+      - name: Build
+        run:
+          sbt compile
+  unit-tests:
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 13
@@ -31,11 +52,31 @@ jobs:
     - name: Unit tests
       run:
         sbt test
-    - name: Integration tests
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-        AWS_REGION: eu-west-1
-      run:
-        sbt it:test
+  it-tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 13
+        uses: actions/setup-java@v1
+        with:
+          java-version: 13
+      - name: Gen cache key
+        run: |
+          md5sum project/build.properties project/plugins.sbt build.sbt > $GITHUB_WORKSPACE/.sbt_cache_key
+          cat $GITHUB_WORKSPACE/.sbt_cache_key
+      - name: Check cache
+        uses: actions/cache@v2.1.1
+        with:
+          key: sbt-${{ hashFiles('**/.sbt_cache_key') }}
+          path: |
+            ~/.ivy2
+            ~/.sbt
+            ~/.cache/coursier
+      - name: Integration tests
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: eu-west-1
+        run:
+          sbt it:test
