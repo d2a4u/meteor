@@ -15,6 +15,23 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   jClient: DynamoDbAsyncClient
 ) extends Client[F] {
 
+  def get[T: Decoder, P: Encoder](
+    partitionKey: P,
+    table: Table,
+    consistentRead: Boolean
+  ): F[Option[T]] = {
+    val query = Encoder[P].write(partitionKey).m()
+    val req =
+      GetItemRequest.builder()
+        .consistentRead(consistentRead)
+        .tableName(table.name)
+        .key(query)
+        .build()
+    (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
+      Concurrent[F].fromEither(resp.item().attemptDecode[T])
+    }
+  }
+
   def get[T: Decoder, P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
@@ -59,27 +76,25 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     }
   }
 
-  def put[T: Encoder, U: Decoder](
-    t: T,
-    table: Table,
-    returnValue: PutItemReturnValue = PutItemReturnValue.None
-  ): F[Option[U]] = {
-    val returnVal = returnValue match {
-      case PutItemReturnValue.None => ReturnValue.NONE
-      case PutItemReturnValue.AllOld => ReturnValue.ALL_OLD
-    }
+  def put[T: Encoder](t: T, table: Table): F[Unit] = {
     val req =
       PutItemRequest.builder()
         .tableName(table.name)
         .item(Encoder[T].write(t).m())
-        .returnValues(returnVal)
+        .returnValues(ReturnValue.NONE)
+        .build()
+    (() => jClient.putItem(req)).liftF[F].void
+  }
+
+  def put[T: Encoder, U: Decoder](t: T, table: Table): F[Option[U]] = {
+    val req =
+      PutItemRequest.builder()
+        .tableName(table.name)
+        .item(Encoder[T].write(t).m())
+        .returnValues(ReturnValue.ALL_OLD)
         .build()
     (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
-      returnValue match {
-        case PutItemReturnValue.None => none[U].pure[F]
-        case PutItemReturnValue.AllOld =>
-          Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
-      }
+      Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
     }
   }
 

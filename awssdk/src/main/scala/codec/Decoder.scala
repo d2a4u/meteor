@@ -56,7 +56,7 @@ object Decoder {
             a: A
           ): Either[DecoderFailure, B] =
             f(a).read(av) match {
-              case l @ Left(_) => l.rightCast[B]
+              case l @ Left(_)     => l.rightCast[B]
               case Right(Left(a2)) => step(av, a2)
               case Right(Right(b)) => Right(b)
             }
@@ -77,9 +77,6 @@ object Decoder {
         Decoder[A].read(av).map(_.some)
       }
     }
-
-  implicit val dynamoDecoderForUnit: Decoder[Unit] =
-    Decoder.const(())
 
   implicit val dynamoDecoderForString: Decoder[String] =
     Decoder.instance { av =>

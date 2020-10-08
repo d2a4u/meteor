@@ -4,7 +4,7 @@ import cats._
 import cats.implicits._
 import cats.effect.concurrent.Ref
 import cats.effect.{Resource, Sync, Timer}
-import meteor.codec.Encoder
+import meteor.codec.{Decoder, Encoder}
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -33,24 +33,16 @@ object Util {
     }
   }.flatten
 
-  def dataResource[
-    F[_]: Monad,
-    G[_]: Traverse,
-    T: Encoder,
-    P: Encoder,
-    S: Encoder
-  ](
+  def resource[F[_]: Monad, G[_]: Traverse, T, U](
     gt: G[T],
-    partitionKey: T => P,
-    sortKey: T => S,
-    tableName: Table,
-    client: Client[F]
-  ): Resource[F, G[T]] =
+    pre: T => F[U],
+    post: U => F[Unit]
+  ): Resource[F, G[U]] =
     Resource.make {
-      gt.traverse(t => client.put[T, Unit](t, tableName).as(t))
-    } { gt =>
-      gt.traverse(
-        t => client.delete(partitionKey(t), sortKey(t), tableName)
+      gt.traverse(pre)
+    } {
+      _.traverse(
+        post
       ).map(_.combineAll)
     }
 }

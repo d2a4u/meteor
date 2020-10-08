@@ -5,12 +5,6 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
 import scala.jdk.CollectionConverters._
 
-sealed trait PutItemReturnValue
-object PutItemReturnValue {
-  case object None extends PutItemReturnValue
-  case object AllOld extends PutItemReturnValue
-}
-
 case class Table(name: String) extends AnyVal
 
 case class Index(name: String) extends AnyVal

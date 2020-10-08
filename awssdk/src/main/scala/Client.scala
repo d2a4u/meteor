@@ -19,6 +19,12 @@ import scala.jdk.CollectionConverters._
 
 trait Client[F[_]] {
 
+  def get[T: Decoder, P: Encoder](
+    partitionKey: P,
+    table: Table,
+    consistentRead: Boolean
+  ): F[Option[T]]
+
   def get[T: Decoder, P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
@@ -33,11 +39,9 @@ trait Client[F[_]] {
     index: Option[Index]
   ): F[List[T]]
 
-  def put[T: Encoder, U: Decoder](
-    t: T,
-    table: Table,
-    returnValue: PutItemReturnValue = PutItemReturnValue.None
-  ): F[Option[U]]
+  def put[T: Encoder](t: T, table: Table): F[Unit]
+
+  def put[T: Encoder, U: Decoder](t: T, table: Table): F[Option[U]]
 
   def delete[P: Encoder, S: Encoder](
     partitionKey: P,
