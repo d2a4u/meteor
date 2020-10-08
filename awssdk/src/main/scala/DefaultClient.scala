@@ -56,25 +56,47 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     query: Query[P, S],
     table: Table,
     consistentRead: Boolean,
-    index: Option[Index]
-  ): F[List[T]] = {
-    Concurrent[F].fromOption(query.condition, InvalidCondition).flatMap {
+    index: Option[Index] = None,
+    limit: Int = Int.MaxValue
+  ): fs2.Stream[F, T] =
+    fs2.Stream.fromEither[F](
+      Either.fromOption(query.condition, InvalidCondition)
+    ).flatMap {
       cond =>
-        val builder =
-          QueryRequest.builder()
-            .tableName(table.name)
-            .consistentRead(consistentRead)
-            .keyConditionExpression(cond.expression)
-            .expressionAttributeValues(cond.attributes.asJava)
-        val req =
-          index.fold(builder)(index => builder.indexName(index.name)).build()
-        (() => jClient.query(req)).liftF[F].map { resp =>
-          resp.items().asScala.toList.traverse(_.attemptDecode[T]).map(
-            _.flatten
+        val builder = {
+          val qrBuilder =
+            QueryRequest.builder()
+              .tableName(table.name)
+              .consistentRead(consistentRead)
+              .keyConditionExpression(cond.expression)
+              .expressionAttributeValues(cond.attributes.asJava)
+              .limit(limit)
+          index.fold(qrBuilder)(index => qrBuilder.indexName(index.name))
+        }
+
+        def doQuery(
+          req: QueryRequest
+        ): fs2.Stream[F, QueryResponse] =
+          fs2.Stream.eval((() => jClient.query(req)).liftF[F]).flatMap { resp =>
+            if (resp.hasLastEvaluatedKey) {
+              val nextReq =
+                builder.exclusiveStartKey(resp.lastEvaluatedKey()).build()
+              fs2.Stream.emit[F, QueryResponse](resp) ++ doQuery(nextReq)
+            } else {
+              fs2.Stream.emit[F, QueryResponse](resp)
+            }
+          }
+
+        for {
+          resp <- doQuery(builder.build())
+          listT <- fs2.Stream.fromEither(
+            resp.items().asScala.toList.traverse(_.attemptDecode[T]).map(
+              _.flatten
+            )
           )
-        }.flatMap(Concurrent[F].fromEither)
+          result <- fs2.Stream.emits(listT)
+        } yield result
     }
-  }
 
   def put[T: Encoder](t: T, table: Table): F[Unit] = {
     val req =

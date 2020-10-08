@@ -25,7 +25,7 @@ class RetrieveOpSpec
       val partitionKey = Id("def")
       val expect =
         List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val result = for {
+      val src = for {
         client <- Client.resource[IO]
         r <- resource[IO, List, TestData, TestData](
           expect,
@@ -33,15 +33,42 @@ class RetrieveOpSpec
           t => client.delete(t.id, t.range, tableName)
         )
       } yield (r, client)
-      result.use[IO, List[TestData]] {
+      src.use[IO, List[TestData]] {
         case (_, client) =>
           val retrieval = client.retrieve[TestData, Id, Range](
             Query(partitionKey, SortKeyQuery.Empty[Range]()),
             tableName,
             consistentRead = false,
             None
-          )
+          ).compile.toList
           Util.retryOf[IO, List[TestData]](retrieval, 1.second, 10)(_.size == 2)
       }.unsafeRunSync() should contain theSameElementsAs expect
+  }
+
+  it should "limit internal requests" in forAll {
+    (test1: TestData, test2: TestData) =>
+      val partitionKey = Id("def")
+      val expect =
+        List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
+      val src = for {
+        client <- Client.resource[IO]
+        r <- resource[IO, List, TestData, TestData](
+          expect,
+          t => client.put[TestData](t, tableName).as(t),
+          t => client.delete(t.id, t.range, tableName)
+        )
+      } yield (r, client)
+      val result = src.use[IO, List[fs2.Chunk[TestData]]] {
+        case (_, client) =>
+          val retrieval = client.retrieve[TestData, Id, Range](
+            Query(partitionKey, SortKeyQuery.Empty[Range]()),
+            tableName,
+            consistentRead = false,
+            None,
+            1
+          ).chunks.compile.toList
+          Util.retryOf(retrieval, 1.second, 10)(_.size == 2)
+      }.unsafeRunSync()
+      result.forall(_.size == 1) shouldBe true
   }
 }
