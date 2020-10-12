@@ -1,6 +1,8 @@
 # meteor
 
-WIP - A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2.
+![build](https://github.com/d2a4u/meteor/workflows/build/badge.svg)
+
+A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2.
 
 ## Usage and Examples
 
@@ -38,8 +40,14 @@ The library supports the following DynamoDB's API:
 
 Please see `ClientSpec.scala` in integration tests for more code example.
 
+## Modules
+
+- `awssdk` the main module for DynamoDB client
+- `scanamo` module which provides auto conversion to and from Scanamo's `DynamoFormat` and meteor's 
+`Encoder`/`Decoder`
+
 ## Credit
 
-The project is inspired by [comms-deduplication project](https://github.com/ovotech/comms-deduplication).
-Thanks [@filosganga](https://github.com/filosganga) for his contribution and permission to use his 
-code in this project.
+The project is inspired by [comms-deduplication](https://github.com/ovotech/comms-deduplication) 
+project. Thanks [@filosganga](https://github.com/filosganga) for his contribution and permission to 
+use his code in this project.
