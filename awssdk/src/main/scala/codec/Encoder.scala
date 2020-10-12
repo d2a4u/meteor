@@ -8,6 +8,7 @@ import cats._
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model._
 
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
 trait Encoder[A] {
@@ -32,6 +33,14 @@ object Encoder {
       fa.fold(AttributeValue.builder().nul(true).build())(Encoder[A].write)
     }
 
+  implicit def dynamoEncoderForSeq[A: Encoder]: Encoder[Seq[A]] =
+    Encoder.instance { fa =>
+      AttributeValue.builder().l(fa.map(Encoder[A].write): _*).build()
+    }
+
+  implicit def dynamoEncoderForList[A: Encoder]: Encoder[List[A]] =
+    dynamoEncoderForSeq[A].contramap(_.toSeq)
+
   implicit val dynamoEncoderForAttributeValue: Encoder[AttributeValue] =
     Encoder.instance(identity)
 
@@ -46,6 +55,24 @@ object Encoder {
 
   implicit val dynamoEncoderForLong: Encoder[Long] =
     Encoder.instance(long => AttributeValue.builder().n(long.toString).build())
+
+  implicit val dynamoEncoderForFloat: Encoder[Float] =
+    Encoder.instance(float =>
+      AttributeValue.builder().n(float.toString).build())
+
+  implicit val dynamoEncoderForDouble: Encoder[Double] =
+    Encoder.instance(double =>
+      AttributeValue.builder().n(double.toString).build())
+
+  implicit val dynamoEncoderForBigDecimal: Encoder[BigDecimal] =
+    Encoder.instance(bd => AttributeValue.builder().n(bd.toString).build())
+
+  implicit val dynamoEncoderForShort: Encoder[Short] =
+    Encoder.instance(short =>
+      AttributeValue.builder().n(short.toString).build())
+
+  implicit val dynamoEncoderForByte: Encoder[Byte] =
+    Encoder.instance(byte => AttributeValue.builder().n(byte.toString).build())
 
   implicit val dynamoEncoderForInt: Encoder[Int] =
     Encoder.instance(int => AttributeValue.builder().n(int.toString).build())

@@ -20,9 +20,11 @@ lazy val testDependencies = Seq(
 
 lazy val ItTest = config("it").extend(Test)
 
+lazy val scalaVer = "2.13.3"
+
 lazy val commonSettings = Seq(
   organization in ThisBuild := "meteor",
-  scalaVersion := "2.13.3",
+  scalaVersion := scalaVer,
   crossScalaVersions := Seq("2.12.12", "2.13.3"),
   parallelExecution in Test := false,
   scalafmtOnCompile := true,
@@ -44,7 +46,9 @@ lazy val commonSettings = Seq(
     "-encoding",
     "utf8",
     "-language:higherKinds"
-  )
+  ),
+  scalacOptions in Test ~= filterConsoleScalacOptions,
+  scalacOptions in Compile ~= filterConsoleScalacOptions
 )
 
 lazy val root = project
@@ -60,12 +64,29 @@ lazy val awssdk = project
   .configs(ItTest)
   .settings(
     inConfig(ItTest)(Defaults.testSettings),
-    testOptions in ItTest += Tests.Argument("-oD")
+    testOptions in ItTest += Tests.Argument(
+      "-oD"
+    ) // enabled time measurement for each test
   )
   .settings(
     name := "meteor-awssdk",
     libraryDependencies ++= dependencies ++ testDependencies,
-    scalacOptions in Test ~= filterConsoleScalacOptions,
-    scalacOptions in Compile ~= filterConsoleScalacOptions,
     commonSettings
   )
+
+lazy val scanamo = project
+  .in(file("scanamo"))
+  .configs(ItTest)
+  .settings(
+    inConfig(ItTest)(Defaults.testSettings),
+    testOptions in ItTest += Tests.Argument(
+      "-oD"
+    ) // enabled time measurement for each test
+  )
+  .settings(
+    name := "meteor-scanamo",
+    libraryDependencies ++= dependencies ++ testDependencies ++ Seq(
+      "org.scanamo" %% "scanamo-formats" % "1.0.0-M11"
+    ),
+    commonSettings
+  ).dependsOn(awssdk)

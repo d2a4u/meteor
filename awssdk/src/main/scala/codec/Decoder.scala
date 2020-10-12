@@ -78,6 +78,18 @@ object Decoder {
       }
     }
 
+  implicit def dynamoDecoderForSeq[A: Decoder]: Decoder[Seq[A]] =
+    Decoder.instance { av =>
+      if (av.hasL) {
+        av.l().asScala.toList.traverse(Decoder[A].read)
+      } else {
+        DecoderFailure.invalidTypeFailure(DynamoDbType.L).asLeft[Seq[A]]
+      }
+    }
+
+  implicit def dynamoDecoderForList[A: Decoder]: Decoder[List[A]] =
+    dynamoDecoderForSeq[A].map(_.toList)
+
   implicit val dynamoDecoderForString: Decoder[String] =
     Decoder.instance { av =>
       Option(av.s()).toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.S))
@@ -107,6 +119,51 @@ object Decoder {
         .toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(n.toLong).leftMap(e =>
+            DecoderFailure(e.getMessage, e.some)))
+    }
+
+  implicit val dynamoDecoderForFloat: Decoder[Float] =
+    Decoder.instance { av =>
+      Option(av.n())
+        .toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.N))
+        .flatMap(n =>
+          Either.catchNonFatal(n.toFloat).leftMap(e =>
+            DecoderFailure(e.getMessage, e.some)))
+    }
+
+  implicit val dynamoDecoderForDouble: Decoder[Double] =
+    Decoder.instance { av =>
+      Option(av.n())
+        .toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.N))
+        .flatMap(n =>
+          Either.catchNonFatal(n.toDouble).leftMap(e =>
+            DecoderFailure(e.getMessage, e.some)))
+    }
+
+  implicit val dynamoDecoderForBigDecimal: Decoder[BigDecimal] =
+    Decoder.instance { av =>
+      Option(av.n())
+        .toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.N))
+        .flatMap(n =>
+          Either.catchNonFatal(BigDecimal(n)).leftMap(e =>
+            DecoderFailure(e.getMessage, e.some)))
+    }
+
+  implicit val dynamoDecoderForShort: Decoder[Short] =
+    Decoder.instance { av =>
+      Option(av.n())
+        .toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.N))
+        .flatMap(n =>
+          Either.catchNonFatal(n.toShort).leftMap(e =>
+            DecoderFailure(e.getMessage, e.some)))
+    }
+
+  implicit val dynamoDecoderForByte: Decoder[Byte] =
+    Decoder.instance { av =>
+      Option(av.n())
+        .toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.N))
+        .flatMap(n =>
+          Either.catchNonFatal(n.toByte).leftMap(e =>
             DecoderFailure(e.getMessage, e.some)))
     }
 
