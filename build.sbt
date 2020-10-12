@@ -54,7 +54,11 @@ lazy val commonSettings = Seq(
 lazy val root = project
   .in(file("."))
   .settings(name := "meteor", commonSettings, noPublish)
-  .aggregate(awssdk)
+  .dependsOn(
+    awssdk % "compile->compile;test->test",
+    scanamo % "compile->compile;test->test"
+  )
+  .aggregate(awssdk, scanamo)
 
 lazy val noPublish =
   Seq(publish := {}, publishLocal := {}, publishArtifact := false)
