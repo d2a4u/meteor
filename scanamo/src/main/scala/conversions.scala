@@ -43,7 +43,9 @@ object conversions {
       av.m() != null && !av.m().isInstanceOf[DefaultSdkAutoConstructMap[_, _]]
     ) {
       new AttributeValueV1().withM(
-        av.m().asScala.view.mapValues(sdk2ToSdk1AttributeValue).toMap.asJava
+        av.m().asScala.map(
+          kv => kv._1 -> sdk2ToSdk1AttributeValue(kv._2)
+        ).toMap.asJava
       )
     } else if (av.n() != null) {
       new AttributeValueV1().withN(av.n())
@@ -80,7 +82,9 @@ object conversions {
       builder.l(av.getL.asScala.map(sdk1ToSdk2AttributeValue).asJava).build()
     } else if (av.getM != null) {
       builder.m(
-        av.getM.asScala.view.mapValues(sdk1ToSdk2AttributeValue).toMap.asJava
+        av.getM.asScala.map(
+          kv => kv._1 -> sdk1ToSdk2AttributeValue(kv._2)
+        ).toMap.asJava
       ).build()
     } else if (av.getN != null) {
       builder.n(av.getN).build()

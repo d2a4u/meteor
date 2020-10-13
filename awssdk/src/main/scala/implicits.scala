@@ -8,6 +8,8 @@ import meteor.codec.{Decoder, DecoderFailure}
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
 object implicits {
+  type FailureOr[U] = Either[DecoderFailure, U]
+
   implicit class FromCompletableFuture[A](thunk: () => CompletableFuture[A]) {
     def liftF[F[_]: Concurrent]: F[A] =
       Concurrent[F].cancelable[A] { cb =>
@@ -26,7 +28,7 @@ object implicits {
       Option(m)
         .filter(_.size > 0)
         .map(xs => AttributeValue.builder().m(xs).build())
-        .traverse(Decoder[T].read)
+        .traverse[FailureOr, T](Decoder[T].read)
     }
   }
 }

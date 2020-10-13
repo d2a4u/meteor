@@ -8,7 +8,6 @@ import cats._
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model._
 
-import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
 trait Encoder[A] {
@@ -82,7 +81,8 @@ object Encoder {
 
   implicit def dynamoEncoderForMap[A: Encoder]: Encoder[Map[String, A]] =
     Encoder.instance { mapOfA =>
-      val mapOfAttr = mapOfA.view.mapValues(Encoder[A].write).toMap.asJava
+      val mapOfAttr =
+        mapOfA.map(kv => kv._1 -> Encoder[A].write(kv._2)).asJava
       AttributeValue.builder().m(mapOfAttr).build()
     }
 }

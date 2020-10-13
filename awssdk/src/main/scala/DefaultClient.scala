@@ -3,7 +3,7 @@ package meteor
 import cats.effect.Concurrent
 import cats.implicits._
 import fs2.{Pipe, RaiseThrowable}
-import meteor.codec.{Decoder, Encoder}
+import meteor.codec.{Decoder, DecoderFailure, Encoder}
 import meteor.errors.InvalidCondition
 import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
@@ -87,10 +87,14 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
             }
           }
 
+        type FailureOr[U] = Either[DecoderFailure, U]
+
         for {
           resp <- doQuery(builder.build())
           listT <- fs2.Stream.fromEither(
-            resp.items().asScala.toList.traverse(_.attemptDecode[T]).map(
+            resp.items().asScala.toList.traverse[FailureOr, Option[T]](
+              _.attemptDecode[T]
+            ).map(
               _.flatten
             )
           )

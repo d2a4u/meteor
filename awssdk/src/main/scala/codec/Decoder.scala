@@ -28,6 +28,7 @@ trait Decoder[A] {
 }
 
 object Decoder {
+  type FailureOr[U] = Either[DecoderFailure, U]
 
   def apply[A](implicit dd: Decoder[A]): Decoder[A] = dd
 
@@ -81,7 +82,7 @@ object Decoder {
   implicit def dynamoDecoderForSeq[A: Decoder]: Decoder[Seq[A]] =
     Decoder.instance { av =>
       if (av.hasL) {
-        av.l().asScala.toList.traverse(Decoder[A].read)
+        av.l().asScala.toList.traverse[FailureOr, A](Decoder[A].read)
       } else {
         DecoderFailure.invalidTypeFailure(DynamoDbType.L).asLeft[Seq[A]]
       }
