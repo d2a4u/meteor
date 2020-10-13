@@ -1,8 +1,18 @@
 # meteor
 
 ![build](https://github.com/d2a4u/meteor/workflows/build/badge.svg)
+[ ![Download](https://api.bintray.com/packages/d2a4u/meteor/meteor-awssdk/images/download.svg) ](https://bintray.com/d2a4u/meteor/meteor-awssdk/_latestVersion)
 
 A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2.
+
+## Install
+
+Add Bintray resolver:
+resolvers += Resolver.bintrayRepo("d2a4u", "meteor")
+
+Add the following to your build.sbt, see the badge above for latest version. Supports Scala 2.12 and 2.13.
+
+libraryDependencies += "meteor" %% "meteor-awssdk" % "LATEST_VERSION"
 
 ## Usage and Examples
 
