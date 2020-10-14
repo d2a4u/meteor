@@ -19,6 +19,15 @@ object Encoder {
 
   def instance[A](f: A => AttributeValue): Encoder[A] = (a: A) => f(a)
 
+  def const[A](key: String, value: String): Encoder[A] =
+    _ =>
+      AttributeValue
+        .builder()
+        .m(
+          Map(key -> Encoder[String].write(value)).asJava
+        )
+        .build()
+
   def const[A](av: AttributeValue): Encoder[A] = _ => av
 
   implicit def contravariantForDynamoDbDecoder: Contravariant[Encoder] =

@@ -69,7 +69,8 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
               .tableName(table.name)
               .consistentRead(consistentRead)
               .keyConditionExpression(cond.expression)
-              .expressionAttributeValues(cond.attributes.asJava)
+              .expressionAttributeNames(cond.attributeNames.asJava)
+              .expressionAttributeValues(cond.attributeValues.asJava)
               .limit(limit)
           index.fold(qrBuilder)(index => qrBuilder.indexName(index.name))
         }
@@ -159,7 +160,7 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
           .tableName(table.name)
           .consistentRead(consistentRead)
           .filterExpression(cond.expression)
-          .expressionAttributeValues(cond.attributes.asJava)
+          .expressionAttributeValues(cond.attributeValues.asJava)
           .totalSegments(parallelism)
       }
 
