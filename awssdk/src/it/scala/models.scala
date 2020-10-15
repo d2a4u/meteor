@@ -1,6 +1,5 @@
 package meteor
 
-import cats.implicits._
 import meteor.codec.{Decoder, Encoder}
 import org.scalacheck.{Arbitrary, Gen}
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
@@ -80,8 +79,13 @@ case class TestDataSimple(
   data: String
 )
 object TestDataSimple {
-  implicit val decoder: Decoder[TestDataSimple] =
-    Decoder[TestData].map(data => TestDataSimple(data.id, data.str))
+  implicit val decoder: Decoder[TestDataSimple] = Decoder.instance { av =>
+    val obj = av.m()
+    for {
+      id <- Decoder[String].read(obj.get("id"))
+      data <- Decoder[String].read(obj.get("data"))
+    } yield TestDataSimple(Id(id), data)
+  }
 
   implicit def encoder: Encoder[TestDataSimple] =
     Encoder.instance { t =>
@@ -105,8 +109,14 @@ case class TestDataScan(
   data: String
 )
 object TestDataScan {
-  implicit val decoder: Decoder[TestDataScan] =
-    Decoder[TestData].map(data => TestDataScan(data.id, data.range, data.str))
+  implicit val decoder: Decoder[TestDataScan] = Decoder.instance { av =>
+    val obj = av.m()
+    for {
+      id <- Decoder[String].read(obj.get("id"))
+      range <- Decoder[String].read(obj.get("range"))
+      data <- Decoder[String].read(obj.get("data"))
+    } yield TestDataScan(Id(id), Range(range), data)
+  }
 
   implicit val encoder: Encoder[TestDataScan] = Encoder.instance { t =>
     val jMap = Map(
