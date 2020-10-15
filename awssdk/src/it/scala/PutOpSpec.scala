@@ -1,19 +1,9 @@
 package meteor
 
-import cats.effect.{ContextShift, IO, Timer}
+import cats.effect.IO
 import cats.implicits._
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
-import scala.concurrent.ExecutionContext.global
-
-class PutOpSpec
-    extends AnyFlatSpec
-    with Matchers
-    with ScalaCheckDrivenPropertyChecks {
-  implicit val timer: Timer[IO] = IO.timer(global)
-  implicit val cs: ContextShift[IO] = IO.contextShift(global)
+class PutOpSpec extends ITSpec {
 
   behavior.of("put operation")
 
@@ -29,7 +19,7 @@ class PutOpSpec
   it should "return old value after successfully inserting item with both keys" in forAll {
     old: TestData =>
       val tableName = Table("test_primary_keys")
-      val updated = old.copy(data = old.data + "-updated")
+      val updated = old.copy(str = old.str + "-updated")
       val result =
         Client.resource[IO].use { client =>
           client.put[TestData](old, tableName) >> client.put[
@@ -37,7 +27,7 @@ class PutOpSpec
             TestData
           ](updated, tableName)
         }
-      result.unsafeRunSync() shouldEqual Some(old)
+      result.unsafeToFuture().futureValue shouldEqual Some(old)
   }
 
   it should "success inserting item without sort key" in forAll {
@@ -46,7 +36,7 @@ class PutOpSpec
       val result = Client.resource[IO].use { client =>
         client.put[TestDataSimple](test, tableName)
       }
-      result.unsafeRunSync() shouldBe an[Unit]
+      result.unsafeToFuture().futureValue shouldBe an[Unit]
   }
 
   it should "return old value after successfully inserting item without sort key" in forAll {
@@ -60,6 +50,6 @@ class PutOpSpec
             tableName
           )
       }
-      result.unsafeRunSync() shouldEqual Some(old)
+      result.unsafeToFuture().futureValue shouldEqual Some(old)
   }
 }

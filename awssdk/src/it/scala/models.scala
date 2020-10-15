@@ -35,7 +35,9 @@ object Range {
 case class TestData(
   id: Id,
   range: Range,
-  data: String
+  str: String,
+  int: Int,
+  bool: Boolean
 )
 object TestData {
   implicit val decoder: Decoder[TestData] = Decoder.instance { av =>
@@ -43,15 +45,19 @@ object TestData {
     for {
       id <- Decoder[String].read(obj.get("id"))
       range <- Decoder[String].read(obj.get("range"))
-      data <- Decoder[String].read(obj.get("data"))
-    } yield TestData(Id(id), Range(range), data)
+      str <- Decoder[String].read(obj.get("str"))
+      int <- Decoder[Int].read(obj.get("int"))
+      bool <- Decoder[Boolean].read(obj.get("bool"))
+    } yield TestData(Id(id), Range(range), str, int, bool)
   }
 
   implicit val encoder: Encoder[TestData] = Encoder.instance { t =>
     val jMap = Map(
       "id" -> Encoder[String].write(t.id.value),
       "range" -> Encoder[String].write(t.range.value),
-      "data" -> Encoder[String].write(t.data)
+      "str" -> Encoder[String].write(t.str),
+      "int" -> Encoder[Int].write(t.int),
+      "bool" -> Encoder[Boolean].write(t.bool)
     ).asJava
     AttributeValue.builder().m(jMap).build()
   }
@@ -60,8 +66,10 @@ object TestData {
     for {
       id <- implicitly[Gen[Id]]
       range <- implicitly[Gen[Range]]
-      data <- Gen.asciiPrintableStr
-    } yield TestData(id, range, data)
+      str <- Gen.asciiPrintableStr
+      int <- Gen.chooseNum(Int.MinValue, Int.MaxValue)
+      bool <- Gen.oneOf(Seq(true, false))
+    } yield TestData(id, range, str, int, bool)
 
   implicit val arbTestData: Arbitrary[TestData] = Arbitrary(genTestData)
 }
@@ -79,20 +87,50 @@ object TestDataSimple {
     } yield TestDataSimple(Id(id), data)
   }
 
-  implicit val encoder: Encoder[TestDataSimple] = Encoder.instance { t =>
+  implicit def encoder: Encoder[TestDataSimple] =
+    Encoder.instance { t =>
+      val jMap = Map(
+        "id" -> Encoder[String].write(t.id.value),
+        "data" -> Encoder[String].write(t.data)
+      ).asJava
+      AttributeValue.builder().m(jMap).build()
+    }
+
+  implicit val genTestDataSimple: Gen[TestDataSimple] =
+    TestData.genTestData.map(data => TestDataSimple(data.id, data.str))
+
+  implicit val arbTestDataSimple: Arbitrary[TestDataSimple] =
+    Arbitrary(genTestDataSimple)
+}
+
+case class TestDataScan(
+  id: Id,
+  range: Range,
+  data: String
+)
+object TestDataScan {
+  implicit val decoder: Decoder[TestDataScan] = Decoder.instance { av =>
+    val obj = av.m()
+    for {
+      id <- Decoder[String].read(obj.get("id"))
+      range <- Decoder[String].read(obj.get("range"))
+      data <- Decoder[String].read(obj.get("data"))
+    } yield TestDataScan(Id(id), Range(range), data)
+  }
+
+  implicit val encoder: Encoder[TestDataScan] = Encoder.instance { t =>
     val jMap = Map(
       "id" -> Encoder[String].write(t.id.value),
+      "range" -> Encoder[String].write(t.range.value),
       "data" -> Encoder[String].write(t.data)
     ).asJava
     AttributeValue.builder().m(jMap).build()
   }
 
-  implicit val genTestDataSimple: Gen[TestDataSimple] =
-    for {
-      id <- implicitly[Gen[Id]]
-      data <- Gen.asciiPrintableStr
-    } yield TestDataSimple(id, data)
+  implicit val genTestDataScan: Gen[TestDataScan] =
+    TestData.genTestData.map(data =>
+      TestDataScan(data.id, data.range, data.str))
 
-  implicit val arbTestDataSimple: Arbitrary[TestDataSimple] =
-    Arbitrary(genTestDataSimple)
+  implicit val arbTestDataScan: Arbitrary[TestDataScan] =
+    Arbitrary(genTestDataScan)
 }

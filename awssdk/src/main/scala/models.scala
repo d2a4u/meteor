@@ -30,24 +30,33 @@ object SortKeyQuery {
   case class BeginsWith[T](value: T) extends SortKeyQuery[T]
 }
 
-case class Condition(
+case class Expression(
   expression: String,
   attributeNames: Map[String, String],
   attributeValues: Map[String, AttributeValue]
-)
+) {
+  val isEmpty: Boolean = this.expression.isEmpty
+  val nonEmpty: Boolean = !isEmpty
+}
+
+object Expression {
+  val empty: Expression =
+    Expression("", Map.empty[String, String], Map.empty[String, AttributeValue])
+}
 
 case class Query[P: Encoder, S: Encoder](
   partitionKey: P,
-  sortKeyQuery: SortKeyQuery[S]
+  sortKeyQuery: SortKeyQuery[S],
+  filter: Expression
 ) {
-  val condition: Option[Condition] = {
+  val keyCondition: Expression = {
     val pKey = Encoder[P].write(partitionKey).m().asScala.toList.headOption
     val sKey = sortKeyQuery match {
       case SortKeyQuery.EqualTo(value) =>
         Encoder[S].write(value).m().asScala.toList.headOption.map {
           case (str, attr) =>
             val placeholder = ":t1"
-            Condition(
+            Expression(
               s"#$str EQ $placeholder",
               Map(s"#$str" -> str),
               Map(placeholder -> attr)
@@ -58,7 +67,7 @@ case class Query[P: Encoder, S: Encoder](
         Encoder[S].write(value).m().asScala.toList.headOption.map {
           case (str, attr) =>
             val placeholder = ":t1"
-            Condition(
+            Expression(
               s"#$str LT $placeholder",
               Map(s"#$str" -> str),
               Map(placeholder -> attr)
@@ -69,7 +78,7 @@ case class Query[P: Encoder, S: Encoder](
         Encoder[S].write(value).m().asScala.toList.headOption.map {
           case (str, attr) =>
             val placeholder = ":t1"
-            Condition(
+            Expression(
               s"#$str LE $placeholder",
               Map(s"#$str" -> str),
               Map(placeholder -> attr)
@@ -80,7 +89,7 @@ case class Query[P: Encoder, S: Encoder](
         Encoder[S].write(value).m().asScala.toList.headOption.map {
           case (str, attr) =>
             val placeholder = ":t1"
-            Condition(
+            Expression(
               s"#$str GT $placeholder",
               Map(s"#$str" -> str),
               Map(placeholder -> attr)
@@ -91,7 +100,7 @@ case class Query[P: Encoder, S: Encoder](
         Encoder[S].write(value).m().asScala.toList.headOption.map {
           case (str, attr) =>
             val placeholder = ":t1"
-            Condition(
+            Expression(
               s"#$str GE $placeholder",
               Map(s"#$str" -> str),
               Map(placeholder -> attr)
@@ -105,7 +114,7 @@ case class Query[P: Encoder, S: Encoder](
         } yield {
           val placeholder1 = ":t1"
           val placeholder2 = ":t2"
-          Condition(
+          Expression(
             s"#${f._1} BETWEEN $placeholder1 AND $placeholder2",
             Map(s"#${f._1}" -> f._1),
             Map(placeholder1 -> f._2, placeholder2 -> t._2)
@@ -116,7 +125,7 @@ case class Query[P: Encoder, S: Encoder](
         Encoder[S].write(value).m().asScala.toList.headOption.map {
           case (str, attr) =>
             val placeholder = ":t1"
-            Condition(
+            Expression(
               s"begins_with(#$str, $placeholder)",
               Map(s"#$str" -> str),
               Map(placeholder -> attr)
@@ -126,14 +135,14 @@ case class Query[P: Encoder, S: Encoder](
       case _ =>
         None
     }
-    pKey.map { p =>
+    pKey.fold(Expression.empty) { p =>
       val placeholder = ":t0"
-      sKey.fold(Condition(
+      sKey.fold(Expression(
         s"#${p._1} = $placeholder",
         Map(s"#${p._1}" -> p._1),
         Map(placeholder -> p._2)
       )) { s =>
-        Condition(
+        Expression(
           s"#${p._1} = $placeholder AND ",
           s.attributeNames ++ Map(s"#${p._1}" -> p._1),
           s.attributeValues ++ Map(placeholder -> p._2)

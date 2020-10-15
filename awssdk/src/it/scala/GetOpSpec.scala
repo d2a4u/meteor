@@ -1,20 +1,11 @@
 package meteor
 
-import cats.effect.{ContextShift, IO, Resource, Timer}
+import cats.effect.{IO, Resource}
 import meteor.Util.resource
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
-import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
-class GetOpSpec
-    extends AnyFlatSpec
-    with Matchers
-    with ScalaCheckDrivenPropertyChecks {
-  implicit val timer: Timer[IO] = IO.timer(global)
-  implicit val cs: ContextShift[IO] = IO.contextShift(global)
+class GetOpSpec extends ITSpec {
 
   behavior.of("get operation")
 
@@ -44,7 +35,7 @@ class GetOpSpec
       } yield r
       result.use[IO, Option[TestData]](
         r => IO(r)
-      ).unsafeRunSync() shouldEqual Some(
+      ).unsafeToFuture().futureValue shouldEqual Some(
         test
       )
   }
@@ -75,7 +66,7 @@ class GetOpSpec
       } yield r
       result.use[IO, Option[TestDataSimple]](
         r => IO(r)
-      ).unsafeRunSync() shouldEqual Some(
+      ).unsafeToFuture().futureValue shouldEqual Some(
         test
       )
   }
@@ -89,7 +80,7 @@ class GetOpSpec
         tableName,
         consistentRead = false
       )
-    }.unsafeRunSync()
+    }.unsafeToFuture().futureValue
     result shouldEqual None
   }
 
@@ -102,7 +93,7 @@ class GetOpSpec
         tableName,
         consistentRead = false
       )
-    }.unsafeRunSync()
+    }.unsafeToFuture().futureValue
     result shouldEqual None
   }
 }

@@ -4,7 +4,7 @@ import cats.effect.Concurrent
 import cats.implicits._
 import fs2.{Pipe, RaiseThrowable}
 import meteor.codec.{Decoder, DecoderFailure, Encoder}
-import meteor.errors.InvalidCondition
+import meteor.errors.InvalidExpression
 import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
@@ -60,19 +60,34 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     limit: Int = Int.MaxValue
   ): fs2.Stream[F, T] =
     fs2.Stream.fromEither[F](
-      Either.fromOption(query.condition, InvalidCondition)
+      Either.fromOption(
+        query.keyCondition.nonEmpty.guard[Option].as(query.keyCondition),
+        InvalidExpression
+      )
     ).flatMap {
       cond =>
         val builder = {
-          val qrBuilder =
+          val builder0 =
             QueryRequest.builder()
               .tableName(table.name)
               .consistentRead(consistentRead)
               .keyConditionExpression(cond.expression)
+              .limit(limit)
+          val builder1 =
+            index.fold(builder0)(index => builder0.indexName(index.name))
+          if (query.filter.isEmpty) {
+            builder1
               .expressionAttributeNames(cond.attributeNames.asJava)
               .expressionAttributeValues(cond.attributeValues.asJava)
-              .limit(limit)
-          index.fold(qrBuilder)(index => qrBuilder.indexName(index.name))
+          } else {
+            builder1.filterExpression(
+              query.filter.expression
+            ).expressionAttributeNames(
+              (cond.attributeNames ++ query.filter.attributeNames).asJava
+            ).expressionAttributeValues(
+              (cond.attributeValues ++ query.filter.attributeValues).asJava
+            )
+          }
         }
 
         def doQuery(
@@ -145,57 +160,58 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     segment: Int
   )
 
-  def scan[T: Decoder, P: Encoder, S: Encoder](
-    query: Query[P, S],
+  def scan[T: Decoder](
+    filter: Expression,
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]] = {
     def requestBuilder(
-      cond: meteor.Condition,
+      filter: Expression,
       startKey: Option[java.util.Map[String, AttributeValue]]
     ) = {
-      def builder(cond: meteor.Condition) = {
+      def builder(filter: Expression) = {
         ScanRequest.builder()
           .tableName(table.name)
           .consistentRead(consistentRead)
-          .filterExpression(cond.expression)
-          .expressionAttributeValues(cond.attributeValues.asJava)
+          .filterExpression(filter.expression)
+          .expressionAttributeNames(filter.attributeNames.asJava)
+          .expressionAttributeValues(filter.attributeValues.asJava)
           .totalSegments(parallelism)
       }
 
-      startKey.fold(builder(cond))(builder(cond).exclusiveStartKey)
+      startKey.fold(builder(filter))(builder(filter).exclusiveStartKey)
     }
 
-    def initRequests(cond: meteor.Condition) =
+    def initRequests(filter: Expression) =
       fs2.Stream.emits[F, SegmentPassThrough[ScanRequest]](
         List.fill(parallelism)(
-          requestBuilder(cond, None)
+          requestBuilder(filter, None)
         ).zipWithIndex.map {
           case (builder, index) =>
             SegmentPassThrough(builder.segment(index).build(), index)
         }
       )
 
-    def sendPipe(cond: meteor.Condition): Pipe[
+    def sendPipe(filter: Expression): Pipe[
       F,
       SegmentPassThrough[ScanRequest],
       SegmentPassThrough[ScanResponse]
     ] =
-      _.mapAsyncUnordered(parallelism)(req => doScan(cond, req)).parJoin(
+      _.mapAsyncUnordered(parallelism)(req => doScan(filter, req)).parJoin(
         parallelism
       )
 
     def doScan(
-      cond: meteor.Condition,
+      filter: Expression,
       req: SegmentPassThrough[ScanRequest]
     ): F[fs2.Stream[F, SegmentPassThrough[ScanResponse]]] = {
       (() => jClient.scan(req.u)).liftF[F].flatMap { resp =>
         if (resp.hasLastEvaluatedKey) {
           doScan(
-            cond,
+            filter,
             SegmentPassThrough(
-              requestBuilder(cond, Some(resp.lastEvaluatedKey())).segment(
+              requestBuilder(filter, Some(resp.lastEvaluatedKey())).segment(
                 req.segment
               ).build(),
               req.segment
@@ -213,7 +229,10 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
 
     for {
       cond <- fs2.Stream.eval(
-        Concurrent[F].fromOption(query.condition, InvalidCondition)
+        Concurrent[F].fromOption(
+          filter.nonEmpty.guard[Option].as(filter),
+          InvalidExpression
+        )
       )
       resp <- sendPipe(cond)(initRequests(cond))
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)

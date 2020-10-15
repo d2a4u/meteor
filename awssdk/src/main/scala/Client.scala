@@ -50,8 +50,8 @@ trait Client[F[_]] {
     table: Table
   ): F[Unit]
 
-  def scan[T: Decoder, P: Encoder, S: Encoder](
-    query: Query[P, S],
+  def scan[T: Decoder](
+    filter: Expression,
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
