@@ -11,7 +11,7 @@ class PutOpSpec extends ITSpec {
     test: TestData =>
       val tableName = Table("test_primary_keys")
       val result = Client.resource[IO].use { client =>
-        client.put[TestData](test, tableName)
+        client.put[TestData](tableName, test)
       }
       result.unsafeRunSync() shouldBe an[Unit]
   }
@@ -22,10 +22,10 @@ class PutOpSpec extends ITSpec {
       val updated = old.copy(str = old.str + "-updated")
       val result =
         Client.resource[IO].use { client =>
-          client.put[TestData](old, tableName) >> client.put[
+          client.put[TestData](tableName, old) >> client.put[
             TestData,
             TestData
-          ](updated, tableName)
+          ](tableName, updated)
         }
       result.unsafeToFuture().futureValue shouldEqual Some(old)
   }
@@ -34,7 +34,7 @@ class PutOpSpec extends ITSpec {
     test: TestDataSimple =>
       val tableName = Table("test_partition_key_only")
       val result = Client.resource[IO].use { client =>
-        client.put[TestDataSimple](test, tableName)
+        client.put[TestDataSimple](tableName, test)
       }
       result.unsafeToFuture().futureValue shouldBe an[Unit]
   }
@@ -44,10 +44,10 @@ class PutOpSpec extends ITSpec {
       val tableName = Table("test_partition_key_only")
       val updated = old.copy(data = old.data + "-updated")
       val result = Client.resource[IO].use { client =>
-        client.put[TestDataSimple](old, tableName) >>
+        client.put[TestDataSimple](tableName, old) >>
           client.put[TestDataSimple, TestDataSimple](
-            updated,
-            tableName
+            tableName,
+            updated
           )
       }
       result.unsafeToFuture().futureValue shouldEqual Some(old)

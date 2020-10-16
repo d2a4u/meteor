@@ -16,13 +16,13 @@ class GetOpSpec extends ITSpec {
         client <- Client.resource[IO]
         _ <- resource[IO, cats.Id, TestData, Unit](
           test,
-          t => client.put[TestData](t, tableName).void,
-          _ => client.delete(test.id, test.range, tableName)
+          t => client.put[TestData](tableName, t).void,
+          _ => client.delete(tableName, test.id, test.range)
         )
         get = client.get[TestData, Id, Range](
+          tableName,
           test.id,
           test.range,
-          tableName,
           consistentRead = false
         )
         r <- Resource.liftF(Util.retryOf[IO, Option[TestData]](
@@ -47,13 +47,13 @@ class GetOpSpec extends ITSpec {
         client <- Client.resource[IO]
         _ <- resource[IO, cats.Id, TestDataSimple, Unit](
           test,
-          t => client.put[TestDataSimple](t, tableName).void,
-          _ => client.delete(test.id, EmptySortKey, tableName)
+          t => client.put[TestDataSimple](tableName, t).void,
+          _ => client.delete(tableName, test.id, EmptySortKey)
         )
         get = client.get[TestDataSimple, Id, EmptySortKey.type](
+          tableName,
           test.id,
           EmptySortKey,
-          tableName,
           consistentRead = false
         )
         r <- Resource.liftF(Util.retryOf[IO, Option[TestDataSimple]](
@@ -75,9 +75,9 @@ class GetOpSpec extends ITSpec {
     val tableName = Table("test_primary_keys")
     val result = Client.resource[IO].use { client =>
       client.get[TestData, Id, Range](
+        tableName,
         Id("doesnt-exists"),
         Range("doesnt-exists"),
-        tableName,
         consistentRead = false
       )
     }.unsafeToFuture().futureValue
@@ -88,9 +88,9 @@ class GetOpSpec extends ITSpec {
     val tableName = Table("test_partition_key_only")
     val result = Client.resource[IO].use { client =>
       client.get[TestData, Id, EmptySortKey.type](
+        tableName,
         Id("doesnt-exists"),
         EmptySortKey,
-        tableName,
         consistentRead = false
       )
     }.unsafeToFuture().futureValue

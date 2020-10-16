@@ -23,15 +23,15 @@ class RetrieveOpSpec extends ITSpec {
         client <- Client.resource[IO]
         r <- resource[IO, List, TestData, TestData](
           expect,
-          t => client.put[TestData](t, tableName).as(t),
-          t => client.delete(t.id, t.range, tableName)
+          t => client.put[TestData](tableName, t).as(t),
+          t => client.delete(tableName, t.id, t.range)
         )
       } yield (r, client)
       src.use[IO, List[TestData]] {
         case (_, client) =>
           val retrieval = client.retrieve[TestData, Id, Range](
-            Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
             tableName,
+            Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
             consistentRead = false,
             None
           ).compile.toList
@@ -51,13 +51,14 @@ class RetrieveOpSpec extends ITSpec {
         client <- Client.resource[IO]
         r <- resource[IO, List, TestData, TestData](
           testUpdated,
-          t => client.put[TestData](t, tableName).as(t),
-          t => client.delete(t.id, t.range, tableName)
+          t => client.put[TestData](tableName, t).as(t),
+          t => client.delete(tableName, t.id, t.range)
         )
       } yield (r, client)
       src.use[IO, List[TestData]] {
         case (_, client) =>
           val retrieval = client.retrieve[TestData, Id, Range](
+            tableName,
             Query(
               partitionKey,
               SortKeyQuery.Empty[Range](),
@@ -70,7 +71,6 @@ class RetrieveOpSpec extends ITSpec {
                 )
               )
             ),
-            tableName,
             consistentRead = false,
             None
           ).compile.toList
@@ -89,15 +89,15 @@ class RetrieveOpSpec extends ITSpec {
         client <- Client.resource[IO]
         r <- resource[IO, List, TestData, TestData](
           expect,
-          t => client.put[TestData](t, tableName).as(t),
-          t => client.delete(t.id, t.range, tableName)
+          t => client.put[TestData](tableName, t).as(t),
+          t => client.delete(tableName, t.id, t.range)
         )
       } yield (r, client)
       val result = src.use[IO, List[fs2.Chunk[TestData]]] {
         case (_, client) =>
           val retrieval = client.retrieve[TestData, Id, Range](
-            Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
             tableName,
+            Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
             consistentRead = false,
             None,
             1

@@ -16,8 +16,8 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
 ) extends Client[F] {
 
   def get[T: Decoder, P: Encoder](
-    partitionKey: P,
     table: Table,
+    partitionKey: P,
     consistentRead: Boolean
   ): F[Option[T]] = {
     val query = Encoder[P].write(partitionKey).m()
@@ -33,9 +33,9 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   }
 
   def get[T: Decoder, P: Encoder, S: Encoder](
+    table: Table,
     partitionKey: P,
     sortKey: S,
-    table: Table,
     consistentRead: Boolean
   ): F[Option[T]] = {
     val query = Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
@@ -53,8 +53,8 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   }
 
   def retrieve[T: Decoder, P: Encoder, S: Encoder](
-    query: Query[P, S],
     table: Table,
+    query: Query[P, S],
     consistentRead: Boolean,
     index: Option[Index] = None,
     limit: Int = Int.MaxValue
@@ -118,32 +118,62 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
         } yield result
     }
 
-  def put[T: Encoder](t: T, table: Table): F[Unit] = {
-    val req =
+  def put[T: Encoder](
+    table: Table,
+    t: T
+  ): F[Unit] = put[T](table, t, Expression.empty)
+
+  def put[T: Encoder](
+    table: Table,
+    t: T,
+    condition: Expression
+  ): F[Unit] = {
+    val builder =
       PutItemRequest.builder()
         .tableName(table.name)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.NONE)
-        .build()
+    val req = condition.nonEmpty.guard[Option].as(condition).fold(builder) {
+      cond =>
+        builder
+          .conditionExpression(cond.expression)
+          .expressionAttributeNames(cond.attributeNames.asJava)
+          .expressionAttributeValues(cond.attributeValues.asJava)
+    }.build()
     (() => jClient.putItem(req)).liftF[F].void
   }
 
-  def put[T: Encoder, U: Decoder](t: T, table: Table): F[Option[U]] = {
-    val req =
+  def put[T: Encoder, U: Decoder](
+    table: Table,
+    t: T
+  ): F[Option[U]] = put[T, U](table, t, Expression.empty)
+
+  def put[T: Encoder, U: Decoder](
+    table: Table,
+    t: T,
+    condition: Expression
+  ): F[Option[U]] = {
+    val builder =
       PutItemRequest.builder()
         .tableName(table.name)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.ALL_OLD)
-        .build()
+    val req = condition.nonEmpty.guard[Option].as(condition).fold(builder) {
+      cond =>
+        builder
+          .conditionExpression(cond.expression)
+          .expressionAttributeNames(cond.attributeNames.asJava)
+          .expressionAttributeValues(cond.attributeValues.asJava)
+    }.build()
     (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
       Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
     }
   }
 
   def delete[P: Encoder, S: Encoder](
+    table: Table,
     partitionKey: P,
-    sortKey: S,
-    table: Table
+    sortKey: S
   ): F[Unit] = {
     val req =
       DeleteItemRequest.builder()
@@ -161,8 +191,8 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   )
 
   def scan[T: Decoder](
-    filter: Expression,
     table: Table,
+    filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]] = {

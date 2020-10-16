@@ -20,39 +20,57 @@ import scala.jdk.CollectionConverters._
 trait Client[F[_]] {
 
   def get[T: Decoder, P: Encoder](
-    partitionKey: P,
     table: Table,
+    partitionKey: P,
     consistentRead: Boolean
   ): F[Option[T]]
 
   def get[T: Decoder, P: Encoder, S: Encoder](
+    table: Table,
     partitionKey: P,
     sortKey: S,
-    table: Table,
     consistentRead: Boolean
   ): F[Option[T]]
 
   def retrieve[T: Decoder, P: Encoder, S: Encoder](
-    query: Query[P, S],
     table: Table,
+    query: Query[P, S],
     consistentRead: Boolean,
     index: Option[Index] = None,
     limit: Int = Int.MaxValue
   ): fs2.Stream[F, T]
 
-  def put[T: Encoder](t: T, table: Table): F[Unit]
+  def put[T: Encoder](
+    table: Table,
+    t: T
+  ): F[Unit]
 
-  def put[T: Encoder, U: Decoder](t: T, table: Table): F[Option[U]]
+  def put[T: Encoder, U: Decoder](
+    table: Table,
+    t: T
+  ): F[Option[U]]
+
+  def put[T: Encoder](
+    table: Table,
+    t: T,
+    condition: Expression
+  ): F[Unit]
+
+  def put[T: Encoder, U: Decoder](
+    table: Table,
+    t: T,
+    condition: Expression
+  ): F[Option[U]]
 
   def delete[P: Encoder, S: Encoder](
+    table: Table,
     partitionKey: P,
-    sortKey: S,
-    table: Table
+    sortKey: S
   ): F[Unit]
 
   def scan[T: Decoder](
-    filter: Expression,
     table: Table,
+    filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
   ): fs2.Stream[F, Option[T]]
