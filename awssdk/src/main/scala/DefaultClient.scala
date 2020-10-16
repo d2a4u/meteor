@@ -185,6 +185,18 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     (() => jClient.deleteItem(req)).liftF[F].void
   }
 
+  def delete[P: Encoder](
+    table: Table,
+    partitionKey: P
+  ): F[Unit] = {
+    val req =
+      DeleteItemRequest.builder()
+        .tableName(table.name)
+        .key((Encoder[P].write(partitionKey).m().asScala).asJava)
+        .build()
+    (() => jClient.deleteItem(req)).liftF[F].void
+  }
+
   private case class SegmentPassThrough[U](
     u: U,
     segment: Int

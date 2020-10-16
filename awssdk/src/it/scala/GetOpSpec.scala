@@ -48,12 +48,11 @@ class GetOpSpec extends ITSpec {
         _ <- resource[IO, cats.Id, TestDataSimple, Unit](
           test,
           t => client.put[TestDataSimple](tableName, t).void,
-          _ => client.delete(tableName, test.id, EmptySortKey)
+          _ => client.delete(tableName, test.id)
         )
-        get = client.get[TestDataSimple, Id, EmptySortKey.type](
+        get = client.get[TestDataSimple, Id](
           tableName,
           test.id,
-          EmptySortKey,
           consistentRead = false
         )
         r <- Resource.liftF(Util.retryOf[IO, Option[TestDataSimple]](
@@ -87,10 +86,9 @@ class GetOpSpec extends ITSpec {
   it should "return None if partition key does not exist, range key is not used" in {
     val tableName = Table("test_partition_key_only")
     val result = Client.resource[IO].use { client =>
-      client.get[TestData, Id, EmptySortKey.type](
+      client.get[TestData, Id](
         tableName,
         Id("doesnt-exists"),
-        EmptySortKey,
         consistentRead = false
       )
     }.unsafeToFuture().futureValue

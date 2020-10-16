@@ -9,15 +9,6 @@ case class Table(name: String) extends AnyVal
 
 case class Index(name: String) extends AnyVal
 
-case object EmptySortKey {
-  implicit val emptySortKeyEncoder: Encoder[EmptySortKey.type] =
-    Encoder.instance[EmptySortKey.type] { _ =>
-      AttributeValue.builder().m(
-        Map.empty[String, AttributeValue].asJava
-      ).build()
-    }
-}
-
 sealed trait SortKeyQuery[T]
 object SortKeyQuery {
   case class Empty[T]() extends SortKeyQuery[T]
