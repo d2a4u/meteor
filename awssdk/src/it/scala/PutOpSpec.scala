@@ -2,6 +2,7 @@ package meteor
 
 import cats.effect.IO
 import cats.implicits._
+import meteor.errors.ConditionalCheckFailed
 
 class PutOpSpec extends ITSpec {
 
@@ -51,5 +52,41 @@ class PutOpSpec extends ITSpec {
           )
       }
       result.unsafeToFuture().futureValue shouldEqual Some(old)
+  }
+
+  it should "success inserting item if key(s) doesn't exist by using condition expression" in forAll {
+    test: TestData =>
+      val tableName = Table("test_primary_keys")
+      val result = Client.resource[IO].use { client =>
+        client.put[TestData](
+          tableName,
+          test,
+          Expression("attribute_not_exists(#id)", Map("#id" -> "id"), Map.empty)
+        )
+      }
+      result.unsafeToFuture().futureValue shouldBe an[Unit]
+  }
+
+  it should "fail inserting item if key(s) exists by using condition expression" in forAll {
+    test: TestData =>
+      val tableName = Table("test_primary_keys")
+      val result = Client.resource[IO].use { client =>
+        client.put[TestData](
+          tableName,
+          test
+        ) >>
+          client.put[TestData](
+            tableName,
+            test,
+            Expression(
+              "attribute_not_exists(#id)",
+              Map("#id" -> "id"),
+              Map.empty
+            )
+          )
+      }
+      result.attempt.unsafeToFuture().futureValue shouldBe a[
+        Left[ConditionalCheckFailed, Unit]
+      ]
   }
 }

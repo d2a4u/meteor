@@ -4,7 +4,7 @@ import cats.effect.Concurrent
 import cats.implicits._
 import fs2.{Pipe, RaiseThrowable}
 import meteor.codec.{Decoder, DecoderFailure, Encoder}
-import meteor.errors.InvalidExpression
+import meteor.errors.{ConditionalCheckFailed, InvalidExpression}
 import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
@@ -128,19 +128,33 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     t: T,
     condition: Expression
   ): F[Unit] = {
-    val builder =
+    val builder0 =
       PutItemRequest.builder()
         .tableName(table.name)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.NONE)
-    val req = condition.nonEmpty.guard[Option].as(condition).fold(builder) {
-      cond =>
-        builder
-          .conditionExpression(cond.expression)
-          .expressionAttributeNames(cond.attributeNames.asJava)
-          .expressionAttributeValues(cond.attributeValues.asJava)
-    }.build()
-    (() => jClient.putItem(req)).liftF[F].void
+    val builder = if (condition.isEmpty) {
+      builder0
+    } else {
+      val builder1 = builder0
+        .conditionExpression(condition.expression)
+      val builder2 = if (condition.attributeValues.nonEmpty) {
+        builder0
+          .expressionAttributeValues(condition.attributeValues.asJava)
+      } else {
+        builder1
+      }
+      if (condition.attributeNames.nonEmpty) {
+        builder2.expressionAttributeNames(condition.attributeNames.asJava)
+      } else {
+        builder2
+      }
+    }
+    val req = builder.build()
+    (() => jClient.putItem(req)).liftF[F].void.adaptError {
+      case err: ConditionalCheckFailedException =>
+        ConditionalCheckFailed(err.getMessage)
+    }
   }
 
   def put[T: Encoder, U: Decoder](
@@ -153,20 +167,34 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     t: T,
     condition: Expression
   ): F[Option[U]] = {
-    val builder =
+    val builder0 =
       PutItemRequest.builder()
         .tableName(table.name)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.ALL_OLD)
-    val req = condition.nonEmpty.guard[Option].as(condition).fold(builder) {
-      cond =>
-        builder
-          .conditionExpression(cond.expression)
-          .expressionAttributeNames(cond.attributeNames.asJava)
-          .expressionAttributeValues(cond.attributeValues.asJava)
-    }.build()
+    val builder = if (condition.isEmpty) {
+      builder0
+    } else {
+      val builder1 = builder0
+        .conditionExpression(condition.expression)
+      val builder2 = if (condition.attributeValues.nonEmpty) {
+        builder0
+          .expressionAttributeValues(condition.attributeValues.asJava)
+      } else {
+        builder1
+      }
+      if (condition.attributeNames.nonEmpty) {
+        builder2.expressionAttributeNames(condition.attributeNames.asJava)
+      } else {
+        builder2
+      }
+    }
+    val req = builder.build()
     (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
       Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
+    }.adaptError {
+      case err: ConditionalCheckFailedException =>
+        ConditionalCheckFailed(err.getMessage)
     }
   }
 

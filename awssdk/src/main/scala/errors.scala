@@ -7,4 +7,8 @@ object errors {
     override def getMessage: String =
       "The expression is invalid"
   }
+
+  case class ConditionalCheckFailed(msg: String) extends DynamoError {
+    override def getMessage: String = msg
+  }
 }
