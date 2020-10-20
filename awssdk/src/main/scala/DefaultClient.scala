@@ -15,11 +15,11 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   jClient: DynamoDbAsyncClient
 ) extends Client[F] {
 
-  def get[T: Decoder, P: Encoder](
+  def get[U: Decoder, P: Encoder](
     table: Table,
     partitionKey: P,
     consistentRead: Boolean
-  ): F[Option[T]] = {
+  ): F[Option[U]] = {
     val query = Encoder[P].write(partitionKey).m()
     val req =
       GetItemRequest.builder()
@@ -28,16 +28,16 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
         .key(query)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[T])
+      Concurrent[F].fromEither(resp.item().attemptDecode[U])
     }
   }
 
-  def get[T: Decoder, P: Encoder, S: Encoder](
+  def get[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
-  ): F[Option[T]] = {
+  ): F[Option[U]] = {
     val query = Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
       sortKey
     ).m().asScala
@@ -48,7 +48,7 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
         .key(query.asJava)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[T])
+      Concurrent[F].fromEither(resp.item().attemptDecode[U])
     }
   }
 
@@ -373,6 +373,34 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
       optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
     } yield optT
+  }
+
+  def update[T: Encoder, U: Decoder](
+    table: Table,
+    t: T,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]] = {
+    val req =
+      UpdateItemRequest.builder()
+        .tableName(table.name)
+        .updateExpression(update.expression)
+        .conditionExpression(condition.expression)
+        .expressionAttributeNames(
+          (update.attributeNames ++ condition.attributeNames).asJava
+        )
+        .expressionAttributeValues(
+          (update.attributeValues ++ condition.attributeValues).asJava
+        )
+        .returnValues(returnValue)
+        .build()
+    (() => jClient.updateItem(req)).liftF[F].flatMap { resp =>
+      Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
+    }.adaptError {
+      case err: ConditionalCheckFailedException =>
+        ConditionalCheckFailed(err.getMessage)
+    }
   }
 
   def describe(table: Table): F[TableDescription] = {
