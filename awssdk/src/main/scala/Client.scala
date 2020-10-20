@@ -68,6 +68,11 @@ trait Client[F[_]] {
     sortKey: S
   ): F[Unit]
 
+  def delete[P: Encoder](
+    table: Table,
+    partitionKey: P
+  ): F[Unit]
+
   def scan[T: Decoder](
     table: Table,
     filter: Expression,
