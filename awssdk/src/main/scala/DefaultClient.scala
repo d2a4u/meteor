@@ -220,7 +220,7 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     val req =
       DeleteItemRequest.builder()
         .tableName(table.name)
-        .key((Encoder[P].write(partitionKey).m().asScala).asJava)
+        .key(Encoder[P].write(partitionKey).m())
         .build()
     (() => jClient.deleteItem(req)).liftF[F].void
   }

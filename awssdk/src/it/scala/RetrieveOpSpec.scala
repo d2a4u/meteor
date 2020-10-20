@@ -7,8 +7,6 @@ import cats.implicits._
 import meteor.Util.resource
 import meteor.codec.Encoder
 
-import scala.concurrent.duration._
-
 class RetrieveOpSpec extends ITSpec {
 
   behavior.of("retrieve operation")
@@ -35,9 +33,7 @@ class RetrieveOpSpec extends ITSpec {
             consistentRead = false,
             None
           ).compile.toList
-          Util.retryOf[IO, List[TestData]](retrieval, 1.second, 10)(
-            _.size == expect.length
-          )
+          Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs expect
   }
 
@@ -74,9 +70,7 @@ class RetrieveOpSpec extends ITSpec {
             consistentRead = false,
             None
           ).compile.toList
-          Util.retryOf[IO, List[TestData]](retrieval, 1.second, 10)(
-            _.size == expect.length
-          )
+          Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs expect
   }
 
@@ -102,7 +96,7 @@ class RetrieveOpSpec extends ITSpec {
             None,
             1
           ).chunks.compile.toList
-          Util.retryOf(retrieval, 1.second, 10)(_.size == expect.length)
+          Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue
       result.forall(_.size == 1) shouldBe true
   }

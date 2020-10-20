@@ -4,15 +4,14 @@ import cats._
 import cats.implicits._
 import cats.effect.concurrent.Ref
 import cats.effect.{Resource, Sync, Timer}
-import meteor.codec.{Decoder, Encoder}
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 object Util {
   def retryOf[F[_]: Timer: Sync, T](
     f: F[T],
-    interval: FiniteDuration,
-    maxRetry: Int
+    interval: FiniteDuration = 1.second,
+    maxRetry: Int = 10
   )(cond: T => Boolean): F[T] = {
     def ref = Ref.of[F, Int](0)
 
