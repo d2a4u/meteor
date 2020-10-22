@@ -13,7 +13,10 @@ import software.amazon.awssdk.core.client.config.{
   SdkAdvancedAsyncClientOption
 }
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
-import software.amazon.awssdk.services.dynamodb.model.TableDescription
+import software.amazon.awssdk.services.dynamodb.model.{
+  ReturnValue,
+  TableDescription
+}
 
 import scala.jdk.CollectionConverters._
 
@@ -86,11 +89,65 @@ trait Client[F[_]] {
     parallelism: Int
   ): fs2.Stream[F, Option[U]]
 
-  def update[T: Encoder, U: Decoder](
+  def update[P: Encoder, U: Decoder](
     table: Table,
-    t: T,
+    partitionKey: P,
+    update: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression
+  ): F[Unit]
+
+  def update[P: Encoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
     condition: Expression
-  ): fs2.Stream[F, Option[U]]
+  ): F[Unit]
+
+  def update[P: Encoder, S: Encoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression
+  ): F[Unit]
+
+  def update[P: Encoder, S: Encoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    condition: Expression
+  ): F[Unit]
 
   def describe(table: Table): F[TableDescription]
 }

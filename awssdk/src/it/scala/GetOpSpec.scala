@@ -1,6 +1,6 @@
 package meteor
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import meteor.Util.resource
 
 class GetOpSpec extends ITSpec {
@@ -10,50 +10,42 @@ class GetOpSpec extends ITSpec {
   it should "return inserted item using partition key and range key" in forAll {
     test: TestData =>
       val tableName = Table("test_primary_keys")
-      val result = for {
+      val setup = for {
         client <- Client.resource[IO]
         _ <- resource[IO, cats.Id, TestData, Unit](
           test,
-          t => client.put[TestData](tableName, t).void,
+          t => client.put[TestData](tableName, t),
           _ => client.delete(tableName, test.id, test.range)
         )
-        get = client.get[TestData, Id, Range](
+      } yield client
+      setup.use[IO, Option[TestData]] { client =>
+        client.get[TestData, Id, Range](
           tableName,
           test.id,
           test.range,
           consistentRead = false
         )
-        r <- Resource.liftF(Util.retryOf(get)(_.isDefined))
-      } yield r
-      result.use[IO, Option[TestData]](
-        r => IO(r)
-      ).unsafeToFuture().futureValue shouldEqual Some(
-        test
-      )
+      }.unsafeToFuture().futureValue shouldEqual Some(test)
   }
 
   it should "return inserted item using partition key only (table doesn't have range key)" in forAll {
     test: TestDataSimple =>
       val tableName = Table("test_partition_key_only")
-      val result = for {
+      val setup = for {
         client <- Client.resource[IO]
         _ <- resource[IO, cats.Id, TestDataSimple, Unit](
           test,
-          t => client.put[TestDataSimple](tableName, t).void,
+          t => client.put[TestDataSimple](tableName, t),
           _ => client.delete(tableName, test.id)
         )
-        get = client.get[TestDataSimple, Id](
+      } yield client
+      setup.use[IO, Option[TestDataSimple]] { client =>
+        client.get[TestDataSimple, Id](
           tableName,
           test.id,
           consistentRead = false
         )
-        r <- Resource.liftF(Util.retryOf(get)(_.isDefined))
-      } yield r
-      result.use[IO, Option[TestDataSimple]](
-        r => IO(r)
-      ).unsafeToFuture().futureValue shouldEqual Some(
-        test
-      )
+      }.unsafeToFuture().futureValue shouldEqual Some(test)
   }
 
   it should "return None if both keys does not exist" in {

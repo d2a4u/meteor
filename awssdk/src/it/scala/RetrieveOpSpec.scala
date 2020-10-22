@@ -17,23 +17,22 @@ class RetrieveOpSpec extends ITSpec {
       val partitionKey = Id("def")
       val expect =
         List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val src = for {
+      val setup = for {
         client <- Client.resource[IO]
-        r <- resource[IO, List, TestData, TestData](
+        _ <- resource[IO, List, TestData, TestData](
           expect,
           t => client.put[TestData](tableName, t).as(t),
           t => client.delete(tableName, t.id, t.range)
         )
-      } yield (r, client)
-      src.use[IO, List[TestData]] {
-        case (_, client) =>
-          val retrieval = client.retrieve[TestData, Id, Range](
-            tableName,
-            Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
-            consistentRead = false,
-            None
-          ).compile.toList
-          Util.retryOf(retrieval)(_.size == expect.length)
+      } yield client
+      setup.use[IO, List[TestData]] { client =>
+        val retrieval = client.retrieve[TestData, Id, Range](
+          tableName,
+          Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
+          consistentRead = false,
+          None
+        ).compile.toList
+        Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs expect
   }
 
@@ -43,34 +42,33 @@ class RetrieveOpSpec extends ITSpec {
       val testUpdated = test.map(t => t.copy(id = partitionKey))
       val expect = testUpdated.filter(t => t.bool && t.int > 0)
 
-      val src = for {
+      val setup = for {
         client <- Client.resource[IO]
-        r <- resource[IO, List, TestData, TestData](
+        _ <- resource[IO, List, TestData, TestData](
           testUpdated,
           t => client.put[TestData](tableName, t).as(t),
           t => client.delete(tableName, t.id, t.range)
         )
-      } yield (r, client)
-      src.use[IO, List[TestData]] {
-        case (_, client) =>
-          val retrieval = client.retrieve[TestData, Id, Range](
-            tableName,
-            Query(
-              partitionKey,
-              SortKeyQuery.Empty[Range](),
-              Expression(
-                "#b = :bool and #i > :int",
-                Map("#b" -> "bool", "#i" -> "int"),
-                Map(
-                  ":bool" -> Encoder[Boolean].write(true),
-                  ":int" -> Encoder[Int].write(0)
-                )
+      } yield client
+      setup.use[IO, List[TestData]] { client =>
+        val retrieval = client.retrieve[TestData, Id, Range](
+          tableName,
+          Query(
+            partitionKey,
+            SortKeyQuery.Empty[Range](),
+            Expression(
+              "#b = :bool and #i > :int",
+              Map("#b" -> "bool", "#i" -> "int"),
+              Map(
+                ":bool" -> Encoder[Boolean].write(true),
+                ":int" -> Encoder[Int].write(0)
               )
-            ),
-            consistentRead = false,
-            None
-          ).compile.toList
-          Util.retryOf(retrieval)(_.size == expect.length)
+            )
+          ),
+          consistentRead = false,
+          None
+        ).compile.toList
+        Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs expect
   }
 
@@ -79,24 +77,23 @@ class RetrieveOpSpec extends ITSpec {
       val partitionKey = Id("def")
       val expect =
         List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val src = for {
+      val setup = for {
         client <- Client.resource[IO]
-        r <- resource[IO, List, TestData, TestData](
+        _ <- resource[IO, List, TestData, TestData](
           expect,
           t => client.put[TestData](tableName, t).as(t),
           t => client.delete(tableName, t.id, t.range)
         )
-      } yield (r, client)
-      val result = src.use[IO, List[fs2.Chunk[TestData]]] {
-        case (_, client) =>
-          val retrieval = client.retrieve[TestData, Id, Range](
-            tableName,
-            Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
-            consistentRead = false,
-            None,
-            1
-          ).chunks.compile.toList
-          Util.retryOf(retrieval)(_.size == expect.length)
+      } yield client
+      val result = setup.use[IO, List[fs2.Chunk[TestData]]] { client =>
+        val retrieval = client.retrieve[TestData, Id, Range](
+          tableName,
+          Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
+          consistentRead = false,
+          None,
+          1
+        ).chunks.compile.toList
+        Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue
       result.forall(_.size == 1) shouldBe true
   }
