@@ -7,7 +7,7 @@ import cats.implicits._
 import meteor.Util.resource
 import meteor.codec.Encoder
 
-class RetrieveOpSpec extends ITSpec {
+class RetrieveOpsSpec extends ITSpec {
 
   behavior.of("retrieve operation")
   val tableName = Table("test_primary_keys")

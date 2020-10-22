@@ -3,7 +3,7 @@ package meteor
 import cats.effect.IO
 import meteor.Util.resource
 
-class GetOpSpec extends ITSpec {
+class GetOpsSpec extends ITSpec {
 
   behavior.of("get operation")
 

@@ -1,9 +1,9 @@
 package meteor
 
+import cats.effect.IO
 import cats.implicits._
-import cats.effect.{IO, Resource}
 
-class DeleteOpSpec extends ITSpec {
+class DeleteOpsSpec extends ITSpec {
 
   behavior.of("delete operation")
 

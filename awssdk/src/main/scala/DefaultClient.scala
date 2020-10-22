@@ -1,392 +1,108 @@
 package meteor
 
 import cats.effect.Concurrent
-import cats.implicits._
-import fs2.{Pipe, RaiseThrowable}
-import meteor.codec.{Decoder, DecoderFailure, Encoder}
-import meteor.errors.{ConditionalCheckFailed, InvalidExpression}
-import meteor.implicits._
+import fs2.RaiseThrowable
+import meteor.api._
+import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
-import scala.jdk.CollectionConverters._
-
 class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   jClient: DynamoDbAsyncClient
-) extends Client[F] {
+) extends Client[F]
+    with DeleteOps
+    with DescribeOps
+    with GetOps
+    with PutOps
+    with ScanOps
+    with UpdateOps {
 
   def get[U: Decoder, P: Encoder](
     table: Table,
     partitionKey: P,
     consistentRead: Boolean
-  ): F[Option[U]] = {
-    val query = Encoder[P].write(partitionKey).m()
-    val req =
-      GetItemRequest.builder()
-        .consistentRead(consistentRead)
-        .tableName(table.name)
-        .key(query)
-        .build()
-    (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[U])
-    }
-  }
+  ): F[Option[U]] = getOp[F, U, P](table, partitionKey, consistentRead)(jClient)
 
   def get[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
-  ): F[Option[U]] = {
-    val query = Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
-      sortKey
-    ).m().asScala
-    val req =
-      GetItemRequest.builder()
-        .consistentRead(consistentRead)
-        .tableName(table.name)
-        .key(query.asJava)
-        .build()
-    (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[U])
-    }
-  }
+  ): F[Option[U]] =
+    getOp[F, U, P, S](table, partitionKey, sortKey, consistentRead)(jClient)
 
   def retrieve[T: Decoder, P: Encoder, S: Encoder](
     table: Table,
     query: Query[P, S],
     consistentRead: Boolean,
-    index: Option[Index] = None,
-    limit: Int = Int.MaxValue
+    limit: Int
   ): fs2.Stream[F, T] =
-    fs2.Stream.fromEither[F](
-      Either.fromOption(
-        query.keyCondition.nonEmpty.guard[Option].as(query.keyCondition),
-        InvalidExpression
-      )
-    ).flatMap {
-      cond =>
-        val builder = {
-          val builder0 =
-            QueryRequest.builder()
-              .tableName(table.name)
-              .consistentRead(consistentRead)
-              .keyConditionExpression(cond.expression)
-              .limit(limit)
-          val builder1 =
-            index.fold(builder0)(index => builder0.indexName(index.name))
-          if (query.filter.isEmpty) {
-            builder1
-              .expressionAttributeNames(cond.attributeNames.asJava)
-              .expressionAttributeValues(cond.attributeValues.asJava)
-          } else {
-            builder1.filterExpression(
-              query.filter.expression
-            ).expressionAttributeNames(
-              (cond.attributeNames ++ query.filter.attributeNames).asJava
-            ).expressionAttributeValues(
-              (cond.attributeValues ++ query.filter.attributeValues).asJava
-            )
-          }
-        }
+    retrieveOp[F, T, P, S](table, query, consistentRead, limit)(jClient)
 
-        def doQuery(
-          req: QueryRequest
-        ): fs2.Stream[F, QueryResponse] =
-          fs2.Stream.eval((() => jClient.query(req)).liftF[F]).flatMap { resp =>
-            if (resp.hasLastEvaluatedKey) {
-              val nextReq =
-                builder.exclusiveStartKey(resp.lastEvaluatedKey()).build()
-              fs2.Stream.emit[F, QueryResponse](resp) ++ doQuery(nextReq)
-            } else {
-              fs2.Stream.emit[F, QueryResponse](resp)
-            }
-          }
-
-        type FailureOr[U] = Either[DecoderFailure, U]
-
-        for {
-          resp <- doQuery(builder.build())
-          listT <- fs2.Stream.fromEither(
-            resp.items().asScala.toList.traverse[FailureOr, Option[T]](
-              _.attemptDecode[T]
-            ).map(
-              _.flatten
-            )
-          )
-          result <- fs2.Stream.emits(listT)
-        } yield result
-    }
+  def retrieve[T: Decoder, P: Encoder, S: Encoder](
+    table: Table,
+    query: Query[P, S],
+    consistentRead: Boolean,
+    index: Index,
+    limit: Int
+  ): fs2.Stream[F, T] =
+    retrieveOp[F, T, P, S](table, query, consistentRead, index, limit)(jClient)
 
   def put[T: Encoder](
     table: Table,
     t: T
-  ): F[Unit] = put[T](table, t, Expression.empty)
+  ): F[Unit] = putOp[F, T](table, t)(jClient)
 
   def put[T: Encoder](
     table: Table,
     t: T,
     condition: Expression
-  ): F[Unit] = {
-    val builder0 =
-      PutItemRequest.builder()
-        .tableName(table.name)
-        .item(Encoder[T].write(t).m())
-        .returnValues(ReturnValue.NONE)
-    val builder = if (condition.isEmpty) {
-      builder0
-    } else {
-      val builder1 = builder0
-        .conditionExpression(condition.expression)
-      val builder2 = if (condition.attributeValues.nonEmpty) {
-        builder0
-          .expressionAttributeValues(condition.attributeValues.asJava)
-      } else {
-        builder1
-      }
-      if (condition.attributeNames.nonEmpty) {
-        builder2.expressionAttributeNames(condition.attributeNames.asJava)
-      } else {
-        builder2
-      }
-    }
-    val req = builder.build()
-    (() => jClient.putItem(req)).liftF[F].void.adaptError {
-      case err: ConditionalCheckFailedException =>
-        ConditionalCheckFailed(err.getMessage)
-    }
-  }
+  ): F[Unit] = putOp[F, T](table, t, condition)(jClient)
 
   def put[T: Encoder, U: Decoder](
     table: Table,
     t: T
-  ): F[Option[U]] = put[T, U](table, t, Expression.empty)
+  ): F[Option[U]] = putOp[F, T, U](table, t)(jClient)
 
   def put[T: Encoder, U: Decoder](
     table: Table,
     t: T,
     condition: Expression
-  ): F[Option[U]] = {
-    val builder0 =
-      PutItemRequest.builder()
-        .tableName(table.name)
-        .item(Encoder[T].write(t).m())
-        .returnValues(ReturnValue.ALL_OLD)
-    val builder = if (condition.isEmpty) {
-      builder0
-    } else {
-      val builder1 = builder0
-        .conditionExpression(condition.expression)
-      val builder2 = if (condition.attributeValues.nonEmpty) {
-        builder0
-          .expressionAttributeValues(condition.attributeValues.asJava)
-      } else {
-        builder1
-      }
-      if (condition.attributeNames.nonEmpty) {
-        builder2.expressionAttributeNames(condition.attributeNames.asJava)
-      } else {
-        builder2
-      }
-    }
-    val req = builder.build()
-    (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
-    }.adaptError {
-      case err: ConditionalCheckFailedException =>
-        ConditionalCheckFailed(err.getMessage)
-    }
-  }
+  ): F[Option[U]] = putOp[F, T, U](table, t, condition)(jClient)
 
   def delete[P: Encoder, S: Encoder](
     table: Table,
     partitionKey: P,
     sortKey: S
-  ): F[Unit] = {
-    val req =
-      DeleteItemRequest.builder()
-        .tableName(table.name)
-        .key((Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
-          sortKey
-        ).m().asScala).asJava)
-        .build()
-    (() => jClient.deleteItem(req)).liftF[F].void
-  }
+  ): F[Unit] = deleteOp[F, P, S](table, partitionKey, sortKey)(jClient)
 
   def delete[P: Encoder](
     table: Table,
     partitionKey: P
-  ): F[Unit] = {
-    val req =
-      DeleteItemRequest.builder()
-        .tableName(table.name)
-        .key(Encoder[P].write(partitionKey).m())
-        .build()
-    (() => jClient.deleteItem(req)).liftF[F].void
-  }
-
-  private case class SegmentPassThrough[U](
-    u: U,
-    segment: Int
-  )
+  ): F[Unit] = deleteOp[F, P](table, partitionKey)(jClient)
 
   def scan[T: Decoder](
     table: Table,
     filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[T]] = {
-    def requestBuilder(
-      filter: Expression,
-      startKey: Option[java.util.Map[String, AttributeValue]]
-    ) = {
-      def builder(filter: Expression) = {
-        ScanRequest.builder()
-          .tableName(table.name)
-          .consistentRead(consistentRead)
-          .filterExpression(filter.expression)
-          .expressionAttributeNames(filter.attributeNames.asJava)
-          .expressionAttributeValues(filter.attributeValues.asJava)
-          .totalSegments(parallelism)
-      }
-
-      startKey.fold(builder(filter))(builder(filter).exclusiveStartKey)
-    }
-
-    def initRequests(filter: Expression) =
-      fs2.Stream.emits[F, SegmentPassThrough[ScanRequest]](
-        List.fill(parallelism)(
-          requestBuilder(filter, None)
-        ).zipWithIndex.map {
-          case (builder, index) =>
-            SegmentPassThrough(builder.segment(index).build(), index)
-        }
-      )
-
-    def sendPipe(filter: Expression): Pipe[
-      F,
-      SegmentPassThrough[ScanRequest],
-      SegmentPassThrough[ScanResponse]
-    ] =
-      _.mapAsyncUnordered(parallelism)(req => doScan(filter, req)).parJoin(
-        parallelism
-      )
-
-    def doScan(
-      filter: Expression,
-      req: SegmentPassThrough[ScanRequest]
-    ): F[fs2.Stream[F, SegmentPassThrough[ScanResponse]]] = {
-      (() => jClient.scan(req.u)).liftF[F].flatMap { resp =>
-        if (resp.hasLastEvaluatedKey) {
-          doScan(
-            filter,
-            SegmentPassThrough(
-              requestBuilder(filter, Some(resp.lastEvaluatedKey())).segment(
-                req.segment
-              ).build(),
-              req.segment
-            )
-          ).map { stream =>
-            fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ stream
-          }
-        } else {
-          fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
-            SegmentPassThrough(resp, req.segment)
-          ).pure[F]
-        }
-      }
-    }
-
-    for {
-      cond <- fs2.Stream.eval(
-        Concurrent[F].fromOption(
-          filter.nonEmpty.guard[Option].as(filter),
-          InvalidExpression
-        )
-      )
-      resp <- sendPipe(cond)(initRequests(cond))
-      attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
-      optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
-    } yield optT
-  }
+  ): fs2.Stream[F, Option[T]] =
+    scanOp[F, T](table, filter, consistentRead, parallelism)(jClient)
 
   def scan[T: Decoder](
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[T]] = {
-
-    def requestBuilder(
-      startKey: Option[java.util.Map[String, AttributeValue]]
-    ) = {
-      val builder =
-        ScanRequest.builder()
-          .tableName(table.name)
-          .consistentRead(consistentRead)
-          .totalSegments(parallelism)
-
-      startKey.fold(builder)(builder.exclusiveStartKey)
-    }
-
-    lazy val initRequests =
-      fs2.Stream.emits[F, SegmentPassThrough[ScanRequest]](
-        List.fill(parallelism)(
-          requestBuilder(None)
-        ).zipWithIndex.map {
-          case (builder, index) =>
-            SegmentPassThrough(builder.segment(index).build(), index)
-        }
-      )
-
-    lazy val sendPipe: Pipe[
-      F,
-      SegmentPassThrough[ScanRequest],
-      SegmentPassThrough[ScanResponse]
-    ] =
-      _.mapAsyncUnordered(parallelism)(doScan).parJoin(parallelism)
-
-    def doScan(
-      req: SegmentPassThrough[ScanRequest]
-    ): F[fs2.Stream[F, SegmentPassThrough[ScanResponse]]] = {
-      (() => jClient.scan(req.u)).liftF[F].flatMap { resp =>
-        if (resp.hasLastEvaluatedKey) {
-          doScan(
-            SegmentPassThrough(
-              requestBuilder(Some(resp.lastEvaluatedKey())).segment(
-                req.segment
-              ).build(),
-              req.segment
-            )
-          ).map { stream =>
-            fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ stream
-          }
-        } else {
-          fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
-            SegmentPassThrough(resp, req.segment)
-          ).pure[F]
-        }
-      }
-    }
-
-    for {
-      resp <- sendPipe(initRequests)
-      attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
-      optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
-    } yield optT
-  }
+  ): fs2.Stream[F, Option[T]] =
+    scanOp[F, T](table, consistentRead, parallelism)(jClient)
 
   def update[P: Encoder, U: Decoder](
     table: Table,
     partitionKey: P,
     update: Expression,
     returnValue: ReturnValue
-  ): F[Option[U]] = {
-    val req =
-      withKey(updateBuilder(table, update, returnValue))(
-        partitionKey
-      ).build()
-    sendUpdateItem[U](req)
-  }
+  ): F[Option[U]] =
+    updateOp[F, P, U](table, partitionKey, update, returnValue)(jClient)
 
   def update[P: Encoder, U: Decoder](
     table: Table,
@@ -394,13 +110,10 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     update: Expression,
     condition: Expression,
     returnValue: ReturnValue
-  ): F[Option[U]] = {
-    val req =
-      withKey(updateBuilder(table, update, condition, returnValue))(
-        partitionKey
-      ).build()
-    sendUpdateItem[U](req)
-  }
+  ): F[Option[U]] =
+    updateOp[F, P, U](table, partitionKey, update, condition, returnValue)(
+      jClient
+    )
 
   def update[P: Encoder, S: Encoder, U: Decoder](
     table: Table,
@@ -408,14 +121,10 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     sortKey: S,
     update: Expression,
     returnValue: ReturnValue
-  ): F[Option[U]] = {
-    val req =
-      withKeys(updateBuilder(table, update, returnValue))(
-        partitionKey,
-        sortKey
-      ).build()
-    sendUpdateItem[U](req)
-  }
+  ): F[Option[U]] =
+    updateOp[F, P, S, U](table, partitionKey, sortKey, update, returnValue)(
+      jClient
+    )
 
   def update[P: Encoder, S: Encoder, U: Decoder](
     table: Table,
@@ -424,53 +133,42 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     update: Expression,
     condition: Expression,
     returnValue: ReturnValue
-  ): F[Option[U]] = {
-    val req =
-      withKeys(updateBuilder(table, update, condition, returnValue))(
-        partitionKey,
-        sortKey
-      ).build()
-    sendUpdateItem[U](req)
-  }
+  ): F[Option[U]] =
+    updateOp[F, P, S, U](
+      table,
+      partitionKey,
+      sortKey,
+      update,
+      condition,
+      returnValue
+    )(
+      jClient
+    )
 
   def update[P: Encoder](
     table: Table,
     partitionKey: P,
     update: Expression
-  ): F[Unit] = {
-    val req =
-      withKey(updateBuilder(table, update, ReturnValue.NONE))(
-        partitionKey
-      ).build()
-    sendUpdateItem(req)
-  }
+  ): F[Unit] =
+    updateOp[F, P](table, partitionKey, update)(jClient)
 
   def update[P: Encoder](
     table: Table,
     partitionKey: P,
     update: Expression,
     condition: Expression
-  ): F[Unit] = {
-    val req =
-      withKey(updateBuilder(table, update, condition, ReturnValue.NONE))(
-        partitionKey
-      ).build()
-    sendUpdateItem(req)
-  }
+  ): F[Unit] =
+    updateOp[F, P](table, partitionKey, update, condition)(jClient)
 
   def update[P: Encoder, S: Encoder](
     table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression
-  ): F[Unit] = {
-    val req =
-      withKeys(updateBuilder(table, update, ReturnValue.NONE))(
-        partitionKey,
-        sortKey
-      ).build()
-    sendUpdateItem(req)
-  }
+  ): F[Unit] =
+    updateOp[F, P, S](table, partitionKey, sortKey, update)(
+      jClient
+    )
 
   def update[P: Encoder, S: Encoder](
     table: Table,
@@ -478,76 +176,11 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     sortKey: S,
     update: Expression,
     condition: Expression
-  ): F[Unit] = {
-    val req =
-      withKeys(updateBuilder(table, update, condition, ReturnValue.NONE))(
-        partitionKey,
-        sortKey
-      ).build()
-    sendUpdateItem(req)
-  }
+  ): F[Unit] =
+    updateOp[F, P, S](table, partitionKey, sortKey, update, condition)(
+      jClient
+    )
 
-  def describe(table: Table): F[TableDescription] = {
-    val req = DescribeTableRequest.builder().tableName(table.name).build()
-    (() => jClient.describeTable(req)).liftF[F].map { resp =>
-      resp.table()
-    }
-  }
-
-  private def sendUpdateItem(req: UpdateItemRequest): F[Unit] =
-    (() => jClient.updateItem(req)).liftF[F].adaptError {
-      case err: ConditionalCheckFailedException =>
-        ConditionalCheckFailed(err.getMessage)
-    }.void
-
-  private def sendUpdateItem[U: Decoder](req: UpdateItemRequest): F[Option[U]] =
-    (() => jClient.updateItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
-    }.adaptError {
-      case err: ConditionalCheckFailedException =>
-        ConditionalCheckFailed(err.getMessage)
-    }
-
-  private def withKeys[P: Encoder, S: Encoder](
-    builder: UpdateItemRequest.Builder
-  )(partitionKey: P, sortKey: S): UpdateItemRequest.Builder = {
-    builder.key((Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
-      sortKey
-    ).m().asScala).asJava)
-  }
-
-  private def withKey[P: Encoder](
-    builder: UpdateItemRequest.Builder
-  )(partitionKey: P): UpdateItemRequest.Builder =
-    builder.key(Encoder[P].write(partitionKey).m())
-
-  private def updateBuilder(
-    table: Table,
-    update: Expression,
-    condition: Expression,
-    returnValue: ReturnValue
-  ): UpdateItemRequest.Builder =
-    UpdateItemRequest.builder()
-      .tableName(table.name)
-      .updateExpression(update.expression)
-      .conditionExpression(condition.expression)
-      .expressionAttributeNames(
-        (update.attributeNames ++ condition.attributeNames).asJava
-      )
-      .expressionAttributeValues(
-        (update.attributeValues ++ condition.attributeValues).asJava
-      )
-      .returnValues(returnValue)
-
-  private def updateBuilder(
-    table: Table,
-    update: Expression,
-    returnValue: ReturnValue
-  ): UpdateItemRequest.Builder =
-    UpdateItemRequest.builder()
-      .tableName(table.name)
-      .updateExpression(update.expression)
-      .expressionAttributeNames(update.attributeNames.asJava)
-      .expressionAttributeValues(update.attributeValues.asJava)
-      .returnValues(returnValue)
+  def describe(table: Table): F[TableDescription] =
+    describeOp[F](table)(jClient)
 }

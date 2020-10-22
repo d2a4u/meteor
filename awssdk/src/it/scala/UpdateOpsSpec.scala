@@ -5,7 +5,7 @@ import meteor.codec.Encoder
 import meteor.errors.ConditionalCheckFailed
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
-class UpdateOpSpec extends ITSpec {
+class UpdateOpsSpec extends ITSpec {
 
   behavior.of("update operation")
 

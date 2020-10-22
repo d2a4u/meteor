@@ -39,8 +39,15 @@ trait Client[F[_]] {
     table: Table,
     query: Query[P, S],
     consistentRead: Boolean,
-    index: Option[Index] = None,
-    limit: Int = Int.MaxValue
+    limit: Int
+  ): fs2.Stream[F, U]
+
+  def retrieve[U: Decoder, P: Encoder, S: Encoder](
+    table: Table,
+    query: Query[P, S],
+    consistentRead: Boolean,
+    index: Index,
+    limit: Int
   ): fs2.Stream[F, U]
 
   def put[T: Encoder](
