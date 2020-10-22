@@ -15,11 +15,11 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
   jClient: DynamoDbAsyncClient
 ) extends Client[F] {
 
-  def get[T: Decoder, P: Encoder](
+  def get[U: Decoder, P: Encoder](
     table: Table,
     partitionKey: P,
     consistentRead: Boolean
-  ): F[Option[T]] = {
+  ): F[Option[U]] = {
     val query = Encoder[P].write(partitionKey).m()
     val req =
       GetItemRequest.builder()
@@ -28,16 +28,16 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
         .key(query)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[T])
+      Concurrent[F].fromEither(resp.item().attemptDecode[U])
     }
   }
 
-  def get[T: Decoder, P: Encoder, S: Encoder](
+  def get[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
-  ): F[Option[T]] = {
+  ): F[Option[U]] = {
     val query = Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
       sortKey
     ).m().asScala
@@ -48,7 +48,7 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
         .key(query.asJava)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[T])
+      Concurrent[F].fromEither(resp.item().attemptDecode[U])
     }
   }
 
@@ -375,10 +375,179 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     } yield optT
   }
 
+  def update[P: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]] = {
+    val req =
+      withKey(updateBuilder(table, update, returnValue))(
+        partitionKey
+      ).build()
+    sendUpdateItem[U](req)
+  }
+
+  def update[P: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]] = {
+    val req =
+      withKey(updateBuilder(table, update, condition, returnValue))(
+        partitionKey
+      ).build()
+    sendUpdateItem[U](req)
+  }
+
+  def update[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]] = {
+    val req =
+      withKeys(updateBuilder(table, update, returnValue))(
+        partitionKey,
+        sortKey
+      ).build()
+    sendUpdateItem[U](req)
+  }
+
+  def update[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]] = {
+    val req =
+      withKeys(updateBuilder(table, update, condition, returnValue))(
+        partitionKey,
+        sortKey
+      ).build()
+    sendUpdateItem[U](req)
+  }
+
+  def update[P: Encoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression
+  ): F[Unit] = {
+    val req =
+      withKey(updateBuilder(table, update, ReturnValue.NONE))(
+        partitionKey
+      ).build()
+    sendUpdateItem(req)
+  }
+
+  def update[P: Encoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
+    condition: Expression
+  ): F[Unit] = {
+    val req =
+      withKey(updateBuilder(table, update, condition, ReturnValue.NONE))(
+        partitionKey
+      ).build()
+    sendUpdateItem(req)
+  }
+
+  def update[P: Encoder, S: Encoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression
+  ): F[Unit] = {
+    val req =
+      withKeys(updateBuilder(table, update, ReturnValue.NONE))(
+        partitionKey,
+        sortKey
+      ).build()
+    sendUpdateItem(req)
+  }
+
+  def update[P: Encoder, S: Encoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    condition: Expression
+  ): F[Unit] = {
+    val req =
+      withKeys(updateBuilder(table, update, condition, ReturnValue.NONE))(
+        partitionKey,
+        sortKey
+      ).build()
+    sendUpdateItem(req)
+  }
+
   def describe(table: Table): F[TableDescription] = {
     val req = DescribeTableRequest.builder().tableName(table.name).build()
     (() => jClient.describeTable(req)).liftF[F].map { resp =>
       resp.table()
     }
   }
+
+  private def sendUpdateItem(req: UpdateItemRequest): F[Unit] =
+    (() => jClient.updateItem(req)).liftF[F].adaptError {
+      case err: ConditionalCheckFailedException =>
+        ConditionalCheckFailed(err.getMessage)
+    }.void
+
+  private def sendUpdateItem[U: Decoder](req: UpdateItemRequest): F[Option[U]] =
+    (() => jClient.updateItem(req)).liftF[F].flatMap { resp =>
+      Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
+    }.adaptError {
+      case err: ConditionalCheckFailedException =>
+        ConditionalCheckFailed(err.getMessage)
+    }
+
+  private def withKeys[P: Encoder, S: Encoder](
+    builder: UpdateItemRequest.Builder
+  )(partitionKey: P, sortKey: S): UpdateItemRequest.Builder = {
+    builder.key((Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
+      sortKey
+    ).m().asScala).asJava)
+  }
+
+  private def withKey[P: Encoder](
+    builder: UpdateItemRequest.Builder
+  )(partitionKey: P): UpdateItemRequest.Builder =
+    builder.key(Encoder[P].write(partitionKey).m())
+
+  private def updateBuilder(
+    table: Table,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): UpdateItemRequest.Builder =
+    UpdateItemRequest.builder()
+      .tableName(table.name)
+      .updateExpression(update.expression)
+      .conditionExpression(condition.expression)
+      .expressionAttributeNames(
+        (update.attributeNames ++ condition.attributeNames).asJava
+      )
+      .expressionAttributeValues(
+        (update.attributeValues ++ condition.attributeValues).asJava
+      )
+      .returnValues(returnValue)
+
+  private def updateBuilder(
+    table: Table,
+    update: Expression,
+    returnValue: ReturnValue
+  ): UpdateItemRequest.Builder =
+    UpdateItemRequest.builder()
+      .tableName(table.name)
+      .updateExpression(update.expression)
+      .expressionAttributeNames(update.attributeNames.asJava)
+      .expressionAttributeValues(update.attributeValues.asJava)
+      .returnValues(returnValue)
 }

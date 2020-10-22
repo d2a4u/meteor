@@ -13,32 +13,35 @@ import software.amazon.awssdk.core.client.config.{
   SdkAdvancedAsyncClientOption
 }
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
-import software.amazon.awssdk.services.dynamodb.model.TableDescription
+import software.amazon.awssdk.services.dynamodb.model.{
+  ReturnValue,
+  TableDescription
+}
 
 import scala.jdk.CollectionConverters._
 
 trait Client[F[_]] {
 
-  def get[T: Decoder, P: Encoder](
+  def get[U: Decoder, P: Encoder](
     table: Table,
     partitionKey: P,
     consistentRead: Boolean
-  ): F[Option[T]]
+  ): F[Option[U]]
 
-  def get[T: Decoder, P: Encoder, S: Encoder](
+  def get[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
-  ): F[Option[T]]
+  ): F[Option[U]]
 
-  def retrieve[T: Decoder, P: Encoder, S: Encoder](
+  def retrieve[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     query: Query[P, S],
     consistentRead: Boolean,
     index: Option[Index] = None,
     limit: Int = Int.MaxValue
-  ): fs2.Stream[F, T]
+  ): fs2.Stream[F, U]
 
   def put[T: Encoder](
     table: Table,
@@ -73,18 +76,78 @@ trait Client[F[_]] {
     partitionKey: P
   ): F[Unit]
 
-  def scan[T: Decoder](
+  def scan[U: Decoder](
     table: Table,
     filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[T]]
+  ): fs2.Stream[F, Option[U]]
 
-  def scan[T: Decoder](
+  def scan[U: Decoder](
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[T]]
+  ): fs2.Stream[F, Option[U]]
+
+  def update[P: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    condition: Expression,
+    returnValue: ReturnValue
+  ): F[Option[U]]
+
+  def update[P: Encoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression
+  ): F[Unit]
+
+  def update[P: Encoder](
+    table: Table,
+    partitionKey: P,
+    update: Expression,
+    condition: Expression
+  ): F[Unit]
+
+  def update[P: Encoder, S: Encoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression
+  ): F[Unit]
+
+  def update[P: Encoder, S: Encoder](
+    table: Table,
+    partitionKey: P,
+    sortKey: S,
+    update: Expression,
+    condition: Expression
+  ): F[Unit]
 
   def describe(table: Table): F[TableDescription]
 }

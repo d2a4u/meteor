@@ -1,6 +1,6 @@
 package meteor
 
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.{CompletableFuture, CompletionException}
 
 import cats.effect.{Concurrent, Sync}
 import cats.implicits._
@@ -14,11 +14,16 @@ object implicits {
     def liftF[F[_]: Concurrent]: F[A] =
       Concurrent[F].cancelable[A] { cb =>
 
-        val future = thunk()
-        future.whenComplete { (ok, err) =>
-          cb(Option(err).toLeft(ok))
-        }
+        val future = thunk().whenComplete {
+          case (ok, err: CompletionException) =>
+            val underlineErr = Option(err).map { e =>
+              Option(e.getCause).fold[Throwable](e)(identity)
+            }
+            cb(underlineErr.toLeft(ok))
 
+          case (ok, err) =>
+            cb(Option(err).toLeft(ok))
+        }
         Sync[F].delay(future.cancel(true)).void
       }
   }
