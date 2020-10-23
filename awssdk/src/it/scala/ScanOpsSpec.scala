@@ -3,7 +3,7 @@ package meteor
 import cats.effect.IO
 import cats.effect.concurrent.Ref
 
-class ScanOpSpec extends ITSpec {
+class ScanOpsSpec extends ITSpec {
 
   behavior.of("scan operation")
   val tableName = Table("test_primary_keys")

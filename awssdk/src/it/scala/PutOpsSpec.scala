@@ -5,7 +5,7 @@ import cats.implicits._
 import meteor.Util.resource
 import meteor.errors.ConditionalCheckFailed
 
-class PutOpSpec extends ITSpec {
+class PutOpsSpec extends ITSpec {
 
   behavior.of("put operation")
 

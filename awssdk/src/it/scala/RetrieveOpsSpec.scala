@@ -7,7 +7,7 @@ import cats.implicits._
 import meteor.Util.resource
 import meteor.codec.Encoder
 
-class RetrieveOpSpec extends ITSpec {
+class RetrieveOpsSpec extends ITSpec {
 
   behavior.of("retrieve operation")
   val tableName = Table("test_primary_keys")
@@ -30,7 +30,7 @@ class RetrieveOpSpec extends ITSpec {
           tableName,
           Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
           consistentRead = false,
-          None
+          Int.MaxValue
         ).compile.toList
         Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs expect
@@ -66,7 +66,7 @@ class RetrieveOpSpec extends ITSpec {
             )
           ),
           consistentRead = false,
-          None
+          Int.MaxValue
         ).compile.toList
         Util.retryOf(retrieval)(_.size == expect.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs expect
@@ -90,7 +90,6 @@ class RetrieveOpSpec extends ITSpec {
           tableName,
           Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
           consistentRead = false,
-          None,
           1
         ).chunks.compile.toList
         Util.retryOf(retrieval)(_.size == expect.length)
