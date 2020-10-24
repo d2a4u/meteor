@@ -36,6 +36,16 @@ object Encoder {
         (b: B) => fa.write(f(b))
     }
 
+  implicit def dynamoEncoderForTuple2[A: Encoder, B: Encoder]: Encoder[(A, B)] =
+    Encoder.instance { ab =>
+      val (a, b) = ab
+      val writeA = Encoder[A].write(a)
+      val writeB = Encoder[B].write(b)
+      val m =
+        writeA.m().asScala.toMap ++ writeB.m().asScala.toMap
+      dynamoEncoderForMap[AttributeValue].write(m)
+    }
+
   implicit def dynamoEncoderForOption[A: Encoder]: Encoder[Option[A]] =
     Encoder.instance { fa =>
       fa.fold(AttributeValue.builder().nul(true).build())(Encoder[A].write)

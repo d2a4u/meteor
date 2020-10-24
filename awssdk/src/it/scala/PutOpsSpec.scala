@@ -111,7 +111,9 @@ class PutOpsSpec extends ITSpec {
             )
           )
       }
-      result.attempt.unsafeToFuture().futureValue.left.get shouldBe a[
+      result.attempt.unsafeToFuture().futureValue.swap.getOrElse(
+        throw new Exception("testing failure")
+      ) shouldBe a[
         ConditionalCheckFailed
       ]
   }

@@ -52,17 +52,15 @@ trait ScanOps {
       SegmentPassThrough[ScanRequest],
       SegmentPassThrough[ScanResponse]
     ] =
-      _.mapAsyncUnordered(parallelism)(req => doScan(filter, req)).parJoin(
-        parallelism
-      )
+      _.map(req => loop(filter, req)).parJoin(parallelism)
 
-    def doScan(
+    def loop(
       filter: Expression,
       req: SegmentPassThrough[ScanRequest]
-    ): F[fs2.Stream[F, SegmentPassThrough[ScanResponse]]] = {
-      (() => jClient.scan(req.u)).liftF[F].flatMap { resp =>
+    ): fs2.Stream[F, SegmentPassThrough[ScanResponse]] = {
+      fs2.Stream.eval((() => jClient.scan(req.u)).liftF[F]).map { resp =>
         if (resp.hasLastEvaluatedKey) {
-          doScan(
+          val next = loop(
             filter,
             SegmentPassThrough(
               requestBuilder(filter, Some(resp.lastEvaluatedKey())).segment(
@@ -70,15 +68,14 @@ trait ScanOps {
               ).build(),
               req.segment
             )
-          ).map { stream =>
-            fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ stream
-          }
+          )
+          fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ next
         } else {
           fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
             SegmentPassThrough(resp, req.segment)
-          ).pure[F]
+          )
         }
-      }
+      }.parJoin(parallelism)
     }
 
     for {
@@ -122,35 +119,34 @@ trait ScanOps {
         }
       )
 
-    lazy val sendPipe: Pipe[
-      F,
-      SegmentPassThrough[ScanRequest],
-      SegmentPassThrough[ScanResponse]
-    ] =
-      _.mapAsyncUnordered(parallelism)(doScan).parJoin(parallelism)
-
-    def doScan(
+    def loop(
       req: SegmentPassThrough[ScanRequest]
-    ): F[fs2.Stream[F, SegmentPassThrough[ScanResponse]]] = {
-      (() => jClient.scan(req.u)).liftF[F].flatMap { resp =>
+    ): fs2.Stream[F, SegmentPassThrough[ScanResponse]] = {
+      fs2.Stream.eval((() => jClient.scan(req.u)).liftF[F]).map { resp =>
         if (resp.hasLastEvaluatedKey) {
-          doScan(
+          val next = loop(
             SegmentPassThrough(
               requestBuilder(Some(resp.lastEvaluatedKey())).segment(
                 req.segment
               ).build(),
               req.segment
             )
-          ).map { stream =>
-            fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ stream
-          }
+          )
+          fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ next
         } else {
           fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
             SegmentPassThrough(resp, req.segment)
-          ).pure[F]
+          )
         }
-      }
+      }.parJoin(parallelism)
     }
+
+    val sendPipe: Pipe[
+      F,
+      SegmentPassThrough[ScanRequest],
+      SegmentPassThrough[ScanResponse]
+    ] =
+      _.map(loop).parJoin(parallelism)
 
     for {
       resp <- sendPipe(initRequests)
