@@ -13,7 +13,8 @@ Add Bintray resolver:
 resolvers += Resolver.bintrayRepo("d2a4u", "meteor")
 ```
 
-Add the following to your build.sbt, see the badge above for latest version. Supports Scala 2.12 and 2.13.
+Add the following to your build.sbt, see the badge above for latest version. Supports Scala 2.12 and
+2.13.
 
 ```
 libraryDependencies += "meteor" %% "meteor-awssdk" % "LATEST_VERSION"
@@ -48,19 +49,31 @@ of type `A`.
 
 The library supports the following DynamoDB's API:
 
-- Get by Primary Key
-- Retrieve by Query
+- Get
+- Query
+- Put
 - Update
 - Delete
 - Scan (use `fs2` Stream to scan table)
+- Batch Update
+- Batch Delete
 
-Please see `ClientSpec.scala` in integration tests for more code example.
+### Usage
+
+Please see [integration tests](https://github.com/d2a4u/meteor/tree/master/awssdk/src/it/scala) 
+for more usage example.
 
 ## Modules
 
 - `awssdk` the main module for DynamoDB client
 - `scanamo` module which provides auto conversion to and from Scanamo's `DynamoFormat` and meteor's 
 `Encoder`/`Decoder`
+
+*Note:* `meteor` uses `Scanamo`'s version `1.0.0-M11` instead of latest because in my experience,
+this is the most stable version. However, because it is an older version when DynamoDB's did not 
+support empty String, this version of `Scanamo` serializes these cases: `""`, `None` and `Some("")`
+to Dynamo's `NULL`. This is problematic because once the value is written down, reading it back is
+difficult.
 
 ## Credit
 

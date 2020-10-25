@@ -28,7 +28,9 @@ class RetrieveOpsSpec extends ITSpec {
       setup.use[IO, List[TestData]] { client =>
         val retrieval = client.retrieve[TestData, Id, Range](
           tableName,
-          Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
+          Query[Id, Range](
+            partitionKey
+          ),
           consistentRead = false,
           Int.MaxValue
         ).compile.toList
@@ -53,9 +55,8 @@ class RetrieveOpsSpec extends ITSpec {
       setup.use[IO, List[TestData]] { client =>
         val retrieval = client.retrieve[TestData, Id, Range](
           tableName,
-          Query(
+          Query[Id, Range](
             partitionKey,
-            SortKeyQuery.Empty[Range](),
             Expression(
               "#b = :bool and #i > :int",
               Map("#b" -> "bool", "#i" -> "int"),
@@ -88,7 +89,7 @@ class RetrieveOpsSpec extends ITSpec {
       val result = setup.use[IO, List[fs2.Chunk[TestData]]] { client =>
         val retrieval = client.retrieve[TestData, Id, Range](
           tableName,
-          Query(partitionKey, SortKeyQuery.Empty[Range](), Expression.empty),
+          Query[Id, Range](partitionKey),
           consistentRead = false,
           1
         ).chunks.compile.toList

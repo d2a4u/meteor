@@ -1,13 +1,15 @@
 package meteor
 
-import cats.effect.Concurrent
-import fs2.RaiseThrowable
+import cats.effect.{Concurrent, Timer}
+import fs2.{Pipe, RaiseThrowable}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
-class DefaultClient[F[_]: Concurrent: RaiseThrowable](
+import scala.concurrent.duration.FiniteDuration
+
+class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   jClient: DynamoDbAsyncClient
 ) extends Client[F]
     with DeleteOps
@@ -15,7 +17,8 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     with GetOps
     with PutOps
     with ScanOps
-    with UpdateOps {
+    with UpdateOps
+    with BatchWriteOps {
 
   def get[U: Decoder, P: Encoder](
     table: Table,
@@ -180,6 +183,37 @@ class DefaultClient[F[_]: Concurrent: RaiseThrowable](
     updateOp[F, P, S](table, partitionKey, sortKey, update, condition)(
       jClient
     )
+
+  def batchPut[T: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, T, Unit] = {
+    val in: Pipe[F, T, Put[T]] = _.map(Put(_))
+    in.andThen(batchWriteOp[F, T](table, maxBatchWait, parallelism)(jClient))
+  }
+
+  def batchDelete[P: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, P, Unit] = {
+    val in: Pipe[F, P, Deletion[P]] = _.map(Deletion(_))
+    in.andThen(
+      batchWriteOp[F, P](table, maxBatchWait, parallelism)(jClient)
+    )
+  }
+
+  def batchDelete[P: Encoder, S: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, (P, S), Unit] = {
+    val in: Pipe[F, (P, S), Deletion[(P, S)]] = _.map(Deletion(_))
+    in.andThen(
+      batchWriteOp[F, (P, S)](table, maxBatchWait, parallelism)(jClient)
+    )
+  }
 
   def describe(table: Table): F[TableDescription] =
     describeOp[F](table)(jClient)

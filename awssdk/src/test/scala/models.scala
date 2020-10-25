@@ -14,6 +14,11 @@ object Id {
     ).build()
   }
 
+  implicit val decoderId: Decoder[Id] = Decoder.instance { av =>
+    val obj = av.m()
+    Decoder[String].read(obj.get("id")).map(Id.apply)
+  }
+
   implicit val genId: Gen[Id] =
     Gen.nonEmptyListOf(Gen.alphaNumChar).map(chars => Id(chars.mkString))
   implicit val arbId: Arbitrary[Id] = Arbitrary(genId)
@@ -25,6 +30,11 @@ object Range {
     AttributeValue.builder().m(
       Map("range" -> Encoder[String].write(range.value)).asJava
     ).build()
+  }
+
+  implicit val decoderRange: Decoder[Range] = Decoder.instance { av =>
+    val obj = av.m()
+    Decoder[String].read(obj.get("range")).map(Range.apply)
   }
 
   implicit val genRange: Gen[Range] =

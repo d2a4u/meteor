@@ -142,3 +142,20 @@ case class Query[P: Encoder, S: Encoder](
     }
   }
 }
+
+object Query {
+  def apply[P: Encoder, S: Encoder](
+    partitionKey: P
+  ): Query[P, S] =
+    Query(partitionKey, SortKeyQuery.Empty[S](), Expression.empty)
+
+  def apply[P: Encoder, S: Encoder](
+    partitionKey: P,
+    sortKeyQuery: SortKeyQuery[S]
+  ): Query[P, S] = Query(partitionKey, sortKeyQuery, Expression.empty)
+
+  def apply[P: Encoder, S: Encoder](
+    partitionKey: P,
+    filter: Expression
+  ): Query[P, S] = Query(partitionKey, SortKeyQuery.Empty[S](), filter)
+}

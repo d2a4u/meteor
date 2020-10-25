@@ -2,7 +2,8 @@ package meteor
 
 import java.util.concurrent.Executor
 
-import cats.effect.{Concurrent, Resource, Sync}
+import cats.effect.{Concurrent, Resource, Sync, Timer}
+import fs2.Pipe
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
@@ -18,6 +19,7 @@ import software.amazon.awssdk.services.dynamodb.model.{
   TableDescription
 }
 
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 trait Client[F[_]] {
@@ -156,14 +158,32 @@ trait Client[F[_]] {
     condition: Expression
   ): F[Unit]
 
+  def batchPut[T: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, T, Unit]
+
+  def batchDelete[P: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, P, Unit]
+
+  def batchDelete[P: Encoder, S: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, (P, S), Unit]
+
   def describe(table: Table): F[TableDescription]
 }
 
 object Client {
-  def apply[F[_]: Concurrent](jClient: DynamoDbAsyncClient): Client[F] =
+  def apply[F[_]: Concurrent: Timer](jClient: DynamoDbAsyncClient): Client[F] =
     new DefaultClient[F](jClient)
 
-  def resource[F[_]: Concurrent]: Resource[F, Client[F]] = {
+  def resource[F[_]: Concurrent: Timer]: Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {
       Sync[F].delay(AwsCredentialsProviderChain.of(
         DefaultCredentialsProvider.create()
@@ -177,7 +197,8 @@ object Client {
     }.map(apply[F])
   }
 
-  def resource[F[_]: Concurrent](exec: Executor): Resource[F, Client[F]] = {
+  def resource[F[_]: Concurrent: Timer](exec: Executor)
+    : Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {
       Sync[F].delay(AwsCredentialsProviderChain.of(
         DefaultCredentialsProvider.create()
@@ -185,7 +206,7 @@ object Client {
     }.flatMap(cred => resource[F](exec, cred))
   }
 
-  def resource[F[_]: Concurrent](
+  def resource[F[_]: Concurrent: Timer](
     exec: Executor,
     cred: AwsCredentialsProviderChain
   ): Resource[F, Client[F]] = {
