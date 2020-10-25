@@ -68,7 +68,7 @@ for more usage example.
 
 *Note:* `meteor` uses `Scanamo`'s version `1.0.0-M11` instead of latest because in my experience,
 this is the most stable version. However, because it is an older version when DynamoDB's did not 
-support for empty String, this version of `Scanamo` serializes these cases: `""`, `None` and `Some("")`
+support empty String, this version of `Scanamo` serializes these cases: `""`, `None` and `Some("")`
 to Dynamo's `NULL`. This is problematic because once the value is written down, reading it back is
 difficult.
 

@@ -2,6 +2,7 @@ package meteor
 
 import cats.implicits._
 import cats.effect.IO
+
 import scala.concurrent.duration._
 
 class BatchWriteOpsSpec extends ITSpec {

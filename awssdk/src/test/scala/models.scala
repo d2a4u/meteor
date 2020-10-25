@@ -32,6 +32,11 @@ object Range {
     ).build()
   }
 
+  implicit val decoderRange: Decoder[Range] = Decoder.instance { av =>
+    val obj = av.m()
+    Decoder[String].read(obj.get("range")).map(Range.apply)
+  }
+
   implicit val genRange: Gen[Range] =
     Gen.nonEmptyListOf(Gen.alphaNumChar).map(chars => Range(chars.mkString))
   implicit val arbRange: Arbitrary[Range] = Arbitrary(genRange)
