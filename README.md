@@ -49,11 +49,14 @@ of type `A`.
 
 The library supports the following DynamoDB's API:
 
-- Get by Primary Key
-- Retrieve by Query
+- Get
+- Query
+- Put
 - Update
 - Delete
 - Scan (use `fs2` Stream to scan table)
+- Batch Update
+- Batch Delete
 
 ### Usage
 
