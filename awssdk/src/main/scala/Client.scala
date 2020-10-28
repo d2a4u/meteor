@@ -90,13 +90,13 @@ trait Client[F[_]] {
     filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[U]]
+  ): fs2.Stream[F, U]
 
   def scan[U: Decoder](
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[U]]
+  ): fs2.Stream[F, U]
 
   def update[P: Encoder, U: Decoder](
     table: Table,

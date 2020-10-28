@@ -19,7 +19,7 @@ trait ScanOps {
     filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, Option[T]] = {
+  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
     def requestBuilder(
       filter: Expression,
       startKey: Option[java.util.Map[String, AttributeValue]]
@@ -87,15 +87,17 @@ trait ScanOps {
       )
       resp <- sendPipe(cond)(initRequests(cond))
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
-      optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
-    } yield optT
+      t <- fs2.Stream.fromEither(attrs.attemptDecode[T]).collect {
+        case Some(t) => t
+      }
+    } yield t
   }
 
   def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, Option[T]] = {
+  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
 
     def requestBuilder(
       startKey: Option[java.util.Map[String, AttributeValue]]
@@ -110,14 +112,10 @@ trait ScanOps {
     }
 
     lazy val initRequests =
-      fs2.Stream.emits[F, SegmentPassThrough[ScanRequest]](
-        List.fill(parallelism)(
-          requestBuilder(None)
-        ).zipWithIndex.map {
-          case (builder, index) =>
-            SegmentPassThrough(builder.segment(index).build(), index)
-        }
-      )
+      fs2.Stream.range(0, parallelism).map { index =>
+        val builder = requestBuilder(None)
+        SegmentPassThrough(builder.segment(index).build(), index)
+      }
 
     def loop(
       req: SegmentPassThrough[ScanRequest]
@@ -151,8 +149,10 @@ trait ScanOps {
     for {
       resp <- sendPipe(initRequests)
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
-      optT <- fs2.Stream.fromEither(attrs.attemptDecode[T])
-    } yield optT
+      t <- fs2.Stream.fromEither(attrs.attemptDecode[T]).collect {
+        case Some(t) => t
+      }
+    } yield t
   }
 
   private case class SegmentPassThrough[U](
