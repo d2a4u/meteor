@@ -14,6 +14,7 @@ import software.amazon.awssdk.core.client.config.{
   ClientAsyncConfiguration,
   SdkAdvancedAsyncClientOption
 }
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.{
   BillingMode,
@@ -197,13 +198,14 @@ object Client {
 
   def resource[F[_]: Concurrent: Timer](
     cred: AwsCredentialsProviderChain,
-    endpoint: URI
+    endpoint: URI,
+    region: Region
   ): Resource[F, Client[F]] =
     Resource.fromAutoCloseable {
       Sync[F].delay(
         DynamoDbAsyncClient.builder().credentialsProvider(
           cred
-        ).endpointOverride(endpoint).build()
+        ).endpointOverride(endpoint).region(region).build()
       )
     }.map(apply[F])
 

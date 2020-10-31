@@ -8,7 +8,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build-test:
+  build-tests:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 13
-      - name: Gen cache key
+      - name: Gen cache keys
         run: |
           md5sum project/build.properties project/plugins.sbt build.sbt > $GITHUB_WORKSPACE/.sbt_cache_key
           cat $GITHUB_WORKSPACE/.sbt_cache_key
@@ -31,7 +31,9 @@ jobs:
       - name: Spin up Dynamo local
         run: docker-compose up -d
       - name: Test Dynamo connection
-        run: docker run --network container:dynamodb-local curlimages/curl:7.73.0 -s --retry 10 --retry-connrefused http://localhost:8000/
-      - name: Build
+        run: |
+          docker ps
+          curl -v -s --retry 30 --retry-delay 1 --retry-connrefused http://localhost:8000/
+      - name: Run build and tests
         run:
           sbt ";compile;test;it:test"

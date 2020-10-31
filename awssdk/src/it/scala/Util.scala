@@ -11,6 +11,7 @@ import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
   AwsCredentialsProviderChain
 }
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.concurrent.duration._
@@ -57,7 +58,7 @@ object Util {
     keys: Map[String, (KeyType, ScalarAttributeType)]
   ): Resource[F, (Client[F], Table)] = {
     for {
-      client <- Client.resource[F](dummyCred, localDynamo)
+      client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
       randomName <- Resource.liftF(
         Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
       )
