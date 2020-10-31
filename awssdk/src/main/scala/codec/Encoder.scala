@@ -46,6 +46,14 @@ object Encoder {
       dynamoEncoderForMap[AttributeValue].write(m)
     }
 
+  implicit def dynamoEncoderForEither[A: Encoder, B: Encoder]
+    : Encoder[Either[A, B]] =
+    Encoder.instance {
+      case Right(r) => Encoder[B].write(r)
+
+      case Left(l) => Encoder[A].write(l)
+    }
+
   implicit def dynamoEncoderForOption[A: Encoder]: Encoder[Option[A]] =
     Encoder.instance { fa =>
       fa.fold(AttributeValue.builder().nul(true).build())(Encoder[A].write)
