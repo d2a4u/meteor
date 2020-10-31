@@ -1,5 +1,6 @@
 package meteor
 
+import java.net.URI
 import java.util.concurrent.Executor
 
 import cats.effect.{Concurrent, Resource, Sync, Timer}
@@ -13,9 +14,13 @@ import software.amazon.awssdk.core.client.config.{
   ClientAsyncConfiguration,
   SdkAdvancedAsyncClientOption
 }
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.{
+  BillingMode,
+  KeyType,
   ReturnValue,
+  ScalarAttributeType,
   TableDescription
 }
 
@@ -177,11 +182,32 @@ trait Client[F[_]] {
   ): Pipe[F, (P, S), Unit]
 
   def describe(table: Table): F[TableDescription]
+
+  def createTable(
+    table: Table,
+    keys: Map[String, (KeyType, ScalarAttributeType)],
+    billingMode: BillingMode
+  ): F[Unit]
+
+  def deleteTable(table: Table): F[Unit]
 }
 
 object Client {
   def apply[F[_]: Concurrent: Timer](jClient: DynamoDbAsyncClient): Client[F] =
     new DefaultClient[F](jClient)
+
+  def resource[F[_]: Concurrent: Timer](
+    cred: AwsCredentialsProviderChain,
+    endpoint: URI,
+    region: Region
+  ): Resource[F, Client[F]] =
+    Resource.fromAutoCloseable {
+      Sync[F].delay(
+        DynamoDbAsyncClient.builder().credentialsProvider(
+          cred
+        ).endpointOverride(endpoint).region(region).build()
+      )
+    }.map(apply[F])
 
   def resource[F[_]: Concurrent: Timer]: Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {

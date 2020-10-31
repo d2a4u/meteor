@@ -3,7 +3,7 @@ package api
 
 import cats.effect.Concurrent
 import cats.implicits._
-import fs2.{Pipe, RaiseThrowable}
+import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.codec.Decoder
 import meteor.errors.InvalidExpression
 import meteor.implicits._
@@ -19,7 +19,7 @@ trait ScanOps {
     filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
+  )(jClient: DynamoDbAsyncClient): Stream[F, T] = {
     def requestBuilder(
       filter: Expression,
       startKey: Option[java.util.Map[String, AttributeValue]]
@@ -38,7 +38,7 @@ trait ScanOps {
     }
 
     def initRequests(filter: Expression) =
-      fs2.Stream.emits[F, SegmentPassThrough[ScanRequest]](
+      Stream.emits[F, SegmentPassThrough[ScanRequest]](
         List.fill(parallelism)(
           requestBuilder(filter, None)
         ).zipWithIndex.map {
@@ -57,37 +57,34 @@ trait ScanOps {
     def loop(
       filter: Expression,
       req: SegmentPassThrough[ScanRequest]
-    ): fs2.Stream[F, SegmentPassThrough[ScanResponse]] = {
-      fs2.Stream.eval((() => jClient.scan(req.u)).liftF[F]).map { resp =>
-        if (resp.hasLastEvaluatedKey) {
-          val next = loop(
-            filter,
-            SegmentPassThrough(
-              requestBuilder(filter, Some(resp.lastEvaluatedKey())).segment(
+    ): Stream[F, SegmentPassThrough[ScanResponse]] =
+      Stream.eval((() => jClient.scan(req.u)).liftF[F]).flatMap { resp =>
+        Stream.emit(SegmentPassThrough(resp, req.segment)) ++ {
+          if (resp.hasLastEvaluatedKey && !resp.lastEvaluatedKey().isEmpty) {
+            val nextReq =
+              SegmentPassThrough(
+                requestBuilder(filter, Some(resp.lastEvaluatedKey())).segment(
+                  req.segment
+                ).build(),
                 req.segment
-              ).build(),
-              req.segment
-            )
-          )
-          fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ next
-        } else {
-          fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
-            SegmentPassThrough(resp, req.segment)
-          )
+              )
+            loop(filter, nextReq)
+          } else {
+            Stream.empty
+          }
         }
-      }.parJoin(parallelism)
-    }
+      }
 
     for {
-      cond <- fs2.Stream.eval(
+      cond <- Stream.eval(
         Concurrent[F].fromOption(
           filter.nonEmpty.guard[Option].as(filter),
           InvalidExpression
         )
       )
       resp <- sendPipe(cond)(initRequests(cond))
-      attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
-      t <- fs2.Stream.fromEither(attrs.attemptDecode[T]).collect {
+      attrs <- Stream.emits(resp.u.items().asScala.toList)
+      t <- Stream.fromEither(attrs.attemptDecode[T]).collect {
         case Some(t) => t
       }
     } yield t
@@ -97,7 +94,7 @@ trait ScanOps {
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
+  )(jClient: DynamoDbAsyncClient): Stream[F, T] = {
 
     def requestBuilder(
       startKey: Option[java.util.Map[String, AttributeValue]]
@@ -112,32 +109,29 @@ trait ScanOps {
     }
 
     lazy val initRequests =
-      fs2.Stream.range(0, parallelism).map { index =>
+      Stream.range(0, parallelism).map { index =>
         val builder = requestBuilder(None)
         SegmentPassThrough(builder.segment(index).build(), index)
       }
 
     def loop(
       req: SegmentPassThrough[ScanRequest]
-    ): fs2.Stream[F, SegmentPassThrough[ScanResponse]] = {
-      fs2.Stream.eval((() => jClient.scan(req.u)).liftF[F]).map { resp =>
-        if (resp.hasLastEvaluatedKey) {
-          val next = loop(
-            SegmentPassThrough(
+    ): Stream[F, SegmentPassThrough[ScanResponse]] =
+      Stream.eval((() => jClient.scan(req.u)).liftF[F]).flatMap { resp =>
+        Stream.emit(SegmentPassThrough(resp, req.segment)).covary[F] ++ {
+          if (resp.hasLastEvaluatedKey && !resp.lastEvaluatedKey().isEmpty) {
+            val nextReq = SegmentPassThrough(
               requestBuilder(Some(resp.lastEvaluatedKey())).segment(
                 req.segment
               ).build(),
               req.segment
             )
-          )
-          fs2.Stream.emit(SegmentPassThrough(resp, req.segment)) ++ next
-        } else {
-          fs2.Stream.emit[F, SegmentPassThrough[ScanResponse]](
-            SegmentPassThrough(resp, req.segment)
-          )
+            loop(nextReq)
+          } else {
+            Stream.empty
+          }
         }
-      }.parJoin(parallelism)
-    }
+      }
 
     val sendPipe: Pipe[
       F,
@@ -148,8 +142,8 @@ trait ScanOps {
 
     for {
       resp <- sendPipe(initRequests)
-      attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
-      t <- fs2.Stream.fromEither(attrs.attemptDecode[T]).collect {
+      attrs <- Stream.emits(resp.u.items().asScala.toList)
+      t <- Stream.fromEither(attrs.attemptDecode[T]).collect {
         case Some(t) => t
       }
     } yield t

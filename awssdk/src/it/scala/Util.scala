@@ -1,9 +1,18 @@
 package meteor
 
+import java.net.URI
+import java.util.UUID
+
 import cats._
-import cats.implicits._
 import cats.effect.concurrent.Ref
-import cats.effect.{Resource, Sync, Timer}
+import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.implicits._
+import software.amazon.awssdk.auth.credentials.{
+  AwsCredentials,
+  AwsCredentialsProviderChain
+}
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.concurrent.duration._
 
@@ -44,4 +53,45 @@ object Util {
         post
       ).map(_.combineAll)
     }
+
+  def localTableResource[F[_]: Concurrent: Timer](
+    keys: Map[String, (KeyType, ScalarAttributeType)]
+  ): Resource[F, (Client[F], Table)] = {
+    for {
+      client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
+      randomName <- Resource.liftF(
+        Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
+      )
+      table = Table(randomName)
+      _ <- Resource.make(
+        client.createTable(
+          table,
+          keys,
+          BillingMode.PAY_PER_REQUEST
+        )
+      )(_ => client.deleteTable(table))
+    } yield (client, table)
+  }
+
+  def hasPrimaryKeys =
+    Map(
+      "id" -> (KeyType.HASH, ScalarAttributeType.S),
+      "range" -> (KeyType.RANGE, ScalarAttributeType.S)
+    )
+
+  def hasPartitionKeyOnly =
+    Map(
+      "id" -> (KeyType.HASH, ScalarAttributeType.S)
+    )
+
+  def dummyCred =
+    AwsCredentialsProviderChain.of(
+      () =>
+        new AwsCredentials {
+          override def accessKeyId(): String = "DUMMY"
+          override def secretAccessKey(): String = "DUMMY"
+        }
+    )
+
+  def localDynamo = URI.create("http://localhost:8000")
 }

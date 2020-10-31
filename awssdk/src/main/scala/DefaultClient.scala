@@ -13,7 +13,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   jClient: DynamoDbAsyncClient
 ) extends Client[F]
     with DeleteOps
-    with DescribeOps
+    with TableOps
     with GetOps
     with PutOps
     with ScanOps
@@ -184,13 +184,22 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       jClient
     )
 
+  def batchWrite[D: Encoder, P: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    rightIsWrite: Boolean = true
+  ): Pipe[F, Either[D, P], Unit] =
+    batchWriteInorderedOp[F, D, P](table, maxBatchWait, rightIsWrite)(jClient)
+
   def batchPut[T: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
     parallelism: Int
   ): Pipe[F, T, Unit] = {
     val in: Pipe[F, T, Put[T]] = _.map(Put(_))
-    in.andThen(batchWriteOp[F, T](table, maxBatchWait, parallelism)(jClient))
+    in.andThen(
+      batchWriteUnorderedOp[F, T](table, maxBatchWait, parallelism)(jClient)
+    )
   }
 
   def batchDelete[P: Encoder](
@@ -200,7 +209,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   ): Pipe[F, P, Unit] = {
     val in: Pipe[F, P, Deletion[P]] = _.map(Deletion(_))
     in.andThen(
-      batchWriteOp[F, P](table, maxBatchWait, parallelism)(jClient)
+      batchWriteUnorderedOp[F, P](table, maxBatchWait, parallelism)(jClient)
     )
   }
 
@@ -211,10 +220,21 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   ): Pipe[F, (P, S), Unit] = {
     val in: Pipe[F, (P, S), Deletion[(P, S)]] = _.map(Deletion(_))
     in.andThen(
-      batchWriteOp[F, (P, S)](table, maxBatchWait, parallelism)(jClient)
+      batchWriteUnorderedOp[F, (P, S)](table, maxBatchWait, parallelism)(
+        jClient
+      )
     )
   }
 
   def describe(table: Table): F[TableDescription] =
     describeOp[F](table)(jClient)
+
+  def createTable(
+    table: Table,
+    keys: Map[String, (KeyType, ScalarAttributeType)],
+    billingMode: BillingMode
+  ): F[Unit] =
+    createTableOp[F](table, keys, billingMode, waitTillReady = true)(jClient)
+
+  def deleteTable(table: Table): F[Unit] = deleteTableOp[F](table)(jClient)
 }
