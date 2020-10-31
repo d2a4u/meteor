@@ -89,14 +89,14 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[T]] =
+  ): fs2.Stream[F, T] =
     scanOp[F, T](table, filter, consistentRead, parallelism)(jClient)
 
   def scan[T: Decoder](
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, Option[T]] =
+  ): fs2.Stream[F, T] =
     scanOp[F, T](table, consistentRead, parallelism)(jClient)
 
   def update[P: Encoder, U: Decoder](

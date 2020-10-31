@@ -19,9 +19,7 @@ class ScanOpsSpec extends ITSpec {
           tableName,
           consistentRead = false,
           1024
-        ).collect {
-          case Some(a) => a
-        }.evalMap { _ =>
+        ).evalMap { _ =>
           ref.update(_ + 1)
         }
       } yield void

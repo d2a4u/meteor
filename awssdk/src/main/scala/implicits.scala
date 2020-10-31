@@ -2,7 +2,7 @@ package meteor
 
 import java.util.concurrent.{CompletableFuture, CompletionException}
 
-import cats.effect.{Concurrent, Sync}
+import cats.effect._
 import cats.implicits._
 import meteor.codec.{Decoder, DecoderFailure}
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
