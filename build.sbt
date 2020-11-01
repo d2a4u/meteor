@@ -34,8 +34,10 @@ lazy val commonSettings = Seq(
   bintrayRepository := "meteor",
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
-  releaseCrossBuild := true,
   bintrayReleaseOnPublish := false,
+  releaseEarlyWith := BintrayPublisher,
+  releaseEarlyEnableSyncToMaven := false,
+  releaseEarlyNoGpg := true,
   addCompilerPlugin(
     "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
   ),

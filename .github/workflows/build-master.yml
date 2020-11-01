@@ -35,4 +35,11 @@ jobs:
       - name: Run build and tests
         run:
           sbt ";compile;test;it:test"
-#  TODO: Auto release
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.33.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+      - name: Publish to Bintray
+        run: |
+          sbt +releaseEarly
