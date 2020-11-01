@@ -38,6 +38,20 @@ lazy val commonSettings = Seq(
   releaseEarlyWith := BintrayPublisher,
   releaseEarlyEnableSyncToMaven := false,
   releaseEarlyNoGpg := true,
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/d2a4u/meteor"),
+      "git@github.com:d2a4u/meteor.git"
+    )
+  ),
+  developers := List(
+    Developer(
+      "d2a4u",
+      "D A Khu",
+      "d2a4u@users.noreply.github.com",
+      url("https://github.com/d2a4u")
+    )
+  ),
   addCompilerPlugin(
     "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
   ),
