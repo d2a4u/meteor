@@ -33,7 +33,7 @@ jobs:
       - name: Test Dynamo connection
         run: |
           docker ps
-          curl -v -s --retry 30 --retry-delay 1 --retry-connrefused http://localhost:8000/
+          docker run --network container:dynamodb-local curlimages/curl:7.73.0 -v --retry 20 --retry-all-errors http://localhost:8000/
       - name: Run build and tests
         run:
           sbt ";compile;test;it:test"
