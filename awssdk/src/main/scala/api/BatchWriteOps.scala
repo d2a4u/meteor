@@ -2,7 +2,6 @@ package meteor
 package api
 
 import cats.effect.{Concurrent, Timer}
-import cats.implicits._
 import fs2.{Pipe, Stream}
 import meteor.codec.Encoder
 import meteor.implicits._
@@ -129,7 +128,7 @@ trait BatchWriteOps {
     parallelism: Int
   )(jClient: DynamoDbAsyncClient): Pipe[F, Write[T], Unit] =
     sendPipeUnordered[F, T](table, maxBatchWait, parallelism)(jClient).andThen(
-      _.void
+      _.drain
     )
 
   def batchWriteInorderedOp[F[_]: Timer: Concurrent, D: Encoder, P: Encoder](
@@ -139,5 +138,5 @@ trait BatchWriteOps {
   )(jClient: DynamoDbAsyncClient): Pipe[F, Either[D, P], Unit] =
     sendPipeInordered[F, D, P](table, maxBatchWait, rightIsWrite)(
       jClient
-    ).andThen(_.void)
+    ).andThen(_.drain)
 }
