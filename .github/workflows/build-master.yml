@@ -37,6 +37,7 @@ jobs:
       - name: Run build and tests
         run:
           sbt ";compile;test;it:test"
+
   tags:
     needs: build-tests
     runs-on: ubuntu-20.04
@@ -47,6 +48,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
+      - name: Push tag
+        run:
+          git push --follow-tags
+
   release:
     needs: [build-tests, tags]
     runs-on: ubuntu-20.04
