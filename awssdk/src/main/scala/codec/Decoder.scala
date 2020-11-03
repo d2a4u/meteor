@@ -25,6 +25,9 @@ object DecoderFailure {
 
 trait Decoder[A] {
   def read(av: AttributeValue): Either[DecoderFailure, A]
+  def read(av: java.util.Map[String, AttributeValue])
+    : Either[DecoderFailure, A] =
+    read(AttributeValue.builder().m(av).build())
 }
 
 object Decoder {

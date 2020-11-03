@@ -163,6 +163,14 @@ trait Client[F[_]] {
     condition: Expression
   ): F[Unit]
 
+  def batchGet[T: Encoder, U: Decoder](
+    table: Table,
+    consistentRead: Boolean,
+    projection: Expression,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, T, U]
+
   def batchPut[T: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,

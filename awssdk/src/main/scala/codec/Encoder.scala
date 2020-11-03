@@ -8,6 +8,8 @@ import cats._
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model._
 
+import meteor.implicits._
+
 import scala.jdk.CollectionConverters._
 
 trait Encoder[A] {
@@ -41,9 +43,8 @@ object Encoder {
       val (a, b) = ab
       val writeA = Encoder[A].write(a)
       val writeB = Encoder[B].write(b)
-      val m =
-        writeA.m().asScala.toMap ++ writeB.m().asScala.toMap
-      dynamoEncoderForMap[AttributeValue].write(m)
+      val m = writeA.m() ++ writeB.m()
+      dynamoEncoderForMap[AttributeValue].write(m.asScala.toMap)
     }
 
   implicit def dynamoEncoderForEither[A: Encoder, B: Encoder]

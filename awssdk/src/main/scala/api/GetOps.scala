@@ -36,14 +36,12 @@ trait GetOps {
     sortKey: S,
     consistentRead: Boolean
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
-    val query = Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
-      sortKey
-    ).m().asScala
+    val query = Encoder[(P, S)].write((partitionKey, sortKey)).m()
     val req =
       GetItemRequest.builder()
         .consistentRead(consistentRead)
         .tableName(table.name)
-        .key(query.asJava)
+        .key(query)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
       Concurrent[F].fromEither(resp.item().attemptDecode[U])

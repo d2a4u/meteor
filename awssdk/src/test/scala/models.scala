@@ -112,35 +112,3 @@ object TestDataSimple {
   implicit val arbTestDataSimple: Arbitrary[TestDataSimple] =
     Arbitrary(genTestDataSimple)
 }
-
-case class TestDataScan(
-  id: Id,
-  range: Range,
-  data: String
-)
-object TestDataScan {
-  implicit val decoder: Decoder[TestDataScan] = Decoder.instance { av =>
-    val obj = av.m()
-    for {
-      id <- Decoder[String].read(obj.get("id"))
-      range <- Decoder[String].read(obj.get("range"))
-      data <- Decoder[String].read(obj.get("data"))
-    } yield TestDataScan(Id(id), Range(range), data)
-  }
-
-  implicit val encoder: Encoder[TestDataScan] = Encoder.instance { t =>
-    val jMap = Map(
-      "id" -> Encoder[String].write(t.id.value),
-      "range" -> Encoder[String].write(t.range.value),
-      "data" -> Encoder[String].write(t.data)
-    ).asJava
-    AttributeValue.builder().m(jMap).build()
-  }
-
-  implicit val genTestDataScan: Gen[TestDataScan] =
-    TestData.genTestData.map(data =>
-      TestDataScan(data.id, data.range, data.str))
-
-  implicit val arbTestDataScan: Arbitrary[TestDataScan] =
-    Arbitrary(genTestDataScan)
-}

@@ -18,7 +18,8 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     with PutOps
     with ScanOps
     with UpdateOps
-    with BatchWriteOps {
+    with BatchWriteOps
+    with BatchGetOps {
 
   def get[U: Decoder, P: Encoder](
     table: Table,
@@ -181,6 +182,23 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     condition: Expression
   ): F[Unit] =
     updateOp[F, P, S](table, partitionKey, sortKey, update, condition)(
+      jClient
+    )
+
+  def batchGet[T: Encoder, U: Decoder](
+    table: Table,
+    consistentRead: Boolean,
+    projection: Expression,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, T, U] =
+    batchGetOp[F, T, U](
+      table,
+      consistentRead,
+      projection,
+      maxBatchWait,
+      parallelism
+    )(
       jClient
     )
 
