@@ -8,8 +8,6 @@ import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
-import scala.jdk.CollectionConverters._
-
 trait DeleteOps {
   def deleteOp[F[_]: Concurrent, P: Encoder, S: Encoder](
     table: Table,
@@ -19,9 +17,7 @@ trait DeleteOps {
     val req =
       DeleteItemRequest.builder()
         .tableName(table.name)
-        .key((Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
-          sortKey
-        ).m().asScala).asJava)
+        .key(Encoder[(P, S)].write((partitionKey, sortKey)).m())
         .build()
     (() => jClient.deleteItem(req)).liftF[F].void
   }

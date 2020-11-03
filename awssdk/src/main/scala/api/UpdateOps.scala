@@ -145,9 +145,7 @@ trait UpdateOps {
   private def withKeys[P: Encoder, S: Encoder](
     builder: UpdateItemRequest.Builder
   )(partitionKey: P, sortKey: S): UpdateItemRequest.Builder = {
-    builder.key((Encoder[P].write(partitionKey).m().asScala ++ Encoder[S].write(
-      sortKey
-    ).m().asScala).asJava)
+    builder.key(Encoder[(P, S)].write((partitionKey, sortKey)).m())
   }
 
   private def withKey[P: Encoder](
