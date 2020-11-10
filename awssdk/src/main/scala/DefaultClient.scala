@@ -1,7 +1,7 @@
 package meteor
 
 import cats.effect.{Concurrent, Timer}
-import fs2.{Pipe, RaiseThrowable}
+import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
@@ -35,22 +35,47 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   ): F[Option[U]] =
     getOp[F, U, P, S](table, partitionKey, sortKey, consistentRead)(jClient)
 
-  def retrieve[T: Decoder, P: Encoder, S: Encoder](
+  def retrieve[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
-  ): fs2.Stream[F, T] =
-    retrieveOp[F, T, P, S](table, query, consistentRead, limit)(jClient)
+  ): fs2.Stream[F, U] =
+    retrieveOp[F, U, P, S](table, query, consistentRead, limit)(jClient)
 
-  def retrieve[T: Decoder, P: Encoder, S: Encoder](
+  def retrieve[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     query: Query[P, S],
     consistentRead: Boolean,
     index: Index,
     limit: Int
-  ): fs2.Stream[F, T] =
-    retrieveOp[F, T, P, S](table, query, consistentRead, index, limit)(jClient)
+  ): fs2.Stream[F, U] =
+    retrieveOp[F, U, P, S](table, query, consistentRead, index, limit)(jClient)
+
+  def retrieve[
+    U: Decoder,
+    P: Encoder
+  ](
+    table: Table,
+    partitionKey: P,
+    consistentRead: Boolean,
+    limit: Int
+  ): fs2.Stream[F, U] =
+    retrieveOp[F, U, P](table, partitionKey, consistentRead, limit)(jClient)
+
+  def retrieve[
+    U: Decoder,
+    P: Encoder
+  ](
+    table: Table,
+    partitionKey: P,
+    consistentRead: Boolean,
+    index: Index,
+    limit: Int
+  ): fs2.Stream[F, U] =
+    retrieveOp[F, U, P](table, partitionKey, consistentRead, index, limit)(
+      jClient
+    )
 
   def put[T: Encoder](
     table: Table,
@@ -184,6 +209,11 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     updateOp[F, P, S](table, partitionKey, sortKey, update, condition)(
       jClient
     )
+
+  def batchGet(
+    requests: Map[Table, BatchGet]
+  ): F[Map[Table, Seq[AttributeValue]]] =
+    batchGetOp[F](requests)(jClient)
 
   def batchGet[T: Encoder, U: Decoder](
     table: Table,

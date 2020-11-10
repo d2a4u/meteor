@@ -51,6 +51,47 @@ trait GetOps {
   def retrieveOp[
     F[_]: Concurrent: RaiseThrowable,
     T: Decoder,
+    P: Encoder
+  ](
+    table: Table,
+    partitionKey: P,
+    consistentRead: Boolean,
+    limit: Int
+  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
+    val query = Query[P, Nothing](partitionKey)
+    mkBuilder[F, P, Nothing](
+      table,
+      query,
+      consistentRead,
+      None,
+      limit
+    ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
+  }
+
+  def retrieveOp[
+    F[_]: Concurrent: RaiseThrowable,
+    T: Decoder,
+    P: Encoder
+  ](
+    table: Table,
+    partitionKey: P,
+    consistentRead: Boolean,
+    index: Index,
+    limit: Int
+  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
+    val query = Query[P, Nothing](partitionKey)
+    mkBuilder[F, P, Nothing](
+      table,
+      query,
+      consistentRead,
+      Some(index),
+      limit
+    ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
+  }
+
+  def retrieveOp[
+    F[_]: Concurrent: RaiseThrowable,
+    T: Decoder,
     P: Encoder,
     S: Encoder
   ](
