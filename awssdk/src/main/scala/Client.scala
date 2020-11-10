@@ -4,7 +4,8 @@ import java.net.URI
 import java.util.concurrent.Executor
 
 import cats.effect.{Concurrent, Resource, Sync, Timer}
-import fs2.Pipe
+import fs2.{Pipe, RaiseThrowable, Stream}
+import meteor.api.BatchGet
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentialsProviderChain,
@@ -17,6 +18,7 @@ import software.amazon.awssdk.core.client.config.{
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.{
+  AttributeValue,
   BillingMode,
   KeyType,
   ReturnValue,
@@ -52,6 +54,27 @@ trait Client[F[_]] {
   def retrieve[U: Decoder, P: Encoder, S: Encoder](
     table: Table,
     query: Query[P, S],
+    consistentRead: Boolean,
+    index: Index,
+    limit: Int
+  ): fs2.Stream[F, U]
+
+  def retrieve[
+    U: Decoder,
+    P: Encoder
+  ](
+    table: Table,
+    partitionKey: P,
+    consistentRead: Boolean,
+    limit: Int
+  ): fs2.Stream[F, U]
+
+  def retrieve[
+    U: Decoder,
+    P: Encoder
+  ](
+    table: Table,
+    partitionKey: P,
     consistentRead: Boolean,
     index: Index,
     limit: Int
@@ -162,6 +185,10 @@ trait Client[F[_]] {
     update: Expression,
     condition: Expression
   ): F[Unit]
+
+  def batchGet(
+    requests: Map[Table, BatchGet]
+  ): F[Map[Table, Seq[AttributeValue]]]
 
   def batchGet[T: Encoder, U: Decoder](
     table: Table,

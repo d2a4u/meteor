@@ -55,6 +55,11 @@ object Encoder {
       case Left(l) => Encoder[A].write(l)
     }
 
+  implicit val dynamoEncoderForNothing: Encoder[Nothing] =
+    Encoder.instance[Nothing] { _ =>
+      AttributeValue.builder().build()
+    }
+
   implicit def dynamoEncoderForOption[A: Encoder]: Encoder[Option[A]] =
     Encoder.instance { fa =>
       fa.fold(AttributeValue.builder().nul(true).build())(Encoder[A].write)

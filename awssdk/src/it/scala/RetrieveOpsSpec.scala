@@ -28,11 +28,9 @@ class RetrieveOpsSpec extends ITSpec {
       } yield tuple
       setup.use[IO, List[TestData]] {
         case (client, tableName) =>
-          val retrieval = client.retrieve[TestData, Id, Range](
+          val retrieval = client.retrieve[TestData, Id](
             tableName,
-            Query[Id, Range](
-              partitionKey
-            ),
+            partitionKey,
             consistentRead = false,
             Int.MaxValue
           ).compile.toList
