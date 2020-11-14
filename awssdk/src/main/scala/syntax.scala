@@ -1,8 +1,5 @@
 package meteor
 
-import java.util.concurrent.{CompletableFuture, CompletionException}
-
-import cats.effect.{Concurrent, Sync}
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
@@ -31,5 +28,4 @@ trait syntax {
     def getAs[A: Decoder](key: String): Either[DecoderFailure, A] =
       get(key).flatMap(_.as[A])
   }
-
 }
