@@ -83,10 +83,8 @@ trait ScanOps {
         )
       )
       resp <- sendPipe(cond)(initRequests(cond))
-      attrs <- Stream.emits(resp.u.items().asScala.toList)
-      t <- Stream.fromEither(attrs.attemptDecode[T]).collect {
-        case Some(t) => t
-      }
+      attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
+      t <- fs2.Stream.fromEither(attrs.asAttributeValue.as[T])
     } yield t
   }
 
@@ -94,7 +92,7 @@ trait ScanOps {
     table: Table,
     consistentRead: Boolean,
     parallelism: Int
-  )(jClient: DynamoDbAsyncClient): Stream[F, T] = {
+  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
 
     def requestBuilder(
       startKey: Option[java.util.Map[String, AttributeValue]]
@@ -142,10 +140,8 @@ trait ScanOps {
 
     for {
       resp <- sendPipe(initRequests)
-      attrs <- Stream.emits(resp.u.items().asScala.toList)
-      t <- Stream.fromEither(attrs.attemptDecode[T]).collect {
-        case Some(t) => t
-      }
+      attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
+      t <- fs2.Stream.fromEither(attrs.asAttributeValue.as[T])
     } yield t
   }
 

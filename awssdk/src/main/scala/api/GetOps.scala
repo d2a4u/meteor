@@ -26,7 +26,13 @@ trait GetOps {
         .key(query)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[U])
+      if (resp.hasItem()) {
+        Concurrent[F].fromEither(
+          resp.item().asAttributeValue.as[U].map(_.some).leftWiden[Throwable]
+        )
+      } else {
+        none[U].pure[F]
+      }
     }
   }
 
@@ -44,7 +50,13 @@ trait GetOps {
         .key(query)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.item().attemptDecode[U])
+      if (resp.hasItem()) {
+        Concurrent[F].fromEither(
+          resp.item().asAttributeValue.as[U].map(_.some).leftWiden[Throwable]
+        )
+      } else {
+        none[U].pure[F]
+      }
     }
   }
 
@@ -149,10 +161,8 @@ trait GetOps {
     for {
       resp <- doQuery(builder.build())
       listT <- fs2.Stream.fromEither(
-        resp.items().asScala.toList.traverse[FailureOr, Option[T]](
-          _.attemptDecode[T]
-        ).map(
-          _.flatten
+        resp.items().asScala.toList.traverse[FailureOr, T](
+          _.asAttributeValue.as[T]
         )
       )
       result <- fs2.Stream.emits(listT)
