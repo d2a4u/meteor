@@ -87,7 +87,13 @@ trait PutOps {
     }
     val req = builder.build()
     (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
+      if (resp.hasAttributes()) {
+        Concurrent[F].fromEither(resp.attributes().asAttributeValue.as[U]).map(
+          _.some
+        )
+      } else {
+        none[U].pure[F]
+      }
     }.adaptError {
       case err: ConditionalCheckFailedException =>
         ConditionalCheckFailed(err.getMessage)

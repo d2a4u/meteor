@@ -136,7 +136,14 @@ trait UpdateOps {
     req: UpdateItemRequest
   )(jClient: DynamoDbAsyncClient): F[Option[U]] =
     (() => jClient.updateItem(req)).liftF[F].flatMap { resp =>
-      Concurrent[F].fromEither(resp.attributes().attemptDecode[U])
+      if (resp.hasAttributes()) {
+        Concurrent[F].fromEither(
+          resp.attributes().asAttributeValue.as[U].map(_.some)
+        )
+      } else {
+        none[U].pure[F]
+      }
+
     }.adaptError {
       case err: ConditionalCheckFailedException =>
         ConditionalCheckFailed(err.getMessage)

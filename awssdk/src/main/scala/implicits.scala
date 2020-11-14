@@ -12,9 +12,10 @@ import cats.implicits._
 import meteor.codec.{Decoder, DecoderFailure}
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
-object implicits {
+object implicits extends syntax {
   type FailureOr[U] = Either[DecoderFailure, U]
 
+  // TODO I would keep it private
   implicit class FromCompletableFuture[A](thunk: () => CompletableFuture[A]) {
     def liftF[F[_]: Concurrent]: F[A] =
       Concurrent[F].cancelable[A] { cb =>

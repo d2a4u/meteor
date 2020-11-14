@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.dynamodb.model._
 import meteor.implicits._
 
 import scala.jdk.CollectionConverters._
+import java.util.Map.Entry
 
 trait Encoder[A] {
   def write(a: A): AttributeValue
@@ -31,6 +32,9 @@ object Encoder {
         .build()
 
   def const[A](av: AttributeValue): Encoder[A] = _ => av
+
+  implicit val dynamoEncoderForAttributeValue: Encoder[AttributeValue] =
+    Encoder.instance(identity)
 
   implicit def contravariantForDynamoDbDecoder: Contravariant[Encoder] =
     new Contravariant[Encoder] {
@@ -72,9 +76,6 @@ object Encoder {
 
   implicit def dynamoEncoderForList[A: Encoder]: Encoder[List[A]] =
     dynamoEncoderForSeq[A].contramap(_.toSeq)
-
-  implicit val dynamoEncoderForAttributeValue: Encoder[AttributeValue] =
-    Encoder.instance(identity)
 
   implicit val dynamoEncoderForBoolean: Encoder[Boolean] =
     Encoder.instance(bool => AttributeValue.builder().bool(bool).build())
@@ -118,4 +119,8 @@ object Encoder {
         mapOfA.map(kv => kv._1 -> Encoder[A].write(kv._2)).asJava
       AttributeValue.builder().m(mapOfAttr).build()
     }
+
+  implicit def dynamoEncoderForJavaUtilMap[A: Encoder]
+    : Encoder[ju.Map[String, A]] =
+    dynamoEncoderForMap[A].contramap[ju.Map[String, A]](_.asScala.toMap)
 }
