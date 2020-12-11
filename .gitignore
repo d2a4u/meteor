@@ -147,3 +147,10 @@ temp/
 website/build/
 
 Main.scala
+
+# VSCode/Metals
+.bloop/
+.metals/
+.vscode/
+.bsp/
+project/**/metals.sbt
