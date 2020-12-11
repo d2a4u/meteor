@@ -28,6 +28,10 @@ trait Decoder[A] {
   def read(av: java.util.Map[String, AttributeValue])
     : Either[DecoderFailure, A] =
     read(AttributeValue.builder().m(av).build())
+  def emap[B](f: A => Either[DecoderFailure, B]): Decoder[B] =
+    Decoder.instance { av =>
+      this.read(av).flatMap(f)
+    }
 }
 
 object Decoder {
