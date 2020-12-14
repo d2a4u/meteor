@@ -10,12 +10,12 @@ class DeleteOpsSpec extends ITSpec {
 
   it should "delete an item when using both keys" in forAll {
     test: TestData =>
-      localTableResource[IO](hasPrimaryKeys).use {
-        case (client, tableName) =>
-          val put = client.put[TestData](tableName, test)
-          val delete = client.delete(tableName, test.id, test.range)
+      tableWithKeys[IO].use {
+        case (client, table) =>
+          val put = client.put[TestData](table.name, test)
+          val delete = client.delete(table.name, test.id, test.range)
           val get = client.get[TestData, Id, Range](
-            tableName,
+            table.name,
             test.id,
             test.range,
             consistentRead = false
@@ -27,12 +27,12 @@ class DeleteOpsSpec extends ITSpec {
 
   it should "delete an item when using partition key only (table doesn't have range key)" in forAll {
     test: TestDataSimple =>
-      localTableResource[IO](hasPartitionKeyOnly).use {
-        case (client, tableName) =>
-          val put = client.put[TestDataSimple](tableName, test)
-          val delete = client.delete(tableName, test.id)
+      tableWithPartitionKey[IO].use {
+        case (client, table) =>
+          val put = client.put[TestDataSimple](table.name, test)
+          val delete = client.delete(table.name, test.id)
           val get = client.get[TestDataSimple, Id](
-            tableName,
+            table.name,
             test.id,
             consistentRead = false
           )

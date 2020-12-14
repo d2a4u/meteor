@@ -41,47 +41,46 @@ object Util {
     }
   }.flatten
 
-  def resource[F[_]: Monad, G[_]: Traverse, T, U](
-    gt: G[T],
-    pre: T => F[U],
-    post: U => F[Unit]
-  ): Resource[F, G[U]] =
-    Resource.make {
-      gt.traverse(pre)
-    } {
-      _.traverse(
-        post
-      ).map(_.combineAll)
-    }
-
   def localTableResource[F[_]: Concurrent: Timer](
-    keys: Map[String, (KeyType, ScalarAttributeType)]
+    hashKey: Key,
+    rangeKey: Option[Key]
   ): Resource[F, (Client[F], Table)] = {
     for {
       client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
       randomName <- Resource.liftF(
         Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
       )
-      table = Table(randomName)
+      table = Table(randomName, hashKey, rangeKey)
       _ <- Resource.make(
         client.createTable(
           table,
-          keys,
           BillingMode.PAY_PER_REQUEST
         )
-      )(_ => client.deleteTable(table))
+      )(_ => client.deleteTable(table.name))
     } yield (client, table)
   }
 
-  def hasPrimaryKeys =
-    Map(
-      "id" -> (KeyType.HASH, ScalarAttributeType.S),
-      "range" -> (KeyType.RANGE, ScalarAttributeType.S)
+  def tableWithPartitionKey[F[_]: Concurrent: Timer] =
+    localTableResource[F](
+      Key(
+        "id",
+        ScalarAttributeType.S
+      ),
+      None
     )
 
-  def hasPartitionKeyOnly =
-    Map(
-      "id" -> (KeyType.HASH, ScalarAttributeType.S)
+  def tableWithKeys[F[_]: Concurrent: Timer] =
+    localTableResource[F](
+      Key(
+        "id",
+        ScalarAttributeType.S
+      ),
+      Some(
+        Key(
+          "range",
+          ScalarAttributeType.S
+        )
+      )
     )
 
   def dummyCred =

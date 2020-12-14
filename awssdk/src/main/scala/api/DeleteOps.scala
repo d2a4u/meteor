@@ -10,25 +10,25 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 trait DeleteOps {
   def deleteOp[F[_]: Concurrent, P: Encoder, S: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     sortKey: S
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
       DeleteItemRequest.builder()
-        .tableName(table.name)
+        .tableName(tableName)
         .key(Encoder[(P, S)].write((partitionKey, sortKey)).m())
         .build()
     (() => jClient.deleteItem(req)).liftF[F].void
   }
 
   def deleteOp[F[_]: Concurrent, P: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
       DeleteItemRequest.builder()
-        .tableName(table.name)
+        .tableName(tableName)
         .key(Encoder[P].write(partitionKey).m())
         .build()
     (() => jClient.deleteItem(req)).liftF[F].void

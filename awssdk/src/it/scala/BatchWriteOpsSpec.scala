@@ -11,27 +11,96 @@ class BatchWriteOpsSpec extends ITSpec {
 
   behavior.of("batch write operation")
 
-  it should "batch write items" in {
+  it should "batch put items via Pipe" in {
     val size = 200
     val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
     val input = fs2.Stream.range(0, size).map { i =>
       testData.copy(id = Id(i.toString))
-    }
+    }.covary[IO]
     val keys = input.map { data =>
       (data.id, data.range)
     }
 
-    localTableResource[IO](hasPrimaryKeys).use {
-      case (client, tableName) =>
+    tableWithKeys[IO].use {
+      case (client, table) =>
         val put =
-          client.batchPut[TestData](tableName, 1.second, 32)
-        val del =
-          client.batchDelete[(Id, Range)](
-            tableName,
-            1.second,
+          client.batchPut[TestData](table, 1.second)
+        val get =
+          client.batchGet[(Id, Range), TestData](
+            table.name,
+            consistentRead = false,
+            Expression(
+              "#id, #range, #str, #int, #bool",
+              Map(
+                "#id" -> "id",
+                "#range" -> "range",
+                "#str" -> "str",
+                "#int" -> "int",
+                "#bool" -> "bool"
+              ),
+              Map.empty
+            ),
+            100.millis,
             32
           )
-        put(input).compile.drain >> del(keys).compile.drain
+        put(input).compile.drain >> get(keys).compile.drain
     }.unsafeToFuture().futureValue shouldBe an[Unit]
+  }
+
+  it should "batch put fixed size Seq" in {
+    val size = 200
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val input = (0 until size).map { i =>
+      testData.copy(id = Id(i.toString))
+    }
+    val keys = fs2.Stream.emits(input.map { data =>
+      (data.id, data.range)
+    })
+
+    tableWithKeys[IO].use {
+      case (client, table) =>
+        val get =
+          client.batchGet[(Id, Range), TestData](
+            table.name,
+            consistentRead = false,
+            Expression(
+              "#id, #range, #str, #int, #bool",
+              Map(
+                "#id" -> "id",
+                "#range" -> "range",
+                "#str" -> "str",
+                "#int" -> "int",
+                "#bool" -> "bool"
+              ),
+              Map.empty
+            ),
+            100.millis,
+            32
+          )
+        client.batchPut[TestData](table, input) >> get(keys).compile.drain
+    }.unsafeToFuture().futureValue shouldBe an[Unit]
+  }
+
+  it should "preserve order when batch put items" in {
+    val size = 200
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val input = fs2.Stream.range(0, size).map { i =>
+      testData.copy(int = i)
+    }
+
+    tableWithKeys[IO].use {
+      case (client, table) =>
+        val put =
+          client.batchPut[TestData](table, 1.second)
+        val get =
+          client.get[TestData, Id, Range](
+            table.name,
+            testData.id,
+            testData.range,
+            consistentRead = false
+          )
+        put(input).compile.drain >> get
+    }.unsafeToFuture().futureValue shouldEqual Some(testData.copy(int =
+      size - 1))
   }
 }

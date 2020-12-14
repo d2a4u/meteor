@@ -2,7 +2,6 @@ package meteor
 package api
 
 import java.util.{Map => jMap}
-
 import cats.effect.{Concurrent, Timer}
 import cats.implicits._
 import fs2.{Pipe, _}
@@ -17,6 +16,7 @@ import software.amazon.awssdk.services.dynamodb.model.{
   KeysAndAttributes
 }
 
+import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
@@ -26,43 +26,33 @@ case class BatchGet(
   values: Seq[AttributeValue]
 )
 
-trait BatchGetOps {
+trait BatchGetOps extends DedupOps {
+
+  // 100 is the maximum amount of items for BatchGetItem
+  val MaxBatchSize = 100
+
   def batchGetOp[F[_]: Timer: Concurrent: RaiseThrowable](
-    requests: Map[Table, BatchGet]
-  )(jClient: DynamoDbAsyncClient): F[Map[Table, Seq[AttributeValue]]] = {
+    requests: Map[String, BatchGet]
+  )(jClient: DynamoDbAsyncClient): F[Map[String, Seq[AttributeValue]]] = {
     val responses = requests.map {
-      case (table, get) =>
-        if (get.projection.isEmpty) {
-          Stream.raiseError(InvalidExpression)
-        } else {
-          val grouped = get.values.grouped(100).map { avs =>
-            val keyAndAttrs = {
-              val keys = avs.map(_.m())
-              val bd = KeysAndAttributes.builder().consistentRead(
-                get.consistentRead
-              ).keys(keys: _*).projectionExpression(
-                get.projection.expression
-              )
-              if (get.projection.attributeNames.isEmpty) {
-                bd.build()
-              } else {
-                bd.expressionAttributeNames(
-                  get.projection.attributeNames.asJava
-                ).build()
-              }
-            }
-            val req = Map(table.name -> keyAndAttrs).asJava
+      case (tableName, get) =>
+        Stream.emits(get.values).covary[F].chunkN(MaxBatchSize).map {
+          chunk =>
+            // remove potential duplicated keys
+            val keys =
+              dedupInOrdered(chunk)(identity)(_.m())
+            val keyAndAttrs =
+              mkRequest(keys, get.consistentRead, get.projection)
+            val req = Map(tableName -> keyAndAttrs).asJava
             loop[F](req)(jClient)
-          }
-          Stream.fromIterator[F](grouped).parJoinUnbounded
-        }
+        }.parJoinUnbounded
     }
     Stream.iterable(responses).covary[F].flatten.compile.toList.map { resps =>
-      resps.foldLeft(Map.empty[Table, Seq[AttributeValue]]) { (acc, elem) =>
+      resps.foldLeft(Map.empty[String, Seq[AttributeValue]]) { (acc, elem) =>
         acc ++ {
           elem.responses().asScala.map {
-            case (table, avs) =>
-              Table(table) -> avs.asScala.toList.map(av =>
+            case (tableName, avs) =>
+              tableName -> avs.asScala.toList.map(av =>
                 AttributeValue.builder().m(av).build())
           }
         }
@@ -75,50 +65,83 @@ trait BatchGetOps {
     T: Encoder,
     U: Decoder
   ](
-    table: Table,
+    tableName: String,
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
     parallelism: Int
   )(jClient: DynamoDbAsyncClient): Pipe[F, T, U] =
     in => {
-      if (projection.isEmpty) {
-        Stream.raiseError(InvalidExpression)
-      } else {
-        // 100 is the maximum amount of items for BatchGetItem
-        val responses = in.groupWithin(100, maxBatchWait).map { chunks =>
-          val keys = chunks.map(t => Encoder[T].write(t).m()).toList
-
-          val keyAndAttrs = {
-            val bd = KeysAndAttributes.builder().consistentRead(
-              consistentRead
-            ).keys(keys: _*).projectionExpression(
-              projection.expression
-            )
-            if (projection.attributeNames.isEmpty) {
-              bd.build()
-            } else {
-              bd.expressionAttributeNames(
-                projection.attributeNames.asJava
-              ).build()
-            }
-          }
-          val req = Map(table.name -> keyAndAttrs).asJava
+      val responses = in.groupWithin(MaxBatchSize, maxBatchWait).map {
+        chunk =>
+          // remove potential duplicated keys
+          val keys =
+            dedupInOrdered(chunk)(
+              Encoder[T].write
+            )(Encoder[T].write(_).m())
+          val keyAndAttrs = mkRequest(keys, consistentRead, projection)
+          val req = Map(tableName -> keyAndAttrs).asJava
 
           loop[F](req)(jClient)
-        }
-        responses.parJoin(parallelism).flatMap { resp =>
-          Stream.emits(resp.responses().get(table.name).asScala).covary[
-            F
-          ].flatMap {
-            av =>
-              Stream.fromEither(Decoder[U].read(av))
-          }
-        }
       }
+      responses.parJoin(parallelism).flatMap(parseResponse[F, U](tableName))
     }
 
-  private def loop[F[_]: Concurrent](items: jMap[String, KeysAndAttributes])(
+  def batchGetOp[F[_]: Concurrent, T: Encoder, U: Decoder](
+    tableName: String,
+    consistentRead: Boolean,
+    keys: Seq[T]
+  )(jClient: DynamoDbAsyncClient): F[Seq[U]] =
+    Stream.emits(keys).chunkN(MaxBatchSize).flatMap { chunk =>
+      val keys = dedupInOrdered(chunk)(
+        Encoder[T].write
+      )(Encoder[T].write(_).m())
+      val keyAndAttrs = KeysAndAttributes.builder().consistentRead(
+        consistentRead
+      ).keys(keys: _*).build()
+      val req = Map(tableName -> keyAndAttrs).asJava
+      loop[F](req)(jClient)
+    }.flatMap(parseResponse[F, U](tableName)).compile.to(Seq)
+
+  private[api] def mkRequest(
+    keys: Seq[jMap[String, AttributeValue]],
+    consistentRead: Boolean,
+    projection: Expression
+  ): KeysAndAttributes = {
+    val bd = KeysAndAttributes.builder().consistentRead(
+      consistentRead
+    ).keys(keys: _*)
+    if (projection.nonEmpty) {
+      bd.projectionExpression(
+        projection.expression
+      )
+      if (projection.attributeNames.isEmpty) {
+        bd.build()
+      } else {
+        bd.expressionAttributeNames(
+          projection.attributeNames.asJava
+        ).build()
+      }
+    } else {
+      bd.build()
+    }
+  }
+
+  private[api] def parseResponse[F[_]: RaiseThrowable, U: Decoder](
+    tableName: String
+  )(
+    resp: BatchGetItemResponse
+  ): Stream[F, U] = {
+    Stream.emits(resp.responses().get(tableName).asScala).covary[F].flatMap {
+      av =>
+        Stream.fromEither(Decoder[U].read(av)).covary[F]
+    }
+  }
+
+  private[api] def loop[F[_]: Concurrent](items: jMap[
+    String,
+    KeysAndAttributes
+  ])(
     jClient: DynamoDbAsyncClient
   ): Stream[F, BatchGetItemResponse] = {
     val req = BatchGetItemRequest.builder().requestItems(items).build()
@@ -136,3 +159,5 @@ trait BatchGetOps {
     }
   }
 }
+
+object BatchGetOps extends BatchGetOps

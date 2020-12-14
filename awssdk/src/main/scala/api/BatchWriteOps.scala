@@ -1,6 +1,8 @@
 package meteor
 package api
 
+import java.util
+import java.util.{Map => jMap}
 import cats.effect.{Concurrent, Timer}
 import fs2.{Pipe, Stream}
 import meteor.codec.Encoder
@@ -11,7 +13,7 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
-trait BatchWriteOps {
+trait BatchWriteOps extends DedupOps {
   sealed trait Write[T] {
     def item: T
   }
@@ -40,103 +42,194 @@ trait BatchWriteOps {
     }
 
   //one batch can be max 25 items
-  private def mkRequest[F[_]: Timer: Concurrent, T: Encoder](
-    table: Table,
+  private def mkRequestOutOrdered[F[_]: Timer: Concurrent, T: Encoder](
+    tableName: String,
     maxBatchWait: FiniteDuration
   ): Pipe[F, Write[T], BatchWriteItemRequest] =
     _.groupWithin(25, maxBatchWait).map { chunk =>
-      val writes = Map(table.name -> chunk.map {
-        case Deletion(t) =>
-          val keys = Encoder[T].write(t).m()
-          val del = DeleteRequest.builder().key(keys).build()
-          WriteRequest.builder().deleteRequest(del).build()
+      val reqs =
+        chunk.foldLeft(Map.empty[Write[T], jMap[String, AttributeValue]]) {
+          (acc, write) =>
+            acc + (write -> Encoder[T].write(write.item).m())
+        }.map {
+          case (Deletion(_), key) =>
+            val del = DeleteRequest.builder().key(key).build()
+            WriteRequest.builder().deleteRequest(del).build()
 
-        case Put(t) =>
-          val item = Encoder[T].write(t).m()
-          val put = PutRequest.builder().item(item).build()
-          WriteRequest.builder().putRequest(put).build()
-      }.toList.asJava).asJava
-      BatchWriteItemRequest.builder().requestItems(
-        writes
-      ).build()
+          case (Put(_), item) =>
+            val put = PutRequest.builder().item(item).build()
+            WriteRequest.builder().putRequest(put).build()
+        }.toList.asJava
+
+      val writes = Map(tableName -> reqs).asJava
+      BatchWriteItemRequest.builder().requestItems(writes).build()
     }
 
-  private def mkRequest[F[_]: Timer: Concurrent, D: Encoder, P: Encoder](
+  private def mkRequestInOrdered[
+    F[_]: Timer: Concurrent,
+    D: Encoder,
+    P: Encoder
+  ](
     table: Table,
-    maxBatchWait: FiniteDuration,
-    rightIsWrite: Boolean
+    maxBatchWait: FiniteDuration
   ): Pipe[F, Either[D, P], BatchWriteItemRequest] =
     _.groupWithin(25, maxBatchWait).map { chunk =>
       def mkWriteRequest(item: Either[D, P]): WriteRequest = {
         val av = Encoder[Either[D, P]].write(item).m()
         item match {
-          case Left(_) if rightIsWrite =>
+          case Left(_) =>
             val del = DeleteRequest.builder().key(av).build()
             WriteRequest.builder().deleteRequest(del).build()
 
-          case Left(_) if !rightIsWrite =>
+          case Right(_) =>
             val put = PutRequest.builder().item(av).build()
             WriteRequest.builder().putRequest(put).build()
-
-          case Right(_) if rightIsWrite =>
-            val put = PutRequest.builder().item(av).build()
-            WriteRequest.builder().putRequest(put).build()
-
-          case Right(_) if !rightIsWrite =>
-            val del = DeleteRequest.builder().key(av).build()
-            WriteRequest.builder().deleteRequest(del).build()
-
         }
       }
 
       val writes =
-        Map(table.name -> chunk.map(mkWriteRequest).toList.asJava).asJava
+        Map(
+          table.name -> dedupInOrdered(chunk)(getKeys(table))(
+            mkWriteRequest
+          ).asJava
+        ).asJava
       BatchWriteItemRequest.builder().requestItems(
         writes
       ).build()
     }
 
-  private def sendPipeUnordered[F[_]: Concurrent: Timer, T: Encoder](
+  private def mkRequestInOrdered[
+    F[_]: Timer: Concurrent,
+    P: Encoder
+  ](
     table: Table,
+    maxBatchWait: FiniteDuration
+  ): Pipe[F, P, BatchWriteItemRequest] =
+    _.groupWithin(25, maxBatchWait).map { chunk =>
+
+      def mkWriteRequest(item: P): WriteRequest = {
+        val av = Encoder[P].write(item).m()
+        val put = PutRequest.builder().item(av).build()
+        WriteRequest.builder().putRequest(put).build()
+      }
+
+      val writes =
+        Map(
+          table.name -> dedupInOrdered(chunk)(getKeys(table))(
+            mkWriteRequest
+          ).asJava
+        ).asJava
+      BatchWriteItemRequest.builder().requestItems(
+        writes
+      ).build()
+    }
+
+  private def sendPipeOutOrdered[F[_]: Concurrent: Timer, T: Encoder](
+    tableName: String,
     maxBatchWait: FiniteDuration,
     parallelism: Int
   )(jClient: DynamoDbAsyncClient): Pipe[F, Write[T], BatchWriteItemResponse] =
     in =>
-      mkRequest[F, T](table, maxBatchWait).apply(in).map { req =>
+      mkRequestOutOrdered[F, T](tableName, maxBatchWait).apply(in).map { req =>
         sendHandleLeftOver(req)(jClient)
       }.parJoin(parallelism)
 
-  private def sendPipeInordered[
+  private def sendPipeInOrdered[
     F[_]: Concurrent: Timer,
     D: Encoder,
     P: Encoder
   ](
     table: Table,
-    maxBatchWait: FiniteDuration,
-    rightIsWrite: Boolean = true
+    maxBatchWait: FiniteDuration
   )(jClient: DynamoDbAsyncClient)
     : Pipe[F, Either[D, P], BatchWriteItemResponse] =
     in =>
-      mkRequest[F, D, P](table, maxBatchWait, rightIsWrite).apply(in).flatMap {
+      mkRequestInOrdered[F, D, P](table, maxBatchWait).apply(
+        in
+      ).flatMap {
         req =>
           sendHandleLeftOver(req)(jClient)
       }
 
-  def batchWriteUnorderedOp[F[_]: Timer: Concurrent, T: Encoder](
+  private def sendPipeInOrdered[
+    F[_]: Concurrent: Timer,
+    P: Encoder
+  ](
     table: Table,
+    maxBatchWait: FiniteDuration
+  )(jClient: DynamoDbAsyncClient): Pipe[F, P, BatchWriteItemResponse] =
+    in =>
+      mkRequestInOrdered[F, P](table, maxBatchWait).apply(
+        in
+      ).flatMap {
+        req =>
+          sendHandleLeftOver(req)(jClient)
+      }
+
+  private def getKeys[T: Encoder](table: Table)(t: T): AttributeValue = {
+    val av = Encoder[T].write(t)
+    if (av.hasM) {
+      val m = av.m()
+      val partitionKey = new util.HashMap[String, AttributeValue]()
+      partitionKey.put(
+        table.hashKey.name,
+        m.get(table.hashKey.name)
+      )
+      val keys =
+        table.rangeKey.fold[jMap[String, AttributeValue]](partitionKey) { key =>
+          val sortKey = new util.HashMap[String, AttributeValue]()
+          sortKey.put(key.name, m.get(key.name))
+          sortKey ++ partitionKey
+        }
+      AttributeValue.builder().m(keys).build()
+    } else {
+      AttributeValue.builder().nul(true).build()
+    }
+  }
+
+  def batchDeleteUnorderedOp[F[_]: Timer: Concurrent, D: Encoder](
+    tableName: String,
     maxBatchWait: FiniteDuration,
     parallelism: Int
-  )(jClient: DynamoDbAsyncClient): Pipe[F, Write[T], Unit] =
-    sendPipeUnordered[F, T](table, maxBatchWait, parallelism)(jClient).andThen(
+  )(jClient: DynamoDbAsyncClient): Pipe[F, D, Unit] =
+    in => {
+      val pipe = sendPipeOutOrdered[F, D](tableName, maxBatchWait, parallelism)(
+        jClient
+      ).andThen(
+        _.drain
+      )
+      in.map(Deletion(_)).through(pipe)
+    }
+
+  def batchPutInorderedOp[F[_]: Timer: Concurrent, P: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration
+  )(jClient: DynamoDbAsyncClient): Pipe[F, P, Unit] =
+    sendPipeInOrdered[F, P](table, maxBatchWait)(jClient).andThen(
       _.drain
     )
 
+  def batchPutUnorderedOp[F[_]: Timer: Concurrent, P: Encoder](
+    tableName: String,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  )(jClient: DynamoDbAsyncClient): Pipe[F, P, Unit] =
+    in => {
+      val pipe = sendPipeOutOrdered[F, P](tableName, maxBatchWait, parallelism)(
+        jClient
+      ).andThen(
+        _.drain
+      )
+      in.map(Put(_)).through(pipe)
+    }
+
   def batchWriteInorderedOp[F[_]: Timer: Concurrent, D: Encoder, P: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration,
-    rightIsWrite: Boolean = true
+    maxBatchWait: FiniteDuration
   )(jClient: DynamoDbAsyncClient): Pipe[F, Either[D, P], Unit] =
-    sendPipeInordered[F, D, P](table, maxBatchWait, rightIsWrite)(
+    sendPipeInOrdered[F, D, P](table, maxBatchWait)(
       jClient
     ).andThen(_.drain)
 }
+
+object BatchWriteOps extends BatchWriteOps

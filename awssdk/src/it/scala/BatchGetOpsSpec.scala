@@ -54,21 +54,21 @@ class BatchGetOpsSpec extends ITSpec {
       valuesToGet2
     )
     val src = for {
-      src1 <- localTableResource[IO](hasPrimaryKeys)
-      src2 <- localTableResource[IO](hasPartitionKeyOnly)
+      src1 <- tableWithKeys[IO]
+      src2 <- tableWithPartitionKey[IO]
     } yield (src1, src2)
 
     val result = src.use {
       case ((_, table1), (client, table2)) =>
         val put1 =
-          client.batchPut[TestData](table1, 1.second, 32)
+          client.batchPut[TestData](table1, 1.second)
         val put2 =
-          client.batchPut[TestData](table2, 1.second, 32)
+          client.batchPut[TestData](table2, 1.second)
         val get =
           client.batchGet(
             Map(
-              table1 -> batchGet1,
-              table2 -> batchGet2
+              table1.name -> batchGet1,
+              table2.name -> batchGet2
             )
           )
         put1(input1).compile.drain >> put2(
@@ -91,13 +91,13 @@ class BatchGetOpsSpec extends ITSpec {
       (data.id, data.range)
     }
 
-    localTableResource[IO](hasPrimaryKeys).use {
-      case (client, tableName) =>
+    tableWithKeys[IO].use {
+      case (client, table) =>
         val put =
-          client.batchPut[TestData](tableName, 1.second, 32)
+          client.batchPut[TestData](table, 1.second)
         val get =
           client.batchGet[(Id, Range), TestData](
-            tableName,
+            table.name,
             false,
             Expression(
               "#id, #range, #str, #int, #bool",
@@ -115,5 +115,38 @@ class BatchGetOpsSpec extends ITSpec {
           )
         put(input).compile.drain >> get(keys).compile.toList
     }.unsafeToFuture().futureValue should contain theSameElementsAs input.compile.toList
+  }
+
+  it should "deduplicate batch get requests" in {
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val duplicatedKeys =
+      fs2.Stream.constant((testData.id, testData.range)).take(5)
+
+    tableWithKeys[IO].use {
+      case (client, table) =>
+        val put =
+          client.put[TestData](table.name, testData)
+        val get =
+          client.batchGet[(Id, Range), TestData](
+            table.name,
+            false,
+            Expression(
+              "#id, #range, #str, #int, #bool",
+              Map(
+                "#id" -> "id",
+                "#range" -> "range",
+                "#str" -> "str",
+                "#int" -> "int",
+                "#bool" -> "bool"
+              ),
+              Map.empty
+            ),
+            100.millis,
+            32
+          )
+        put >> get(duplicatedKeys).compile.toList
+    }.unsafeToFuture().futureValue should contain theSameElementsAs List(
+      testData
+    )
   }
 }

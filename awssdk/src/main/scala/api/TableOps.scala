@@ -11,25 +11,25 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 trait TableOps {
-  def describeOp[F[_]: Concurrent](table: Table)(jClient: DynamoDbAsyncClient)
-    : F[TableDescription] = {
-    val req = DescribeTableRequest.builder().tableName(table.name).build()
+  def describeOp[F[_]: Concurrent](tableName: String)(
+    jClient: DynamoDbAsyncClient
+  ): F[TableDescription] = {
+    val req = DescribeTableRequest.builder().tableName(tableName).build()
     (() => jClient.describeTable(req)).liftF[F].map { resp =>
       resp.table()
     }
   }
 
   def deleteTableOp[F[_]: Concurrent](
-    table: Table
+    tableName: String
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val deleteTableRequest =
-      DeleteTableRequest.builder().tableName(table.name).build()
+      DeleteTableRequest.builder().tableName(tableName).build()
     (() => jClient.deleteTable(deleteTableRequest)).liftF[F].void
   }
 
   def createTableOp[F[_]: Concurrent: Timer](
     table: Table,
-    keys: Map[String, (KeyType, ScalarAttributeType)],
     billingMode: BillingMode,
     waitTillReady: Boolean
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
@@ -39,17 +39,20 @@ trait TableOps {
         .tableName(table.name)
         .billingMode(billingMode)
 
-    val keySchema = keys.map {
-      case (k, v) => dynamoKey(k, v._1)
-    }
-
-    val keyAttr = keys.map {
-      case (k, v) => dynamoAttribute(k, v._2)
-    }
-
+    val hashKeySchema = List(dynamoKey(table.hashKey.name, KeyType.HASH))
+    val hashKeyAttr =
+      List(dynamoAttribute(table.hashKey.name, table.hashKey.attributeType))
+    val rangeKeySchema =
+      table.rangeKey.fold(List.empty[KeySchemaElement])(key =>
+        List(dynamoKey(key.name, KeyType.RANGE)))
+    val rangeKeyAttr =
+      table.rangeKey.fold(List.empty[AttributeDefinition])(key =>
+        List(dynamoAttribute(key.name, key.attributeType)))
+    val keySchema = hashKeySchema ++ rangeKeySchema
+    val keyAttr = hashKeyAttr ++ rangeKeyAttr
     createTableRequest
-      .keySchema(keySchema.toSeq: _*)
-      .attributeDefinitions(keyAttr.toSeq: _*)
+      .keySchema(keySchema: _*)
+      .attributeDefinitions(keyAttr: _*)
     createTable[F](createTableRequest.build(), waitTillReady)(jClient)
   }
 
@@ -60,27 +63,27 @@ trait TableOps {
     val created = (() => jClient.createTable(createTableRequest)).liftF[F]
       .map(_.tableDescription().tableName())
     if (waitTillReady) {
-      created.flatTap(name => waitTillActive(Table(name))(jClient)).void
+      created.flatTap(name => waitTillActive(name)(jClient)).void
     } else {
       ().pure[F]
     }
   }
 
   private def waitTillActive[F[_]: Concurrent: Timer](
-    table: Table,
+    tableName: String,
     pollMs: FiniteDuration = 100.milliseconds
   )(jClient: DynamoDbAsyncClient): F[Unit] =
-    describeOp(table)(jClient).flatMap { resp =>
+    describeOp(tableName)(jClient).flatMap { resp =>
       resp.tableStatus() match {
         case TableStatus.ACTIVE => ().pure[F]
         case TableStatus.CREATING | TableStatus.UPDATING =>
           Timer[F].sleep(pollMs) >> waitTillActive(
-            table,
+            tableName,
             pollMs
           )(jClient)
         case status =>
           UnexpectedTableStatus(
-            table,
+            tableName,
             status,
             Set(TableStatus.ACTIVE)
           ).raiseError[F, Unit]

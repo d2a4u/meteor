@@ -13,19 +13,19 @@ import scala.jdk.CollectionConverters._
 
 trait PutOps {
   def putOp[F[_]: Concurrent, T: Encoder](
-    table: Table,
+    tableName: String,
     t: T
   )(jClient: DynamoDbAsyncClient): F[Unit] =
-    putOp[F, T](table, t, Expression.empty)(jClient)
+    putOp[F, T](tableName, t, Expression.empty)(jClient)
 
   def putOp[F[_]: Concurrent, T: Encoder](
-    table: Table,
+    tableName: String,
     t: T,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val builder0 =
       PutItemRequest.builder()
-        .tableName(table.name)
+        .tableName(tableName)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.NONE)
     val builder = if (condition.isEmpty) {
@@ -53,19 +53,19 @@ trait PutOps {
   }
 
   def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
-    table: Table,
+    tableName: String,
     t: T
   )(jClient: DynamoDbAsyncClient): F[Option[U]] =
-    putOp[F, T, U](table, t, Expression.empty)(jClient)
+    putOp[F, T, U](tableName, t, Expression.empty)(jClient)
 
   def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
-    table: Table,
+    tableName: String,
     t: T,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val builder0 =
       PutItemRequest.builder()
-        .tableName(table.name)
+        .tableName(tableName)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.ALL_OLD)
     val builder = if (condition.isEmpty) {

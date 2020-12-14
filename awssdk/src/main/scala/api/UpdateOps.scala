@@ -13,41 +13,41 @@ import scala.jdk.CollectionConverters._
 
 trait UpdateOps {
   def updateOp[F[_]: Concurrent, P: Encoder, U: Decoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     update: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKey(mkBuilder(table, update, returnValue))(
+      withKey(mkBuilder(tableName, update, returnValue))(
         partitionKey
       ).build()
     sendUpdateItem[F, U](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, U: Decoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     update: Expression,
     condition: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKey(mkBuilder(table, update, condition, returnValue))(
+      withKey(mkBuilder(tableName, update, condition, returnValue))(
         partitionKey
       ).build()
     sendUpdateItem[F, U](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     sortKey: S,
     update: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKeys(mkBuilder(table, update, returnValue))(
+      withKeys(mkBuilder(tableName, update, returnValue))(
         partitionKey,
         sortKey
       ).build()
@@ -55,7 +55,7 @@ trait UpdateOps {
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -63,7 +63,7 @@ trait UpdateOps {
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKeys(mkBuilder(table, update, condition, returnValue))(
+      withKeys(mkBuilder(tableName, update, condition, returnValue))(
         partitionKey,
         sortKey
       ).build()
@@ -71,38 +71,38 @@ trait UpdateOps {
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     update: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKey(mkBuilder(table, update, ReturnValue.NONE))(
+      withKey(mkBuilder(tableName, update, ReturnValue.NONE))(
         partitionKey
       ).build()
     sendUpdateItem[F](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     update: Expression,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKey(mkBuilder(table, update, condition, ReturnValue.NONE))(
+      withKey(mkBuilder(tableName, update, condition, ReturnValue.NONE))(
         partitionKey
       ).build()
     sendUpdateItem[F](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     sortKey: S,
     update: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKeys(mkBuilder(table, update, ReturnValue.NONE))(
+      withKeys(mkBuilder(tableName, update, ReturnValue.NONE))(
         partitionKey,
         sortKey
       ).build()
@@ -110,14 +110,14 @@ trait UpdateOps {
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     sortKey: S,
     update: Expression,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKeys(mkBuilder(table, update, condition, ReturnValue.NONE))(
+      withKeys(mkBuilder(tableName, update, condition, ReturnValue.NONE))(
         partitionKey,
         sortKey
       ).build()
@@ -161,13 +161,13 @@ trait UpdateOps {
     builder.key(Encoder[P].write(partitionKey).m())
 
   private def mkBuilder(
-    table: Table,
+    tableName: String,
     update: Expression,
     condition: Expression,
     returnValue: ReturnValue
   ): UpdateItemRequest.Builder =
     UpdateItemRequest.builder()
-      .tableName(table.name)
+      .tableName(tableName)
       .updateExpression(update.expression)
       .conditionExpression(condition.expression)
       .expressionAttributeNames(
@@ -179,12 +179,12 @@ trait UpdateOps {
       .returnValues(returnValue)
 
   private def mkBuilder(
-    table: Table,
+    tableName: String,
     update: Expression,
     returnValue: ReturnValue
   ): UpdateItemRequest.Builder =
     UpdateItemRequest.builder()
-      .tableName(table.name)
+      .tableName(tableName)
       .updateExpression(update.expression)
       .expressionAttributeNames(update.attributeNames.asJava)
       .expressionAttributeValues(update.attributeValues.asJava)
