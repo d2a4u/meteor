@@ -11,7 +11,6 @@ import software.amazon.awssdk.services.dynamodb.model._
 import meteor.implicits._
 
 import scala.jdk.CollectionConverters._
-import java.util.Map.Entry
 
 trait Encoder[A] {
   def write(a: A): AttributeValue

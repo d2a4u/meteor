@@ -3,7 +3,7 @@ package meteor
 import cats.implicits._
 import cats.effect.IO
 import cats.effect.concurrent.Ref
-import meteor.Util.{hasPrimaryKeys, localTableResource}
+import meteor.Util._
 import org.scalacheck.Arbitrary
 
 import scala.concurrent.duration._
@@ -22,13 +22,13 @@ class ScanOpsSpec extends ITSpec {
     }.covary[IO]
 
     def updated(ref: Ref[IO, Int]) =
-      localTableResource[IO](hasPrimaryKeys).use {
-        case (client, tableName) =>
-          client.batchPut[TestData](tableName, 100.millis, 32).apply(
+      tableWithKeys[IO].use {
+        case (client, table) =>
+          client.batchPut[TestData](table, 100.millis).apply(
             input
           ).compile.drain >>
             client.scan[TestData](
-              tableName,
+              table.name,
               consistentRead = false,
               1
             ).evalMap { _ =>

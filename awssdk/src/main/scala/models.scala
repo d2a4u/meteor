@@ -1,11 +1,24 @@
 package meteor
 
 import meteor.codec.Encoder
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue
+import software.amazon.awssdk.services.dynamodb.model.{
+  AttributeValue,
+  KeyType,
+  ScalarAttributeType
+}
 
 import scala.jdk.CollectionConverters._
 
-case class Table(name: String) extends AnyVal
+case class Key(
+  name: String,
+  attributeType: ScalarAttributeType
+)
+
+case class Table(
+  name: String,
+  hashKey: Key,
+  rangeKey: Option[Key]
+)
 
 case class Index(name: String) extends AnyVal
 

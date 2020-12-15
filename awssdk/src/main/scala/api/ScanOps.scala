@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters._
 trait ScanOps {
 
   def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
-    table: Table,
+    tableName: String,
     filter: Expression,
     consistentRead: Boolean,
     parallelism: Int
@@ -26,7 +26,7 @@ trait ScanOps {
     ) = {
       def builder(filter: Expression) = {
         ScanRequest.builder()
-          .tableName(table.name)
+          .tableName(tableName)
           .consistentRead(consistentRead)
           .filterExpression(filter.expression)
           .expressionAttributeNames(filter.attributeNames.asJava)
@@ -89,7 +89,7 @@ trait ScanOps {
   }
 
   def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
-    table: Table,
+    tableName: String,
     consistentRead: Boolean,
     parallelism: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
@@ -99,7 +99,7 @@ trait ScanOps {
     ) = {
       val builder =
         ScanRequest.builder()
-          .tableName(table.name)
+          .tableName(tableName)
           .consistentRead(consistentRead)
           .totalSegments(parallelism)
 

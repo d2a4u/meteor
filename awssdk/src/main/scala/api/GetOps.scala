@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 
 trait GetOps {
   def getOp[F[_]: Concurrent, U: Decoder, P: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     consistentRead: Boolean
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
@@ -22,7 +22,7 @@ trait GetOps {
     val req =
       GetItemRequest.builder()
         .consistentRead(consistentRead)
-        .tableName(table.name)
+        .tableName(tableName)
         .key(query)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
@@ -37,7 +37,7 @@ trait GetOps {
   }
 
   def getOp[F[_]: Concurrent, U: Decoder, P: Encoder, S: Encoder](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
@@ -46,7 +46,7 @@ trait GetOps {
     val req =
       GetItemRequest.builder()
         .consistentRead(consistentRead)
-        .tableName(table.name)
+        .tableName(tableName)
         .key(query)
         .build()
     (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
@@ -65,14 +65,14 @@ trait GetOps {
     T: Decoder,
     P: Encoder
   ](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
     val query = Query[P, Nothing](partitionKey)
     mkBuilder[F, P, Nothing](
-      table,
+      tableName,
       query,
       consistentRead,
       None,
@@ -85,7 +85,7 @@ trait GetOps {
     T: Decoder,
     P: Encoder
   ](
-    table: Table,
+    tableName: String,
     partitionKey: P,
     consistentRead: Boolean,
     index: Index,
@@ -93,7 +93,7 @@ trait GetOps {
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
     val query = Query[P, Nothing](partitionKey)
     mkBuilder[F, P, Nothing](
-      table,
+      tableName,
       query,
       consistentRead,
       Some(index),
@@ -107,13 +107,13 @@ trait GetOps {
     P: Encoder,
     S: Encoder
   ](
-    table: Table,
+    tableName: String,
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] =
     mkBuilder[F, P, S](
-      table,
+      tableName,
       query,
       consistentRead,
       None,
@@ -126,14 +126,14 @@ trait GetOps {
     P: Encoder,
     S: Encoder
   ](
-    table: Table,
+    tableName: String,
     query: Query[P, S],
     consistentRead: Boolean,
     index: Index,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] =
     mkBuilder[F, P, S](
-      table,
+      tableName,
       query,
       consistentRead,
       Some(index),
@@ -170,7 +170,7 @@ trait GetOps {
   }
 
   private def mkBuilder[F[_]: Concurrent, P: Encoder, S: Encoder](
-    table: Table,
+    tableName: String,
     query: Query[P, S],
     consistentRead: Boolean,
     index: Option[Index],
@@ -185,7 +185,7 @@ trait GetOps {
       cond =>
         val builder0 =
           QueryRequest.builder()
-            .tableName(table.name)
+            .tableName(tableName)
             .consistentRead(consistentRead)
             .keyConditionExpression(cond.expression)
             .limit(limit)

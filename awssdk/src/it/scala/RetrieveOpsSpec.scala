@@ -2,9 +2,9 @@ package meteor
 
 import java.time.Instant
 
-import cats.effect.IO
 import cats.implicits._
-import meteor.Util.{hasPrimaryKeys, localTableResource, resource}
+import cats.effect.IO
+import meteor.Util._
 import meteor.codec.Encoder
 
 class RetrieveOpsSpec extends ITSpec {
@@ -12,52 +12,40 @@ class RetrieveOpsSpec extends ITSpec {
   behavior.of("retrieve operation")
 
   it should "return multiple items of the same partition key" in forAll {
-    (test1: TestData, test2: TestData) =>
+    test: TestData =>
       val partitionKey = Id("def")
-      val expect =
-        List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val setup = for {
-        tuple <- localTableResource[IO](hasPrimaryKeys)
-        client = tuple._1
-        tableName = tuple._2
-        _ <- resource[IO, List, TestData, TestData](
-          expect,
-          t => client.put[TestData](tableName, t).as(t),
-          t => client.delete(tableName, t.id, t.range)
+      val input =
+        List(
+          test.copy(id = partitionKey, range = Range("a")),
+          test.copy(id = partitionKey, range = Range("b"))
         )
-      } yield tuple
-      setup.use[IO, List[TestData]] {
-        case (client, tableName) =>
+      tableWithKeys[IO].use[IO, List[TestData]] {
+        case (client, table) =>
           val retrieval = client.retrieve[TestData, Id](
-            tableName,
+            table.name,
             partitionKey,
             consistentRead = false,
             Int.MaxValue
           ).compile.toList
-          Util.retryOf(retrieval)(_.size == expect.length)
-      }.unsafeToFuture().futureValue should contain theSameElementsAs expect
+          input.traverse(
+            i => client.put[TestData](table.name, i)
+          ).void >> Util.retryOf(retrieval)(
+            _.size == input.length
+          )
+      }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
 
   it should "filter results by given filter expression" in forAll {
     test: List[TestData] =>
+      val unique = test.distinct
       val partitionKey = Id(Instant.now.toString)
-      val testUpdated = test.map(t => t.copy(id = partitionKey))
-      val expect = testUpdated.filter(t => t.bool && t.int > 0)
+      val testUpdated = unique.map(t => t.copy(id = partitionKey))
+      val input = testUpdated.filter(t => t.bool && t.int > 0)
 
-      val setup = for {
-        tuple <- localTableResource[IO](hasPrimaryKeys)
-        client = tuple._1
-        tableName = tuple._2
-        _ <- resource[IO, List, TestData, TestData](
-          testUpdated,
-          t => client.put[TestData](tableName, t).as(t),
-          t => client.delete(tableName, t.id, t.range)
-        )
-      } yield tuple
-      setup.use[IO, List[TestData]] {
-        case (client, tableName) =>
+      tableWithKeys[IO].use[IO, List[TestData]] {
+        case (client, table) =>
           val retrieval = client.retrieve[TestData, Id, Range](
-            tableName,
+            table.name,
             Query[Id, Range](
               partitionKey,
               Expression(
@@ -72,34 +60,33 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             Int.MaxValue
           ).compile.toList
-          Util.retryOf(retrieval)(_.size == expect.length)
-      }.unsafeToFuture().futureValue should contain theSameElementsAs expect
+          testUpdated.traverse(
+            i => client.put[TestData](table.name, i)
+          ) >> Util.retryOf(retrieval)(_.size == input.length)
+      }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
 
   it should "limit internal requests" in forAll {
     (test1: TestData, test2: TestData) =>
       val partitionKey = Id("def")
-      val expect =
+      val input =
         List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val setup = for {
-        tuple <- localTableResource[IO](hasPrimaryKeys)
-        client = tuple._1
-        tableName = tuple._2
-        _ <- resource[IO, List, TestData, TestData](
-          expect,
-          t => client.put[TestData](tableName, t).as(t),
-          t => client.delete(tableName, t.id, t.range)
-        )
-      } yield tuple
-      val result = setup.use[IO, List[fs2.Chunk[TestData]]] {
-        case (client, tableName) =>
+      val result = tableWithKeys[IO].use[
+        IO,
+        List[fs2.Chunk[TestData]]
+      ] {
+        case (client, table) =>
           val retrieval = client.retrieve[TestData, Id, Range](
-            tableName,
+            table.name,
             Query[Id, Range](partitionKey),
             consistentRead = false,
             1
           ).chunks.compile.toList
-          Util.retryOf(retrieval)(_.size == expect.length)
+          input.traverse(
+            i => client.put[TestData](table.name, i)
+          ) >> Util.retryOf(retrieval)(
+            _.size == input.length
+          )
       }.unsafeToFuture().futureValue
       result.forall(_.size == 1) shouldBe true
   }
