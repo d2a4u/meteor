@@ -2,7 +2,6 @@ package meteor
 
 import java.net.URI
 import java.util.concurrent.Executor
-
 import cats.effect.{Concurrent, Resource, Sync, Timer}
 import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.api.BatchGet
@@ -26,6 +25,7 @@ import software.amazon.awssdk.services.dynamodb.model.{
   TableDescription
 }
 
+import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
@@ -269,7 +269,18 @@ trait Client[F[_]] {
     */
   def batchGet(
     requests: Map[String, BatchGet]
-  ): F[Map[String, Seq[AttributeValue]]]
+  ): F[Map[String, Iterable[AttributeValue]]]
+
+  /**
+    * Batch get items from a table by key(s) T.
+    * A Codec of U is required to deserialize return value based on projection expression.
+    */
+  def batchGet[T: Encoder, U: Decoder](
+    tableName: String,
+    consistentRead: Boolean,
+    projection: Expression,
+    keys: Iterable[T]
+  ): F[Iterable[U]]
 
   /**
     * Batch get items from a table by key(s) T.
@@ -290,8 +301,8 @@ trait Client[F[_]] {
   def batchGet[T: Encoder, U: Decoder](
     tableName: String,
     consistentRead: Boolean,
-    keys: Seq[T]
-  ): F[Seq[U]]
+    keys: Iterable[T]
+  ): F[Iterable[U]]
 
   /**
     * Batch put items into a table by a Stream of T.
@@ -318,7 +329,7 @@ trait Client[F[_]] {
     */
   def batchPut[T: Encoder](
     table: Table,
-    items: Seq[T]
+    items: Iterable[T]
   ): F[Unit]
 
   /**
