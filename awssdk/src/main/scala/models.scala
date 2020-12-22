@@ -46,6 +46,9 @@ case class Expression(
 object Expression {
   val empty: Expression =
     Expression("", Map.empty[String, String], Map.empty[String, AttributeValue])
+
+  def apply(expression: String): Expression =
+    Expression(expression, Map.empty, Map.empty)
 }
 
 case class Query[P: Encoder, S: Encoder](

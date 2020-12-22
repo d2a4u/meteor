@@ -17,13 +17,14 @@ import software.amazon.awssdk.services.dynamodb.model.{
 }
 
 import scala.annotation.tailrec
+import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 case class BatchGet(
   consistentRead: Boolean,
   projection: Expression,
-  values: Seq[AttributeValue]
+  values: Iterable[AttributeValue]
 )
 
 trait BatchGetOps extends DedupOps {
@@ -33,10 +34,10 @@ trait BatchGetOps extends DedupOps {
 
   def batchGetOp[F[_]: Timer: Concurrent: RaiseThrowable](
     requests: Map[String, BatchGet]
-  )(jClient: DynamoDbAsyncClient): F[Map[String, Seq[AttributeValue]]] = {
+  )(jClient: DynamoDbAsyncClient): F[Map[String, Iterable[AttributeValue]]] = {
     val responses = requests.map {
       case (tableName, get) =>
-        Stream.emits(get.values).covary[F].chunkN(MaxBatchSize).map {
+        Stream.iterable(get.values).covary[F].chunkN(MaxBatchSize).map {
           chunk =>
             // remove potential duplicated keys
             val keys =
@@ -90,18 +91,23 @@ trait BatchGetOps extends DedupOps {
   def batchGetOp[F[_]: Concurrent, T: Encoder, U: Decoder](
     tableName: String,
     consistentRead: Boolean,
-    keys: Seq[T]
-  )(jClient: DynamoDbAsyncClient): F[Seq[U]] =
-    Stream.emits(keys).chunkN(MaxBatchSize).flatMap { chunk =>
+    projection: Expression,
+    keys: Iterable[T]
+  )(jClient: DynamoDbAsyncClient): F[Iterable[U]] =
+    Stream.iterable(keys).chunkN(MaxBatchSize).flatMap { chunk =>
       val keys = dedupInOrdered(chunk)(
         Encoder[T].write
       )(Encoder[T].write(_).m())
-      val keyAndAttrs = KeysAndAttributes.builder().consistentRead(
-        consistentRead
-      ).keys(keys: _*).build()
+      val keyAndAttrs = if (projection.isEmpty) {
+        KeysAndAttributes.builder().consistentRead(
+          consistentRead
+        ).keys(keys: _*).build()
+      } else {
+        mkRequest(keys, consistentRead, projection)
+      }
       val req = Map(tableName -> keyAndAttrs).asJava
       loop[F](req)(jClient)
-    }.flatMap(parseResponse[F, U](tableName)).compile.to(Seq)
+    }.flatMap(parseResponse[F, U](tableName)).compile.to(Iterable)
 
   private[api] def mkRequest(
     keys: Seq[jMap[String, AttributeValue]],

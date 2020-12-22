@@ -7,6 +7,7 @@ import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
+import scala.collection.immutable.Iterable
 import scala.concurrent.duration._
 
 class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
@@ -215,8 +216,21 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
 
   def batchGet(
     requests: Map[String, BatchGet]
-  ): F[Map[String, Seq[AttributeValue]]] =
+  ): F[Map[String, Iterable[AttributeValue]]] =
     batchGetOp[F](requests)(jClient)
+
+  def batchGet[T: Encoder, U: Decoder](
+    tableName: String,
+    consistentRead: Boolean,
+    projection: Expression,
+    keys: Iterable[T]
+  ): F[Iterable[U]] =
+    batchGetOp[F, T, U](
+      tableName,
+      consistentRead,
+      projection,
+      keys
+    )(jClient)
 
   def batchGet[T: Encoder, U: Decoder](
     tableName: String,
@@ -231,16 +245,16 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       projection,
       maxBatchWait,
       parallelism
-    )(
-      jClient
-    )
+    )(jClient)
 
   def batchGet[T: Encoder, U: Decoder](
     tableName: String,
     consistentRead: Boolean,
-    keys: Seq[T]
-  ): F[Seq[U]] =
-    batchGetOp[F, T, U](tableName, consistentRead, keys)(jClient)
+    keys: Iterable[T]
+  ): F[Iterable[U]] =
+    batchGetOp[F, T, U](tableName, consistentRead, Expression.empty, keys)(
+      jClient
+    )
 
   def batchWrite[D: Encoder, P: Encoder](
     table: Table,
@@ -256,9 +270,9 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
 
   def batchPut[T: Encoder](
     table: Table,
-    items: Seq[T]
+    items: Iterable[T]
   ): F[Unit] = {
-    val itemsStream = Stream.emits(items).covary[F]
+    val itemsStream = Stream.iterable(items).covary[F]
     val pipe =
       batchPutInorderedOp[F, T](table, Int.MaxValue.seconds)(jClient)
     pipe.apply(itemsStream).compile.drain
