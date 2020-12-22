@@ -49,7 +49,7 @@ trait BatchGetOps extends DedupOps {
         }.parJoinUnbounded
     }
     Stream.iterable(responses).covary[F].flatten.compile.toList.map { resps =>
-      resps.foldLeft(Map.empty[String, Seq[AttributeValue]]) { (acc, elem) =>
+      resps.foldLeft(Map.empty[String, List[AttributeValue]]) { (acc, elem) =>
         acc ++ {
           elem.responses().asScala.map {
             case (tableName, avs) =>
