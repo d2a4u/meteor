@@ -37,7 +37,7 @@ class RetrieveOpsSpec extends ITSpec {
 
   it should "filter results by given filter expression" in forAll {
     test: List[TestData] =>
-      val unique = test.distinct
+      val unique = test.map(t => (t.id, t.range) -> t).toMap.values.toList
       val partitionKey = Id(Instant.now.toString)
       val testUpdated = unique.map(t => t.copy(id = partitionKey))
       val input = testUpdated.filter(t => t.bool && t.int > 0)
