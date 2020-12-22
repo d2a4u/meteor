@@ -3,7 +3,7 @@ package meteor
 import java.time.Instant
 import java.util.UUID
 
-import meteor.codec.{Decoder, DecoderFailure, Encoder}
+import meteor.codec.{Codec, Decoder, DecoderFailure, Encoder}
 import Arbitraries._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -74,9 +74,9 @@ class CodecSpec
       roundTrip(keys) shouldEqual Right(keys)
   }
 
-  def roundTrip[T: Decoder: Encoder](t: T): Either[DecoderFailure, T] = {
-    Decoder[T].read(
-      Encoder[T].write(t)
+  def roundTrip[T: Codec](t: T): Either[DecoderFailure, T] = {
+    Codec[T].read(
+      Codec[T].write(t)
     )
   }
 }
