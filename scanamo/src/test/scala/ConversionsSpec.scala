@@ -10,6 +10,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.scanamo.DynamoFormat
 
+import scala.collection.immutable
+
 class ConversionsSpec
     extends AnyFlatSpec
     with Matchers
@@ -184,15 +186,15 @@ class ConversionsSpec
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Seq[Int]" in forAll {
-    seq: Seq[Int] =>
+    seq: immutable.Seq[Int] =>
       val dynamoFormatWrite =
         sdk1ToSdk2AttributeValue(
           DynamoFormat[Seq[Int]].write(seq).toAttributeValue
         )
       val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Seq[Int]].write(seq))
+        sdk2ToSdk1AttributeValue(Encoder[immutable.Seq[Int]].write(seq))
 
-      Decoder[Seq[Int]].read(dynamoFormatWrite) shouldEqual Right(
+      Decoder[immutable.Seq[Int]].read(dynamoFormatWrite) shouldEqual Right(
         seq
       )
       DynamoFormat[Seq[Int]].read(encoderWrite) shouldEqual Right(

@@ -9,6 +9,7 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 
 import java.time.Instant
 import java.util.UUID
+import scala.collection.immutable
 
 class CodecSpec
     extends AnyFlatSpec
@@ -42,7 +43,7 @@ class CodecSpec
 
   it should "successful round trip for Seq[String]" in forAll {
     (
-      str: Seq[String]
+      str: immutable.Seq[String]
     ) =>
       roundTrip(str) shouldEqual Right(str)
   }

@@ -73,9 +73,10 @@ lazy val root = project
   .settings(name := "meteor", commonSettings, noPublish)
   .dependsOn(
     awssdk % "compile->compile;test->test",
-    scanamo % "compile->compile;test->test"
+    scanamo % "compile->compile;test->test",
+    dynosaur % "compile->compile;test->test"
   )
-  .aggregate(awssdk, scanamo)
+  .aggregate(awssdk, scanamo, dynosaur)
 
 lazy val noPublish =
   Seq(publish := {}, publishLocal := {}, publishArtifact := false)
@@ -94,6 +95,24 @@ lazy val awssdk = project
     libraryDependencies ++= dependencies ++ testDependencies.map(_ % "it,test"),
     commonSettings
   )
+
+lazy val dynosaur = project
+  .in(file("dynosaur"))
+  .settings(
+    inConfig(Test)(Defaults.testSettings),
+    testOptions in Test += Tests.Argument(
+      "-oD"
+    ) // enabled time measurement for each test
+  )
+  .settings(
+    name := "meteor-dynosaur",
+    libraryDependencies ++= dependencies ++ testDependencies.map(
+      _ % "test"
+    ) ++ Seq(
+      "org.systemfw" %% "dynosaur-core" % "0.1.3"
+    ),
+    commonSettings
+  ).dependsOn(awssdk)
 
 lazy val scanamo = project
   .in(file("scanamo"))

@@ -6,11 +6,11 @@ import java.{util => ju}
 
 import cats._
 import cats.implicits._
-import meteor.DynamoDbType
 import meteor.errors._
 import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.annotation.tailrec
+import scala.collection.immutable
 import scala.jdk.CollectionConverters._
 
 trait Decoder[A] {
@@ -75,12 +75,12 @@ object Decoder {
       }
     }
 
-  implicit def dynamoDecoderForSeq[A: Decoder]: Decoder[Seq[A]] =
+  implicit def dynamoDecoderForSeq[A: Decoder]: Decoder[immutable.Seq[A]] =
     Decoder.instance { av =>
       if (av.hasL) {
         av.l().asScala.toList.traverse[FailureOr, A](Decoder[A].read)
       } else {
-        DecoderError.invalidTypeFailure(DynamoDbType.L).asLeft[Seq[A]]
+        DecoderError.invalidTypeFailure(DynamoDbType.L).asLeft[immutable.Seq[A]]
       }
     }
 
