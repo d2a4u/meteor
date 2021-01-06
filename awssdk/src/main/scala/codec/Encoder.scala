@@ -74,7 +74,16 @@ object Encoder {
     }
 
   implicit def dynamoEncoderForList[A: Encoder]: Encoder[List[A]] =
-    dynamoEncoderForSeq[A].contramap(_.toSeq)
+    dynamoEncoderForFoldable[List, A]
+
+  implicit def dynamoEncoderForFoldable[G[_]: Foldable, A: Encoder]
+    : Encoder[G[A]] =
+    Encoder.instance { ga =>
+      val items = ga.foldLeft(List.empty[AttributeValue]) { (acc, item) =>
+        acc :+ Encoder[A].write(item)
+      }
+      AttributeValue.builder().l(items: _*).build()
+    }
 
   implicit val dynamoEncoderForBoolean: Encoder[Boolean] =
     Encoder.instance(bool => AttributeValue.builder().bool(bool).build())
@@ -98,6 +107,9 @@ object Encoder {
 
   implicit val dynamoEncoderForBigDecimal: Encoder[BigDecimal] =
     Encoder.instance(bd => AttributeValue.builder().n(bd.toString).build())
+
+  implicit val dynamoEncoderForBigInt: Encoder[BigInt] =
+    Encoder.instance(bi => AttributeValue.builder().n(bi.toString).build())
 
   implicit val dynamoEncoderForShort: Encoder[Short] =
     Encoder.instance(short =>
