@@ -166,6 +166,15 @@ object Decoder {
             DecoderFailure(e.getMessage, e.some)))
     }
 
+  implicit val dynamoDecoderForBigInt: Decoder[BigInt] =
+    Decoder.instance { av =>
+      Option(av.n())
+        .toRight(DecoderFailure.invalidTypeFailure(DynamoDbType.N))
+        .flatMap(n =>
+          Either.catchNonFatal(BigInt(n)).leftMap(e =>
+            DecoderFailure(e.getMessage, e.some)))
+    }
+
   implicit val dynamoDecoderForShort: Decoder[Short] =
     Decoder.instance { av =>
       Option(av.n())

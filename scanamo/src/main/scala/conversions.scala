@@ -20,51 +20,48 @@ import scala.jdk.CollectionConverters._
 
 object conversions {
 
-  def sdk2ToSdk1AttributeValue(av: AttributeValue): AttributeValueV1 = {
-    if (av.nul() != null) {
-      new AttributeValueV1().withNULL(true)
-    } else if (av.bool() != null) {
-      new AttributeValueV1().withBOOL(av.bool())
-    } else if (av.b() != null) {
-      new AttributeValueV1().withB(av.b().asByteBuffer())
+  def sdk2ToSdk1AttributeValue(v2: AttributeValue): AttributeValueV1 = {
+    val v1 = new AttributeValueV1()
+    if (v2.nul() != null) {
+      v1.withNULL(true)
+    } else if (v2.bool() != null) {
+      v1.withBOOL(v2.bool())
+    } else if (v2.b() != null) {
+      v1.withB(v2.b().asByteBuffer())
     } else if (
-      av.bs() != null && !av.bs().isInstanceOf[DefaultSdkAutoConstructList[_]]
+      v2.bs() != null && !v2.bs().isInstanceOf[DefaultSdkAutoConstructList[_]]
     ) {
-      new AttributeValueV1().withBS(
-        av.bs().asScala.map(_.asByteBuffer()).asJava
+      v1.withBS(
+        v2.bs().asScala.map(_.asByteBuffer()).asJava
       )
     } else if (
-      av.l() != null && !av.l().isInstanceOf[DefaultSdkAutoConstructList[_]]
+      v2.l() != null && !v2.l().isInstanceOf[DefaultSdkAutoConstructList[_]]
     ) {
-      new AttributeValueV1().withL(
-        av.l().asScala.map(sdk2ToSdk1AttributeValue).asJava
+      v1.withL(
+        v2.l().asScala.map(sdk2ToSdk1AttributeValue).asJava
       )
     } else if (
-      av.m() != null && !av.m().isInstanceOf[DefaultSdkAutoConstructMap[_, _]]
+      v2.m() != null && !v2.m().isInstanceOf[DefaultSdkAutoConstructMap[_, _]]
     ) {
-      new AttributeValueV1().withM(
-        av.m().asScala.map(
+      v1.withM(
+        v2.m().asScala.map(
           kv => kv._1 -> sdk2ToSdk1AttributeValue(kv._2)
         ).toMap.asJava
       )
-    } else if (av.n() != null) {
-      new AttributeValueV1().withN(av.n())
+    } else if (v2.n() != null) {
+      v1.withN(v2.n())
     } else if (
-      av.ns() != null && !av.ns().isInstanceOf[DefaultSdkAutoConstructList[_]]
+      v2.ns() != null && !v2.ns().isInstanceOf[DefaultSdkAutoConstructList[_]]
     ) {
-      new AttributeValueV1().withNS(av.ns())
-    } else if (av.s() != null) {
-      if (av.s().isEmpty) {
-        new AttributeValueV1().withNULL(true)
-      } else {
-        new AttributeValueV1().withS(av.s())
-      }
+      v1.withNS(v2.ns())
+    } else if (v2.s() != null) {
+      v1.withS(v2.s())
     } else if (
-      av.ss() != null && !av.ss().isInstanceOf[DefaultSdkAutoConstructList[_]]
+      v2.ss() != null && !v2.ss().isInstanceOf[DefaultSdkAutoConstructList[_]]
     ) {
-      new AttributeValueV1().withSS(av.ss())
+      v1.withSS(v2.ss())
     } else {
-      new AttributeValueV1().withNULL(true)
+      v1.withNULL(true)
     }
   }
 
