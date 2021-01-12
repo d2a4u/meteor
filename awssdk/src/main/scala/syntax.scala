@@ -29,3 +29,5 @@ trait syntax {
       get(key).flatMap(_.as[A])
   }
 }
+
+object syntax extends syntax

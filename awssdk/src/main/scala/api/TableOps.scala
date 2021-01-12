@@ -39,14 +39,17 @@ trait TableOps {
         .tableName(table.name)
         .billingMode(billingMode)
 
-    val hashKeySchema = List(dynamoKey(table.hashKey.name, KeyType.HASH))
+    val hashKeySchema = List(dynamoKey(table.partitionKey.name, KeyType.HASH))
     val hashKeyAttr =
-      List(dynamoAttribute(table.hashKey.name, table.hashKey.attributeType))
+      List(dynamoAttribute(
+        table.partitionKey.name,
+        table.partitionKey.attributeType
+      ))
     val rangeKeySchema =
-      table.rangeKey.fold(List.empty[KeySchemaElement])(key =>
+      table.sortKey.fold(List.empty[KeySchemaElement])(key =>
         List(dynamoKey(key.name, KeyType.RANGE)))
     val rangeKeyAttr =
-      table.rangeKey.fold(List.empty[AttributeDefinition])(key =>
+      table.sortKey.fold(List.empty[AttributeDefinition])(key =>
         List(dynamoAttribute(key.name, key.attributeType)))
     val keySchema = hashKeySchema ++ rangeKeySchema
     val keyAttr = hashKeyAttr ++ rangeKeyAttr

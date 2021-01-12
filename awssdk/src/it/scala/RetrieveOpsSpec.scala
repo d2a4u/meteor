@@ -21,8 +21,8 @@ class RetrieveOpsSpec extends ITSpec {
         )
       tableWithKeys[IO].use[IO, List[TestData]] {
         case (client, table) =>
-          val retrieval = client.retrieve[TestData, Id](
-            table.name,
+          val retrieval = client.retrieve[Id, TestData](
+            table,
             partitionKey,
             consistentRead = false,
             Int.MaxValue
@@ -44,8 +44,8 @@ class RetrieveOpsSpec extends ITSpec {
 
       tableWithKeys[IO].use[IO, List[TestData]] {
         case (client, table) =>
-          val retrieval = client.retrieve[TestData, Id, Range](
-            table.name,
+          val retrieval = client.retrieve[Id, Range, TestData](
+            table,
             Query[Id, Range](
               partitionKey,
               Expression(
@@ -76,8 +76,8 @@ class RetrieveOpsSpec extends ITSpec {
         List[fs2.Chunk[TestData]]
       ] {
         case (client, table) =>
-          val retrieval = client.retrieve[TestData, Id, Range](
-            table.name,
+          val retrieval = client.retrieve[Id, Range, TestData](
+            table,
             Query[Id, Range](partitionKey),
             consistentRead = false,
             1

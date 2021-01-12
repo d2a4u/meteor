@@ -1,12 +1,14 @@
 package meteor
 
+import cats._
 import meteor.codec.Encoder
+import meteor.syntax._
 import software.amazon.awssdk.services.dynamodb.model.{
   AttributeValue,
-  KeyType,
   ScalarAttributeType
 }
 
+import java.util
 import scala.jdk.CollectionConverters._
 
 case class Key(
@@ -16,9 +18,26 @@ case class Key(
 
 case class Table(
   name: String,
-  hashKey: Key,
-  rangeKey: Option[Key]
-)
+  partitionKey: Key,
+  sortKey: Option[Key]
+) {
+  def keys[P: Encoder, S: Encoder](
+    partitionKeyValue: P,
+    sortKeyValue: Option[S]
+  ): util.Map[String, AttributeValue] = {
+    val partitionK =
+      Map(partitionKey.name -> partitionKeyValue.asAttributeValue)
+
+    val optSortK = for {
+      key <- sortKey
+      value <- sortKeyValue
+    } yield Map(key.name -> value.asAttributeValue)
+
+    optSortK.fold(partitionK) { sortK =>
+      partitionK ++ sortK
+    }.asJava
+  }
+}
 
 case class Index(name: String) extends AnyVal
 
@@ -49,6 +68,23 @@ object Expression {
 
   def apply(expression: String): Expression =
     Expression(expression, Map.empty, Map.empty)
+
+  implicit val monoidOfExpression: Monoid[Expression] = Monoid.instance(
+    Expression.empty,
+    { (left, right) =>
+      if (left.isEmpty) {
+        right
+      } else if (right.isEmpty) {
+        left
+      } else {
+        Expression(
+          left.expression + " AND " + right.expression,
+          left.attributeNames ++ right.attributeNames,
+          left.attributeValues ++ right.attributeValues
+        )
+      }
+    }
+  )
 }
 
 case class Query[P: Encoder, S: Encoder](
@@ -56,106 +92,125 @@ case class Query[P: Encoder, S: Encoder](
   sortKeyQuery: SortKeyQuery[S],
   filter: Expression
 ) {
-  val keyCondition: Expression = {
-    val pKey = Encoder[P].write(partitionKey).m().asScala.toList.headOption
-    val sKey = sortKeyQuery match {
-      case SortKeyQuery.EqualTo(value) =>
-        Encoder[S].write(value).m().asScala.toList.headOption.map {
-          case (str, attr) =>
-            val placeholder = ":t1"
+  def keyCondition(table: Table): Expression = {
+
+    def mkSortKeyExpression(sortKeyName: String) =
+      sortKeyQuery match {
+        case SortKeyQuery.EqualTo(value) =>
+          Encoder[(String, S)].write(
+            sortKeyName -> value
+          ).m().asScala.toList.headOption.map {
+            case (str, attr) =>
+              val placeholder = ":t1"
+              Expression(
+                s"#$str EQ $placeholder",
+                Map(s"#$str" -> str),
+                Map(placeholder -> attr)
+              )
+          }
+
+        case SortKeyQuery.LessThan(value) =>
+          Encoder[(String, S)].write(
+            sortKeyName -> value
+          ).m().asScala.toList.headOption.map {
+            case (str, attr) =>
+              val placeholder = ":t1"
+              Expression(
+                s"#$str LT $placeholder",
+                Map(s"#$str" -> str),
+                Map(placeholder -> attr)
+              )
+          }
+
+        case SortKeyQuery.LessOrEqualTo(value) =>
+          Encoder[(String, S)].write(
+            sortKeyName -> value
+          ).m().asScala.toList.headOption.map {
+            case (str, attr) =>
+              val placeholder = ":t1"
+              Expression(
+                s"#$str LE $placeholder",
+                Map(s"#$str" -> str),
+                Map(placeholder -> attr)
+              )
+          }
+
+        case SortKeyQuery.GreaterThan(value) =>
+          Encoder[(String, S)].write(
+            sortKeyName -> value
+          ).m().asScala.toList.headOption.map {
+            case (str, attr) =>
+              val placeholder = ":t1"
+              Expression(
+                s"#$str GT $placeholder",
+                Map(s"#$str" -> str),
+                Map(placeholder -> attr)
+              )
+          }
+
+        case SortKeyQuery.GreaterOrEqualTo(value) =>
+          Encoder[(String, S)].write(
+            sortKeyName -> value
+          ).m().asScala.toList.headOption.map {
+            case (str, attr) =>
+              val placeholder = ":t1"
+              Expression(
+                s"#$str GE $placeholder",
+                Map(s"#$str" -> str),
+                Map(placeholder -> attr)
+              )
+          }
+
+        case SortKeyQuery.Between(from, to) =>
+          for {
+            f <- Encoder[(String, S)].write(
+              sortKeyName -> from
+            ).m().asScala.toList.headOption
+            t <- Encoder[(String, S)].write(
+              sortKeyName -> to
+            ).m().asScala.toList.headOption
+          } yield {
+            val placeholder1 = ":t1"
+            val placeholder2 = ":t2"
             Expression(
-              s"#$str EQ $placeholder",
-              Map(s"#$str" -> str),
-              Map(placeholder -> attr)
+              s"#${f._1} BETWEEN $placeholder1 AND $placeholder2",
+              Map(s"#${f._1}" -> f._1),
+              Map(placeholder1 -> f._2, placeholder2 -> t._2)
             )
-        }
+          }
 
-      case SortKeyQuery.LessThan(value) =>
-        Encoder[S].write(value).m().asScala.toList.headOption.map {
-          case (str, attr) =>
-            val placeholder = ":t1"
-            Expression(
-              s"#$str LT $placeholder",
-              Map(s"#$str" -> str),
-              Map(placeholder -> attr)
-            )
-        }
+        case SortKeyQuery.BeginsWith(value) =>
+          Encoder[(String, S)].write(
+            sortKeyName -> value
+          ).m().asScala.toList.headOption.map {
+            case (str, attr) =>
+              val placeholder = ":t1"
+              Expression(
+                s"begins_with(#$str, $placeholder)",
+                Map(s"#$str" -> str),
+                Map(placeholder -> attr)
+              )
+          }
 
-      case SortKeyQuery.LessOrEqualTo(value) =>
-        Encoder[S].write(value).m().asScala.toList.headOption.map {
-          case (str, attr) =>
-            val placeholder = ":t1"
-            Expression(
-              s"#$str LE $placeholder",
-              Map(s"#$str" -> str),
-              Map(placeholder -> attr)
-            )
-        }
-
-      case SortKeyQuery.GreaterThan(value) =>
-        Encoder[S].write(value).m().asScala.toList.headOption.map {
-          case (str, attr) =>
-            val placeholder = ":t1"
-            Expression(
-              s"#$str GT $placeholder",
-              Map(s"#$str" -> str),
-              Map(placeholder -> attr)
-            )
-        }
-
-      case SortKeyQuery.GreaterOrEqualTo(value) =>
-        Encoder[S].write(value).m().asScala.toList.headOption.map {
-          case (str, attr) =>
-            val placeholder = ":t1"
-            Expression(
-              s"#$str GE $placeholder",
-              Map(s"#$str" -> str),
-              Map(placeholder -> attr)
-            )
-        }
-
-      case SortKeyQuery.Between(from, to) =>
-        for {
-          f <- Encoder[S].write(from).m().asScala.toList.headOption
-          t <- Encoder[S].write(to).m().asScala.toList.headOption
-        } yield {
-          val placeholder1 = ":t1"
-          val placeholder2 = ":t2"
-          Expression(
-            s"#${f._1} BETWEEN $placeholder1 AND $placeholder2",
-            Map(s"#${f._1}" -> f._1),
-            Map(placeholder1 -> f._2, placeholder2 -> t._2)
-          )
-        }
-
-      case SortKeyQuery.BeginsWith(value) =>
-        Encoder[S].write(value).m().asScala.toList.headOption.map {
-          case (str, attr) =>
-            val placeholder = ":t1"
-            Expression(
-              s"begins_with(#$str, $placeholder)",
-              Map(s"#$str" -> str),
-              Map(placeholder -> attr)
-            )
-        }
-
-      case _ =>
-        None
-    }
-    pKey.fold(Expression.empty) { p =>
-      val placeholder = ":t0"
-      sKey.fold(Expression(
-        s"#${p._1} = $placeholder",
-        Map(s"#${p._1}" -> p._1),
-        Map(placeholder -> p._2)
-      )) { s =>
-        Expression(
-          s"#${p._1} = $placeholder AND ",
-          s.attributeNames ++ Map(s"#${p._1}" -> p._1),
-          s.attributeValues ++ Map(placeholder -> p._2)
-        )
+        case _ =>
+          None
       }
-    }
+
+    val partitionKeyAV = Encoder[P].write(partitionKey)
+    val placeholder = ":t0"
+
+    val partitionKeyExpression = Expression(
+      s"#${table.partitionKey.name} = $placeholder",
+      Map(s"#${table.partitionKey.name}" -> table.partitionKey.name),
+      Map(placeholder -> partitionKeyAV)
+    )
+
+    val optSortKeyExpression = for {
+      sortKey <- table.sortKey
+      sortKeyExp <- mkSortKeyExpression(sortKey.name)
+    } yield sortKeyExp
+
+    Monoid.maybeCombine(partitionKeyExpression, optSortKeyExpression)
   }
 }
 

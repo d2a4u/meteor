@@ -3,6 +3,7 @@ package meteor
 import cats.effect.IO
 import cats.implicits._
 import meteor.Util._
+import meteor.implicits._
 import meteor.api.BatchGet
 import meteor.codec.Encoder
 import org.scalacheck.Arbitrary
@@ -26,11 +27,16 @@ class BatchGetOpsSpec extends ITSpec {
     val expect2 = input2.compile.toList.map(Encoder[TestData].write)
     val valuesToGet1 =
       input1.compile.toList.map { i =>
-        Encoder[(Id, Range)].write((i.id, i.range))
+        Map(
+          "id" -> i.id.asAttributeValue,
+          "range" -> i.range.asAttributeValue
+        ).asAttributeValue
       }
     val valuesToGet2 =
       input2.compile.toList.map { i =>
-        Encoder[Id].write(i.id)
+        Map(
+          "id" -> i.id.asAttributeValue
+        ).asAttributeValue
       }
     val exp = Expression(
       "#id, #range, #str, #int, #bool",
@@ -96,8 +102,8 @@ class BatchGetOpsSpec extends ITSpec {
         val put =
           client.batchPut[TestData](table, 1.second)
         val get =
-          client.batchGet[(Id, Range), TestData](
-            table.name,
+          client.batchGet[Id, Range, TestData](
+            table,
             false,
             Expression(
               "#id, #range, #str, #int, #bool",
@@ -127,8 +133,8 @@ class BatchGetOpsSpec extends ITSpec {
         val put =
           client.put[TestData](table.name, testData)
         val get =
-          client.batchGet[(Id, Range), TestData](
-            table.name,
+          client.batchGet[Id, Range, TestData](
+            table,
             false,
             Expression(
               "#id, #range, #str, #int, #bool",

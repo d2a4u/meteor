@@ -21,7 +21,7 @@ class UpdateOpsSpec extends ITSpec {
         case (client, table) =>
           client.put[TestData](table.name, input) >>
             client.update[Id, Range, TestData](
-              table.name,
+              table,
               input.id,
               input.range,
               Expression(
@@ -49,7 +49,7 @@ class UpdateOpsSpec extends ITSpec {
         case (client, table) =>
           client.put[TestData](table.name, input) >>
             client.update[Id, Range, TestData](
-              table.name,
+              table,
               input.id,
               input.range,
               Expression(
@@ -77,7 +77,7 @@ class UpdateOpsSpec extends ITSpec {
         case (client, table) =>
           client.put[TestData](table.name, input) >>
             client.update[Id, Range, TestData](
-              table.name,
+              table,
               input.id,
               input.range,
               Expression(
