@@ -15,13 +15,6 @@ import scala.jdk.CollectionConverters._
 
 trait BatchWriteOps extends DedupOps {
 
-  sealed trait Write[T] {
-    def item: T
-  }
-
-  case class Deletion[T](item: T) extends Write[T]
-  case class Put[T](item: T) extends Write[T]
-
   val MaxBatchWriteSize = 25
 
   private def sendHandleLeftOver[F[_]: Concurrent: Timer](
@@ -141,10 +134,17 @@ trait BatchWriteOps extends DedupOps {
             WriteRequest.builder().putRequest(put).build()
         }
       }
+      val itemEncoder = Encoder.instance[Either[(P, S), I]] {
+        case Left((p, s)) =>
+          table.keys[P, S](p, Some(s)).asAttributeValue
 
+        case Right(i) =>
+          i.asAttributeValue
+      }
       val writes =
         Map(
-          table.name -> dedupInOrdered(chunk)(getKeys(table))(
+          table.name -> dedupInOrdered(chunk)(item =>
+            getKeys(table)(item)(itemEncoder))(
             mkWriteRequest
           ).asJava
         ).asJava

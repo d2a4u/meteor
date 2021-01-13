@@ -92,35 +92,40 @@ trait BatchGetOps extends DedupOps {
     projection: Expression,
     maxBatchWait: FiniteDuration,
     parallelism: Int
-  )(jClient: DynamoDbAsyncClient): Pipe[F, (P, S), T] =
-    batchGetOpInternal[F, (P, S), T](
-      table.name,
-      consistentRead,
-      projection,
-      maxBatchWait,
-      parallelism,
-      jClient
-    ) {
-      case (partitionKey, sortKey) =>
-        table.keys(partitionKey, sortKey.some).asAttributeValue
-    }
+  )(jClient: DynamoDbAsyncClient): Pipe[F, (P, S), T] = {
+    in =>
+      val pipe = batchGetOpInternal[F, AttributeValue, T](
+        table.name,
+        consistentRead,
+        projection,
+        maxBatchWait,
+        parallelism,
+        jClient
+      )(identity)
+      in.map {
+        case (p, s) =>
+          table.keys(p, s.some).asAttributeValue
+      }.through(pipe)
+  }
 
   def batchGetOp[F[_]: Concurrent, P: Encoder, S: Encoder, T: Decoder](
     table: Table,
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[(P, S)]
-  )(jClient: DynamoDbAsyncClient): F[Iterable[T]] =
-    batchGetOpInternal[F, (P, S), T](
+  )(jClient: DynamoDbAsyncClient): F[Iterable[T]] = {
+    val attrKeys = keys.map {
+      case (p, s) =>
+        table.keys(p, s.some).asAttributeValue
+    }
+    batchGetOpInternal[F, AttributeValue, T](
       table.name,
       consistentRead,
       projection,
-      keys,
+      attrKeys,
       jClient
-    ) {
-      case (partitionKey, sortKey) =>
-        table.keys(partitionKey, sortKey.some).asAttributeValue
-    }
+    )(identity)
+  }
 
   def batchGetOp[F[_]: Concurrent, P: Encoder, T: Decoder](
     table: Table,

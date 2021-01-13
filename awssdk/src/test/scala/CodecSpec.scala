@@ -67,13 +67,6 @@ class CodecSpec
       roundTrip(str) shouldEqual Right(str)
   }
 
-  it should "successful round trip for Tuple2" in forAll {
-    (
-      keys: (Id, Range)
-    ) =>
-      roundTrip(keys) shouldEqual Right(keys)
-  }
-
   def roundTrip[T: Codec](t: T): Either[DecoderFailure, T] = {
     Codec[T].read(
       Codec[T].write(t)

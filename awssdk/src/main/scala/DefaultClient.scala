@@ -322,14 +322,14 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   }
 
   def batchPutUnordered[T: Encoder](
-    tableName: String,
+    table: Table,
     items: Set[T],
     maxBatchWait: FiniteDuration,
     parallelism: Int
   ): F[Unit] = {
     val itemsStream = Stream.iterable(items).covary[F]
     val pipe =
-      batchPutUnorderedOp[F, T](tableName, maxBatchWait, parallelism)(jClient)
+      batchPutUnorderedOp[F, T](table.name, maxBatchWait, parallelism)(jClient)
     pipe.apply(itemsStream).compile.drain
   }
 
@@ -350,7 +350,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     parallelism: Int
   ): Pipe[F, (P, S), Unit] =
     _.through(
-      batchDeleteUnorderedOp[F, (P, S)](table, maxBatchWait, parallelism)(
+      batchDeleteUnorderedOp[F, P, S](table, maxBatchWait, parallelism)(
         jClient
       )
     )

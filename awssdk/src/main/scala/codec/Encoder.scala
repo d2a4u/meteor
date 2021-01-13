@@ -8,8 +8,6 @@ import cats._
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model._
 
-import meteor.implicits._
-
 import scala.jdk.CollectionConverters._
 
 trait Encoder[A] {
@@ -39,15 +37,6 @@ object Encoder {
     new Contravariant[Encoder] {
       def contramap[A, B](fa: Encoder[A])(f: B => A): Encoder[B] =
         (b: B) => fa.write(f(b))
-    }
-
-  implicit def dynamoEncoderForTuple2[A: Encoder, B: Encoder]: Encoder[(A, B)] =
-    Encoder.instance { ab =>
-      val (a, b) = ab
-      val writeA = Encoder[A].write(a)
-      val writeB = Encoder[B].write(b)
-      val m = writeA.m() ++ writeB.m()
-      dynamoEncoderForMap[AttributeValue].write(m.asScala.toMap)
     }
 
   implicit def dynamoEncoderForEither[A: Encoder, B: Encoder]

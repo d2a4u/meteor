@@ -369,7 +369,7 @@ trait Client[F[_]] {
     * Batch put unique items into a table.
     */
   def batchPutUnordered[T: Encoder](
-    tableName: String,
+    table: Table,
     items: Set[T],
     maxBatchWait: FiniteDuration,
     parallelism: Int
