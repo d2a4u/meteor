@@ -22,62 +22,62 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     with BatchWriteOps
     with BatchGetOps {
 
-  def get[U: Decoder, P: Encoder](
-    tableName: String,
+  def get[P: Encoder, U: Decoder](
+    table: Table,
     partitionKey: P,
     consistentRead: Boolean
   ): F[Option[U]] =
-    getOp[F, U, P](tableName, partitionKey, consistentRead)(jClient)
+    getOp[F, P, U](table, partitionKey, consistentRead)(jClient)
 
-  def get[U: Decoder, P: Encoder, S: Encoder](
-    tableName: String,
+  def get[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
   ): F[Option[U]] =
-    getOp[F, U, P, S](tableName, partitionKey, sortKey, consistentRead)(jClient)
+    getOp[F, P, S, U](table, partitionKey, sortKey, consistentRead)(jClient)
 
-  def retrieve[U: Decoder, P: Encoder, S: Encoder](
-    tableName: String,
+  def retrieve[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, U, P, S](tableName, query, consistentRead, limit)(jClient)
+    retrieveOp[F, P, S, U](table, query, consistentRead, limit)(jClient)
 
-  def retrieve[U: Decoder, P: Encoder, S: Encoder](
-    tableName: String,
+  def retrieve[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
     query: Query[P, S],
     consistentRead: Boolean,
     index: Index,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, U, P, S](tableName, query, consistentRead, index, limit)(
+    retrieveOp[F, P, S, U](table, query, consistentRead, index, limit)(
       jClient
     )
 
   def retrieve[
-    U: Decoder,
-    P: Encoder
+    P: Encoder,
+    U: Decoder
   ](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, U, P](tableName, partitionKey, consistentRead, limit)(jClient)
+    retrieveOp[F, P, U](table, partitionKey, consistentRead, limit)(jClient)
 
   def retrieve[
-    U: Decoder,
-    P: Encoder
+    P: Encoder,
+    U: Decoder
   ](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     consistentRead: Boolean,
     index: Index,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, U, P](tableName, partitionKey, consistentRead, index, limit)(
+    retrieveOp[F, P, U](table, partitionKey, consistentRead, index, limit)(
       jClient
     )
 
@@ -104,15 +104,15 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   ): F[Option[U]] = putOp[F, T, U](tableName, t, condition)(jClient)
 
   def delete[P: Encoder, S: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S
-  ): F[Unit] = deleteOp[F, P, S](tableName, partitionKey, sortKey)(jClient)
+  ): F[Unit] = deleteOp[F, P, S](table, partitionKey, sortKey)(jClient)
 
   def delete[P: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P
-  ): F[Unit] = deleteOp[F, P](tableName, partitionKey)(jClient)
+  ): F[Unit] = deleteOp[F, P](table, partitionKey)(jClient)
 
   def scan[T: Decoder](
     tableName: String,
@@ -130,37 +130,37 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     scanOp[F, T](tableName, consistentRead, parallelism)(jClient)
 
   def update[P: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression,
     returnValue: ReturnValue
   ): F[Option[U]] =
-    updateOp[F, P, U](tableName, partitionKey, update, returnValue)(jClient)
+    updateOp[F, P, U](table, partitionKey, update, returnValue)(jClient)
 
   def update[P: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression,
     condition: Expression,
     returnValue: ReturnValue
   ): F[Option[U]] =
-    updateOp[F, P, U](tableName, partitionKey, update, condition, returnValue)(
+    updateOp[F, P, U](table, partitionKey, update, condition, returnValue)(
       jClient
     )
 
   def update[P: Encoder, S: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression,
     returnValue: ReturnValue
   ): F[Option[U]] =
-    updateOp[F, P, S, U](tableName, partitionKey, sortKey, update, returnValue)(
+    updateOp[F, P, S, U](table, partitionKey, sortKey, update, returnValue)(
       jClient
     )
 
   def update[P: Encoder, S: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -168,7 +168,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     returnValue: ReturnValue
   ): F[Option[U]] =
     updateOp[F, P, S, U](
-      tableName,
+      table,
       partitionKey,
       sortKey,
       update,
@@ -179,38 +179,38 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def update[P: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression
   ): F[Unit] =
-    updateOp[F, P](tableName, partitionKey, update)(jClient)
+    updateOp[F, P](table, partitionKey, update)(jClient)
 
   def update[P: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression,
     condition: Expression
   ): F[Unit] =
-    updateOp[F, P](tableName, partitionKey, update, condition)(jClient)
+    updateOp[F, P](table, partitionKey, update, condition)(jClient)
 
   def update[P: Encoder, S: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression
   ): F[Unit] =
-    updateOp[F, P, S](tableName, partitionKey, sortKey, update)(
+    updateOp[F, P, S](table, partitionKey, sortKey, update)(
       jClient
     )
 
   def update[P: Encoder, S: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression,
     condition: Expression
   ): F[Unit] =
-    updateOp[F, P, S](tableName, partitionKey, sortKey, update, condition)(
+    updateOp[F, P, S](table, partitionKey, sortKey, update, condition)(
       jClient
     )
 
@@ -219,48 +219,91 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   ): F[Map[String, Iterable[AttributeValue]]] =
     batchGetOp[F](requests)(jClient)
 
-  def batchGet[T: Encoder, U: Decoder](
-    tableName: String,
+  def batchGet[P: Encoder, U: Decoder](
+    table: Table,
     consistentRead: Boolean,
     projection: Expression,
-    keys: Iterable[T]
+    keys: Iterable[P]
   ): F[Iterable[U]] =
-    batchGetOp[F, T, U](
-      tableName,
+    batchGetOp[F, P, U](
+      table,
       consistentRead,
       projection,
       keys
     )(jClient)
 
-  def batchGet[T: Encoder, U: Decoder](
-    tableName: String,
+  def batchGet[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    consistentRead: Boolean,
+    projection: Expression,
+    keys: Iterable[(P, S)]
+  ): F[Iterable[U]] =
+    batchGetOp[F, P, S, U](
+      table,
+      consistentRead,
+      projection,
+      keys
+    )(jClient)
+
+  def batchGet[P: Encoder, U: Decoder](
+    table: Table,
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
     parallelism: Int
-  ): Pipe[F, T, U] =
-    batchGetOp[F, T, U](
-      tableName,
+  ): Pipe[F, P, U] =
+    batchGetOp[F, P, U](
+      table,
       consistentRead,
       projection,
       maxBatchWait,
       parallelism
     )(jClient)
 
-  def batchGet[T: Encoder, U: Decoder](
-    tableName: String,
+  def batchGet[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
     consistentRead: Boolean,
-    keys: Iterable[T]
+    projection: Expression,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
+  ): Pipe[F, (P, S), U] =
+    batchGetOp[F, P, S, U](
+      table,
+      consistentRead,
+      projection,
+      maxBatchWait,
+      parallelism
+    )(jClient)
+
+  def batchGet[P: Encoder, U: Decoder](
+    table: Table,
+    consistentRead: Boolean,
+    keys: Iterable[P]
   ): F[Iterable[U]] =
-    batchGetOp[F, T, U](tableName, consistentRead, Expression.empty, keys)(
+    batchGetOp[F, P, U](table, consistentRead, Expression.empty, keys)(
       jClient
     )
 
-  def batchWrite[D: Encoder, P: Encoder](
+  def batchGet[P: Encoder, S: Encoder, U: Decoder](
+    table: Table,
+    consistentRead: Boolean,
+    keys: Iterable[(P, S)]
+  ): F[Iterable[U]] =
+    batchGetOp[F, P, S, U](table, consistentRead, Expression.empty, keys)(
+      jClient
+    )
+
+  def batchWrite[P: Encoder, I: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration
-  ): Pipe[F, Either[D, P], Unit] =
-    batchWriteInorderedOp[F, D, P](table, maxBatchWait)(jClient)
+  ): Pipe[F, Either[P, I], Unit] =
+    batchWriteInorderedOp[F, P, I](table, maxBatchWait)(jClient)
+
+  def batchWrite[P: Encoder, S: Encoder, I: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration
+  ): Pipe[F, Either[(P, S), I], Unit] =
+    batchWriteInorderedOp[F, P, S, I](table, maxBatchWait)(jClient)
 
   def batchPut[T: Encoder](
     table: Table,
@@ -279,35 +322,35 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   }
 
   def batchPutUnordered[T: Encoder](
-    tableName: String,
+    table: Table,
     items: Set[T],
     maxBatchWait: FiniteDuration,
     parallelism: Int
   ): F[Unit] = {
     val itemsStream = Stream.iterable(items).covary[F]
     val pipe =
-      batchPutUnorderedOp[F, T](tableName, maxBatchWait, parallelism)(jClient)
+      batchPutUnorderedOp[F, T](table.name, maxBatchWait, parallelism)(jClient)
     pipe.apply(itemsStream).compile.drain
   }
 
   def batchDelete[P: Encoder](
-    tableName: String,
+    table: Table,
     maxBatchWait: FiniteDuration,
     parallelism: Int
   ): Pipe[F, P, Unit] =
     _.through(
-      batchDeleteUnorderedOp[F, P](tableName, maxBatchWait, parallelism)(
+      batchDeleteUnorderedOp[F, P](table, maxBatchWait, parallelism)(
         jClient
       )
     )
 
   def batchDelete[P: Encoder, S: Encoder](
-    tableName: String,
+    table: Table,
     maxBatchWait: FiniteDuration,
     parallelism: Int
   ): Pipe[F, (P, S), Unit] =
     _.through(
-      batchDeleteUnorderedOp[F, (P, S)](tableName, maxBatchWait, parallelism)(
+      batchDeleteUnorderedOp[F, P, S](table, maxBatchWait, parallelism)(
         jClient
       )
     )

@@ -13,49 +13,51 @@ import scala.jdk.CollectionConverters._
 
 trait UpdateOps {
   def updateOp[F[_]: Concurrent, P: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKey(mkBuilder(tableName, update, returnValue))(
-        partitionKey
-      ).build()
+      mkBuilder(table.name, update, returnValue).key(table.keys(
+        partitionKey,
+        None
+      )).build()
     sendUpdateItem[F, U](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression,
     condition: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKey(mkBuilder(tableName, update, condition, returnValue))(
-        partitionKey
-      ).build()
+      mkBuilder(table.name, update, condition, returnValue).key(table.keys(
+        partitionKey,
+        None
+      )).build()
     sendUpdateItem[F, U](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKeys(mkBuilder(tableName, update, returnValue))(
+      mkBuilder(table.name, update, returnValue).key(table.keys(
         partitionKey,
-        sortKey
-      ).build()
+        sortKey.some
+      )).build()
     sendUpdateItem[F, U](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -63,64 +65,66 @@ trait UpdateOps {
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     val req =
-      withKeys(mkBuilder(tableName, update, condition, returnValue))(
+      mkBuilder(table.name, update, condition, returnValue).key(table.keys(
         partitionKey,
-        sortKey
-      ).build()
+        sortKey.some
+      )).build()
     sendUpdateItem[F, U](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKey(mkBuilder(tableName, update, ReturnValue.NONE))(
-        partitionKey
-      ).build()
+      mkBuilder(table.name, update, ReturnValue.NONE).key(table.keys(
+        partitionKey,
+        None
+      )).build()
     sendUpdateItem[F](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     update: Expression,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKey(mkBuilder(tableName, update, condition, ReturnValue.NONE))(
-        partitionKey
-      ).build()
+      mkBuilder(table.name, update, condition, ReturnValue.NONE).key(table.keys(
+        partitionKey,
+        None
+      )).build()
     sendUpdateItem[F](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKeys(mkBuilder(tableName, update, ReturnValue.NONE))(
+      mkBuilder(table.name, update, ReturnValue.NONE).key(table.keys(
         partitionKey,
-        sortKey
-      ).build()
+        sortKey.some
+      )).build()
     sendUpdateItem[F](req)(jClient)
   }
 
   def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder](
-    tableName: String,
+    table: Table,
     partitionKey: P,
     sortKey: S,
     update: Expression,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val req =
-      withKeys(mkBuilder(tableName, update, condition, ReturnValue.NONE))(
+      mkBuilder(table.name, update, condition, ReturnValue.NONE).key(table.keys(
         partitionKey,
-        sortKey
-      ).build()
+        sortKey.some
+      )).build()
     sendUpdateItem[F](req)(jClient)
   }
 
@@ -148,17 +152,6 @@ trait UpdateOps {
       case err: ConditionalCheckFailedException =>
         ConditionalCheckFailed(err.getMessage)
     }
-
-  private def withKeys[P: Encoder, S: Encoder](
-    builder: UpdateItemRequest.Builder
-  )(partitionKey: P, sortKey: S): UpdateItemRequest.Builder = {
-    builder.key(Encoder[(P, S)].write((partitionKey, sortKey)).m())
-  }
-
-  private def withKey[P: Encoder](
-    builder: UpdateItemRequest.Builder
-  )(partitionKey: P): UpdateItemRequest.Builder =
-    builder.key(Encoder[P].write(partitionKey).m())
 
   private def mkBuilder(
     tableName: String,

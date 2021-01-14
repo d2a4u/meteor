@@ -13,9 +13,9 @@ class DeleteOpsSpec extends ITSpec {
       tableWithKeys[IO].use {
         case (client, table) =>
           val put = client.put[TestData](table.name, test)
-          val delete = client.delete(table.name, test.id, test.range)
-          val get = client.get[TestData, Id, Range](
-            table.name,
+          val delete = client.delete(table, test.id, test.range)
+          val get = client.get[Id, Range, TestData](
+            table,
             test.id,
             test.range,
             consistentRead = false
@@ -30,9 +30,9 @@ class DeleteOpsSpec extends ITSpec {
       tableWithPartitionKey[IO].use {
         case (client, table) =>
           val put = client.put[TestDataSimple](table.name, test)
-          val delete = client.delete(table.name, test.id)
-          val get = client.get[TestDataSimple, Id](
-            table.name,
+          val delete = client.delete(table, test.id)
+          val get = client.get[Id, TestDataSimple](
+            table,
             test.id,
             consistentRead = false
           )

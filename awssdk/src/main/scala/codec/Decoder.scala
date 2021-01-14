@@ -77,15 +77,6 @@ object Decoder {
   implicit val dynamoDecoderForAttributeValue: Decoder[AttributeValue] =
     Decoder.instance(av => av.asRight[DecoderFailure])
 
-  implicit def dynamoDecoderForTuple2[A: Decoder, B: Decoder]: Decoder[(A, B)] =
-    Decoder.instance { av =>
-      (for {
-        a <- Decoder[A].read(av)
-        b <- Decoder[B].read(av)
-      } yield (a, b)).leftMap(_ =>
-        DecoderFailure.invalidTypeFailure(DynamoDbType.M))
-    }
-
   implicit def dynamoDecoderForOption[A: Decoder]: Decoder[Option[A]] =
     Decoder.instance { av =>
       if (Option(av.nul()).exists(_.booleanValue())) {

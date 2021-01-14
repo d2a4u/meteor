@@ -1,6 +1,6 @@
 package meteor
 
-import meteor.codec.{Decoder, Encoder}
+import meteor.codec.{Codec, Decoder, Encoder}
 import org.scalacheck.{Arbitrary, Gen}
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
@@ -8,16 +8,7 @@ import scala.jdk.CollectionConverters._
 
 case class Id(value: String) extends AnyVal
 object Id {
-  implicit val encoderId: Encoder[Id] = Encoder.instance { id =>
-    AttributeValue.builder().m(
-      Map("id" -> Encoder[String].write(id.value)).asJava
-    ).build()
-  }
-
-  implicit val decoderId: Decoder[Id] = Decoder.instance { av =>
-    val obj = av.m()
-    Decoder[String].read(obj.get("id")).map(Id.apply)
-  }
+  implicit val codecId: Codec[Id] = Codec.iso[String, Id](Id.apply)(_.value)
 
   implicit val genId: Gen[Id] =
     Gen.nonEmptyListOf(Gen.alphaNumChar).map(chars => Id(chars.mkString))
@@ -26,16 +17,8 @@ object Id {
 
 case class Range(value: String) extends AnyVal
 object Range {
-  implicit val encoderRange: Encoder[Range] = Encoder.instance { range =>
-    AttributeValue.builder().m(
-      Map("range" -> Encoder[String].write(range.value)).asJava
-    ).build()
-  }
-
-  implicit val decoderRange: Decoder[Range] = Decoder.instance { av =>
-    val obj = av.m()
-    Decoder[String].read(obj.get("range")).map(Range.apply)
-  }
+  implicit val codecRange: Codec[Range] =
+    Codec.iso[String, Range](Range.apply)(_.value)
 
   implicit val genRange: Gen[Range] =
     Gen.nonEmptyListOf(Gen.alphaNumChar).map(chars => Range(chars.mkString))

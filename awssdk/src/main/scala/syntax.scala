@@ -2,8 +2,8 @@ package meteor
 
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
-
 import meteor.codec._
+import meteor.codec.primitives.DynamoDbType
 
 trait syntax {
 
@@ -22,10 +22,12 @@ trait syntax {
           AttributeValue.builder().nul(true).build()
         ).asRight[DecoderFailure]
       } else {
-        DecoderFailure("av is not an M").asLeft[AttributeValue]
+        DecoderFailure.invalidTypeFailure(DynamoDbType.M).asLeft[AttributeValue]
       }
 
     def getAs[A: Decoder](key: String): Either[DecoderFailure, A] =
       get(key).flatMap(_.as[A])
   }
 }
+
+object syntax extends syntax

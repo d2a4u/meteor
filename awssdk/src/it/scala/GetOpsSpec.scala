@@ -13,8 +13,8 @@ class GetOpsSpec extends ITSpec {
       tableWithKeys[IO].use[IO, Option[TestData]] {
         case (client, table) =>
           client.put[TestData](table.name, test) >>
-            client.get[TestData, Id, Range](
-              table.name,
+            client.get[Id, Range, TestData](
+              table,
               test.id,
               test.range,
               consistentRead = false
@@ -30,8 +30,8 @@ class GetOpsSpec extends ITSpec {
       ] {
         case (client, table) =>
           client.put[TestDataSimple](table.name, test) >>
-            client.get[TestDataSimple, Id](
-              table.name,
+            client.get[Id, TestDataSimple](
+              table,
               test.id,
               consistentRead = false
             )
@@ -41,8 +41,8 @@ class GetOpsSpec extends ITSpec {
   it should "return None if both keys does not exist" in {
     val result = tableWithKeys[IO].use {
       case (client, table) =>
-        client.get[TestData, Id, Range](
-          table.name,
+        client.get[Id, Range, TestData](
+          table,
           Id("doesnt-exists"),
           Range("doesnt-exists"),
           consistentRead = false
@@ -54,8 +54,8 @@ class GetOpsSpec extends ITSpec {
   it should "return None if partition key does not exist, range key is not used" in {
     val result = tableWithPartitionKey[IO].use {
       case (client, table) =>
-        client.get[TestData, Id](
-          table.name,
+        client.get[Id, TestData](
+          table,
           Id("doesnt-exists"),
           consistentRead = false
         )

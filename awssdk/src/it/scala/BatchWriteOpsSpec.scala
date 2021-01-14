@@ -26,8 +26,8 @@ class BatchWriteOpsSpec extends ITSpec {
         val put =
           client.batchPut[TestData](table, 1.second)
         val get =
-          client.batchGet[(Id, Range), TestData](
-            table.name,
+          client.batchGet[Id, Range, TestData](
+            table,
             consistentRead = false,
             Expression(
               "#id, #range, #str, #int, #bool",
@@ -60,8 +60,8 @@ class BatchWriteOpsSpec extends ITSpec {
     tableWithKeys[IO].use {
       case (client, table) =>
         val get =
-          client.batchGet[(Id, Range), TestData](
-            table.name,
+          client.batchGet[Id, Range, TestData](
+            table,
             consistentRead = false,
             Expression(
               "#id, #range, #str, #int, #bool",
@@ -93,8 +93,8 @@ class BatchWriteOpsSpec extends ITSpec {
         val put =
           client.batchPut[TestData](table, 1.second)
         val get =
-          client.get[TestData, Id, Range](
-            table.name,
+          client.get[Id, Range, TestData](
+            table,
             testData.id,
             testData.range,
             consistentRead = false
