@@ -1,14 +1,14 @@
 package meteor
 
+import cats.effect._
+import cats.implicits._
+import meteor.errors.DecoderError
+
 import java.util.concurrent.{CompletableFuture, CompletionException}
 import java.util.{HashMap => jHashMap, Map => jMap}
 
-import cats.effect._
-import cats.implicits._
-import meteor.codec.DecoderFailure
-
 private[meteor] object implicits extends syntax {
-  type FailureOr[U] = Either[DecoderFailure, U]
+  type FailureOr[U] = Either[DecoderError, U]
 
   implicit class FromCompletableFuture[A](thunk: () => CompletableFuture[A]) {
     def liftF[F[_]: Concurrent]: F[A] =

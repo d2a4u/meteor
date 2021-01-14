@@ -2,11 +2,11 @@ package meteor
 
 import java.net.URI
 import java.util.UUID
-
 import cats._
 import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, Resource, Sync, Timer}
 import cats.implicits._
+import meteor.DynamoDbType
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
   AwsCredentialsProviderChain
@@ -64,7 +64,7 @@ object Util {
     localTableResource[F](
       Key(
         "id",
-        ScalarAttributeType.S
+        DynamoDbType.S
       ),
       None
     )
@@ -73,12 +73,12 @@ object Util {
     localTableResource[F](
       Key(
         "id",
-        ScalarAttributeType.S
+        DynamoDbType.S
       ),
       Some(
         Key(
           "range",
-          ScalarAttributeType.S
+          DynamoDbType.S
         )
       )
     )

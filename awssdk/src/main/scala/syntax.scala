@@ -3,7 +3,8 @@ package meteor
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import meteor.codec._
-import meteor.codec.primitives.DynamoDbType
+import meteor.DynamoDbType
+import meteor.errors.DecoderError
 
 trait syntax {
 
@@ -13,19 +14,19 @@ trait syntax {
 
   implicit class RichAttributeValue(av: AttributeValue) {
 
-    def as[A: Decoder]: Either[DecoderFailure, A] = Decoder[A].read(av)
+    def as[A: Decoder]: Either[DecoderError, A] = Decoder[A].read(av)
 
-    def get(key: String): Either[DecoderFailure, AttributeValue] =
+    def get(key: String): Either[DecoderError, AttributeValue] =
       if (av.hasM()) {
         av.m().getOrDefault(
           key,
           AttributeValue.builder().nul(true).build()
-        ).asRight[DecoderFailure]
+        ).asRight[DecoderError]
       } else {
-        DecoderFailure.invalidTypeFailure(DynamoDbType.M).asLeft[AttributeValue]
+        DecoderError.invalidTypeFailure(DynamoDbType.M).asLeft[AttributeValue]
       }
 
-    def getAs[A: Decoder](key: String): Either[DecoderFailure, A] =
+    def getAs[A: Decoder](key: String): Either[DecoderError, A] =
       get(key).flatMap(_.as[A])
   }
 }

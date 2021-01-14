@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 
 case class Key(
   name: String,
-  attributeType: ScalarAttributeType
+  attributeType: DynamoDbType
 )
 
 case class Table(
@@ -194,4 +194,37 @@ object Query {
     partitionKey: P,
     filter: Expression
   ): Query[P, S] = Query(partitionKey, SortKeyQuery.Empty[S](), filter)
+}
+
+trait DynamoDbType {
+  def toScalarAttributeType: ScalarAttributeType =
+    this match {
+      case DynamoDbType.B =>
+        ScalarAttributeType.B
+
+      case DynamoDbType.S =>
+        ScalarAttributeType.S
+
+      case DynamoDbType.N =>
+        ScalarAttributeType.N
+
+      case _ =>
+        ScalarAttributeType.UNKNOWN_TO_SDK_VERSION
+    }
+}
+
+object DynamoDbType {
+  case object BOOL extends DynamoDbType //boolean
+  case object B extends DynamoDbType //binary
+  case object BS extends DynamoDbType //binary set
+  case object L extends DynamoDbType //list
+  case object M extends DynamoDbType //map
+  case object N extends DynamoDbType //number
+  case object NS extends DynamoDbType //number set
+  case object NULL extends DynamoDbType //null
+  case object S extends DynamoDbType //string
+  case object SS extends DynamoDbType //string set
+
+  implicit val dynamoDbTypeShow: Show[DynamoDbType] =
+    Show.fromToString[DynamoDbType]
 }

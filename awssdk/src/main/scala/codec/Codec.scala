@@ -1,6 +1,7 @@
 package meteor
 package codec
 
+import meteor.errors.DecoderError
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
 trait Codec[A] extends Decoder[A] with Encoder[A]
@@ -16,13 +17,13 @@ object Codec {
     new Codec[A] {
       override def write(a: A): AttributeValue = encoder.write(a)
 
-      override def read(av: AttributeValue): Either[DecoderFailure, A] =
+      override def read(av: AttributeValue): Either[DecoderError, A] =
         decoder.read(av)
     }
 
   def iso[A: Codec, B](fa: A => B)(fb: B => A): Codec[B] =
     new Codec[B] {
-      override def read(av: AttributeValue): Either[DecoderFailure, B] = {
+      override def read(av: AttributeValue): Either[DecoderError, B] = {
         Codec[A].read(av).map(fa)
       }
 

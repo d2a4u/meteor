@@ -39,10 +39,10 @@ A type class defines how to encode type `A` to a Java `AttributeValue`.
 #### Decoder
 
 ```
-def read(av: AttributeValue): Either[DecoderFailure, A]
+def read(av: AttributeValue): Either[DecoderError, A]
 ```
 
-A type class defines how to decode a Java `AttributeValue` to either a `DecoderFailure` or a value 
+A type class defines how to decode a Java `AttributeValue` to either a `DecoderError` or a value 
 of type `A`.
 
 ### API
