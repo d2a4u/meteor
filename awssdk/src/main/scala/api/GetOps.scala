@@ -4,13 +4,12 @@ package api
 import cats.effect.Concurrent
 import cats.implicits._
 import fs2.RaiseThrowable
-import meteor.codec.{Decoder, DecoderFailure, Encoder}
-import meteor.errors.InvalidExpression
+import meteor.codec.{Decoder, Encoder}
+import meteor.errors._
 import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
-import java.util
 import scala.jdk.CollectionConverters._
 
 trait GetOps {
@@ -157,7 +156,7 @@ trait GetOps {
         }
       }
 
-    type FailureOr[T] = Either[DecoderFailure, T]
+    type FailureOr[T] = Either[DecoderError, T]
 
     for {
       resp <- doQuery(builder.build())

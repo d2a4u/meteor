@@ -43,14 +43,17 @@ trait TableOps {
     val hashKeyAttr =
       List(dynamoAttribute(
         table.partitionKey.name,
-        table.partitionKey.attributeType
+        table.partitionKey.attributeType.toScalarAttributeType
       ))
     val rangeKeySchema =
       table.sortKey.fold(List.empty[KeySchemaElement])(key =>
         List(dynamoKey(key.name, KeyType.RANGE)))
     val rangeKeyAttr =
       table.sortKey.fold(List.empty[AttributeDefinition])(key =>
-        List(dynamoAttribute(key.name, key.attributeType)))
+        List(dynamoAttribute(
+          key.name,
+          key.attributeType.toScalarAttributeType
+        )))
     val keySchema = hashKeySchema ++ rangeKeySchema
     val keyAttr = hashKeyAttr ++ rangeKeyAttr
     createTableRequest

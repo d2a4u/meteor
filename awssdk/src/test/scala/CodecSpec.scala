@@ -1,13 +1,14 @@
 package meteor
 
-import java.time.Instant
-import java.util.UUID
-
-import meteor.codec.{Codec, Decoder, DecoderFailure, Encoder}
-import Arbitraries._
+import meteor.Arbitraries._
+import meteor.codec.Codec
+import meteor.errors.DecoderError
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
+
+import java.time.Instant
+import java.util.UUID
 
 class CodecSpec
     extends AnyFlatSpec
@@ -67,7 +68,7 @@ class CodecSpec
       roundTrip(str) shouldEqual Right(str)
   }
 
-  def roundTrip[T: Codec](t: T): Either[DecoderFailure, T] = {
+  def roundTrip[T: Codec](t: T): Either[DecoderError, T] = {
     Codec[T].read(
       Codec[T].write(t)
     )

@@ -5,7 +5,8 @@ package formats
 import com.amazonaws.services.dynamodbv2.model.{
   AttributeValue => AttributeValueV1
 }
-import meteor.codec.{Decoder, DecoderFailure, Encoder}
+import meteor.codec.{Decoder, Encoder}
+import meteor.errors.DecoderError
 import org.scanamo.DynamoFormat
 import org.scanamo.error.DynamoReadError
 import software.amazon.awssdk.core.SdkBytes
@@ -98,9 +99,9 @@ object conversions {
 
   implicit def dynamoFormatToDecoder[T](df: DynamoFormat[T]): Decoder[T] =
     new Decoder[T] {
-      def read(av: AttributeValue): Either[DecoderFailure, T] =
+      def read(av: AttributeValue): Either[DecoderError, T] =
         df.read(sdk2ToSdk1AttributeValue(av)).left.map { err =>
-          DecoderFailure(DynamoReadError.describe(err), None)
+          DecoderError(DynamoReadError.describe(err), None)
         }
     }
 
