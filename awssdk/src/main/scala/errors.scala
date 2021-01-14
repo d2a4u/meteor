@@ -24,6 +24,11 @@ object errors {
       "The expression is invalid"
   }
 
+  case class InvalidKeyType[K](k: K) extends DynamoError {
+    override def getMessage: String =
+      s"Key of type ${k.getClass.getTypeName} is invalid, expect either N, S or B"
+  }
+
   case class UnexpectedTableStatus(
     tableName: String,
     status: TableStatus,

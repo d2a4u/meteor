@@ -180,20 +180,25 @@ case class Query[P: Encoder, S: Encoder](
 }
 
 object Query {
-  def apply[P: Encoder, S: Encoder](
+  def apply[P: Encoder](
     partitionKey: P
-  ): Query[P, S] =
-    Query(partitionKey, SortKeyQuery.Empty[S](), Expression.empty)
+  ): Query[P, Nothing] =
+    Query[P, Nothing](
+      partitionKey,
+      SortKeyQuery.Empty[Nothing](),
+      Expression.empty
+    )
 
   def apply[P: Encoder, S: Encoder](
     partitionKey: P,
     sortKeyQuery: SortKeyQuery[S]
   ): Query[P, S] = Query(partitionKey, sortKeyQuery, Expression.empty)
 
-  def apply[P: Encoder, S: Encoder](
+  def apply[P: Encoder](
     partitionKey: P,
     filter: Expression
-  ): Query[P, S] = Query(partitionKey, SortKeyQuery.Empty[S](), filter)
+  ): Query[P, Nothing] =
+    Query[P, Nothing](partitionKey, SortKeyQuery.Empty[Nothing](), filter)
 }
 
 trait DynamoDbType {

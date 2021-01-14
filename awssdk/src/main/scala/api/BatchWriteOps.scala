@@ -7,18 +7,23 @@ import cats.effect.{Concurrent, Timer}
 import fs2.{Pipe, Stream}
 import meteor.codec.Encoder
 import meteor.implicits._
+import software.amazon.awssdk.core.retry.RetryPolicyContext
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
+import scala.compat.java8.DurationConverters._
 
 trait BatchWriteOps extends DedupOps {
 
   val MaxBatchWriteSize = 25
 
   private def sendHandleLeftOver[F[_]: Concurrent: Timer](
-    req: BatchWriteItemRequest
+    req: BatchWriteItemRequest,
+    backoffStrategy: BackoffStrategy,
+    retried: Int = 0
   )(
     jClient: DynamoDbAsyncClient
   ): Stream[F, BatchWriteItemResponse] =
@@ -30,7 +35,14 @@ trait BatchWriteOps extends DedupOps {
           val nextReq = BatchWriteItemRequest.builder().requestItems(
             resp.unprocessedItems()
           ).build()
-          sendHandleLeftOver(nextReq)(jClient)
+          val nextDelay = backoffStrategy.computeDelayBeforeNextRetry(
+            RetryPolicyContext.builder().retriesAttempted(retried).build()
+          ).toScala
+          Stream.sleep(nextDelay) >> sendHandleLeftOver(
+            nextReq,
+            backoffStrategy,
+            retried + 1
+          )(jClient)
         } else {
           Stream.empty
         }
@@ -203,42 +215,46 @@ trait BatchWriteOps extends DedupOps {
   def batchDeleteUnorderedOp[F[_]: Timer: Concurrent, P: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, P, Unit] = { in: Stream[F, P] =>
     mkDeleteRequestOutOrdered[F, P](table, maxBatchWait).apply(in).map {
       req =>
-        sendHandleLeftOver(req)(jClient)
+        sendHandleLeftOver(req, backoffStrategy)(jClient)
     }.parJoin(parallelism)
   }.andThen(_.drain)
 
   def batchDeleteUnorderedOp[F[_]: Timer: Concurrent, P: Encoder, S: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, (P, S), Unit] = {
     in: Stream[F, (P, S)] =>
       mkDeleteRequestOutOrdered[F, P, S](table, maxBatchWait).apply(in).map {
         req =>
-          sendHandleLeftOver(req)(jClient)
+          sendHandleLeftOver(req, backoffStrategy)(jClient)
       }.parJoin(parallelism)
   }.andThen(_.drain)
 
   def batchPutInorderedOp[F[_]: Timer: Concurrent, I: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, I, Unit] = { in: Stream[F, I] =>
     mkPutRequestInOrdered[F, I](table, maxBatchWait).apply(
       in
     ).flatMap {
       req =>
-        sendHandleLeftOver(req)(jClient)
+        sendHandleLeftOver(req, backoffStrategy)(jClient)
     }
   }.andThen(_.drain)
 
   def batchPutUnorderedOp[F[_]: Timer: Concurrent, I: Encoder](
     tableName: String,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, I, Unit] = { in: Stream[F, I] =>
     in.groupWithin(MaxBatchWriteSize, maxBatchWait).map { chunk =>
       val reqs =
@@ -253,19 +269,20 @@ trait BatchWriteOps extends DedupOps {
 
       val writes = Map(tableName -> reqs).asJava
       BatchWriteItemRequest.builder().requestItems(writes).build()
-    }.map(sendHandleLeftOver(_)(jClient)).parJoin(parallelism)
+    }.map(sendHandleLeftOver(_, backoffStrategy)(jClient)).parJoin(parallelism)
   }.andThen(_.drain)
 
   def batchWriteInorderedOp[F[_]: Timer: Concurrent, P: Encoder, I: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, Either[P, I], Unit] = {
     in: Stream[F, Either[P, I]] =>
       mkRequestInOrdered[F, P, I](table, maxBatchWait).apply(
         in
       ).flatMap {
         req =>
-          sendHandleLeftOver(req)(jClient)
+          sendHandleLeftOver(req, backoffStrategy)(jClient)
       }
   }.andThen(_.drain)
 
@@ -276,14 +293,15 @@ trait BatchWriteOps extends DedupOps {
     I: Encoder
   ](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, Either[(P, S), I], Unit] = {
     in: Stream[F, Either[(P, S), I]] =>
       mkRequestInOrdered[F, P, S, I](table, maxBatchWait).apply(
         in
       ).flatMap {
         req =>
-          sendHandleLeftOver(req)(jClient)
+          sendHandleLeftOver(req, backoffStrategy)(jClient)
       }
   }.andThen(_.drain)
 }

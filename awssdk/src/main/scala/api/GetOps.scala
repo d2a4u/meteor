@@ -70,7 +70,7 @@ trait GetOps {
     consistentRead: Boolean,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
-    val query = Query[P, Nothing](partitionKey)
+    val query = Query[P](partitionKey)
     mkBuilder[F, P, Nothing](
       table,
       query,
@@ -91,7 +91,7 @@ trait GetOps {
     index: Index,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
-    val query = Query[P, Nothing](partitionKey)
+    val query = Query[P](partitionKey)
     mkBuilder[F, P, Nothing](
       table,
       query,

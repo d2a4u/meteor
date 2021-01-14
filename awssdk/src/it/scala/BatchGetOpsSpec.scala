@@ -14,6 +14,8 @@ class BatchGetOpsSpec extends ITSpec {
 
   behavior.of("batch get operation")
 
+  val backOff = Client.BackoffStrategy.default
+
   it should "batch get items from different tables" in {
     val size = 5
     val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
@@ -67,15 +69,16 @@ class BatchGetOpsSpec extends ITSpec {
     val result = src.use {
       case ((_, table1), (client, table2)) =>
         val put1 =
-          client.batchPut[TestData](table1, 1.second)
+          client.batchPut[TestData](table1, 1.second, backOff)
         val put2 =
-          client.batchPut[TestData](table2, 1.second)
+          client.batchPut[TestData](table2, 1.second, backOff)
         val get =
           client.batchGet(
             Map(
               table1.name -> batchGet1,
               table2.name -> batchGet2
-            )
+            ),
+            backOff
           )
         put1(input1).compile.drain >> put2(
           input2
@@ -100,7 +103,11 @@ class BatchGetOpsSpec extends ITSpec {
     tableWithKeys[IO].use {
       case (client, table) =>
         val put =
-          client.batchPut[TestData](table, 1.second)
+          client.batchPut[TestData](
+            table,
+            1.second,
+            backOff
+          )
         val get =
           client.batchGet[Id, Range, TestData](
             table,
@@ -117,7 +124,8 @@ class BatchGetOpsSpec extends ITSpec {
               Map.empty
             ),
             100.millis,
-            32
+            32,
+            backOff
           )
         put(input).compile.drain >> get(keys).compile.toList
     }.unsafeToFuture().futureValue should contain theSameElementsAs input.compile.toList
@@ -148,7 +156,8 @@ class BatchGetOpsSpec extends ITSpec {
               Map.empty
             ),
             100.millis,
-            32
+            32,
+            backOff
           )
         put >> get(duplicatedKeys).compile.toList
     }.unsafeToFuture().futureValue should contain theSameElementsAs List(
