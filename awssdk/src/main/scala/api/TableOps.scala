@@ -30,36 +30,40 @@ trait TableOps {
 
   def createTableOp[F[_]: Concurrent: Timer](
     table: Table,
+    attributeDefinition: Map[String, DynamoDbType],
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex],
+    localSecondaryIndexes: Set[LocalSecondaryIndex],
     billingMode: BillingMode,
     waitTillReady: Boolean
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
-    val createTableRequest =
+    val hashKeySchema = List(dynamoKey(table.partitionKey.name, KeyType.HASH))
+    val rangeKeySchema =
+      table.sortKey.fold(List.empty[KeySchemaElement])(key =>
+        List(dynamoKey(key.name, KeyType.RANGE)))
+    val attrDef = (attributeDefinition ++ Map(
+      table.partitionKey.name -> table.partitionKey.attributeType
+    ) ++ table.sortKey.fold(Map.empty[String, DynamoDbType]) { key =>
+      Map(key.name -> key.attributeType)
+    }).map(kv => dynamoAttribute(kv._1, kv._2)).toList
+
+    val builder0 =
       CreateTableRequest
         .builder()
         .tableName(table.name)
         .billingMode(billingMode)
 
-    val hashKeySchema = List(dynamoKey(table.partitionKey.name, KeyType.HASH))
-    val hashKeyAttr =
-      List(dynamoAttribute(
-        table.partitionKey.name,
-        table.partitionKey.attributeType.toScalarAttributeType
-      ))
-    val rangeKeySchema =
-      table.sortKey.fold(List.empty[KeySchemaElement])(key =>
-        List(dynamoKey(key.name, KeyType.RANGE)))
-    val rangeKeyAttr =
-      table.sortKey.fold(List.empty[AttributeDefinition])(key =>
-        List(dynamoAttribute(
-          key.name,
-          key.attributeType.toScalarAttributeType
-        )))
-    val keySchema = hashKeySchema ++ rangeKeySchema
-    val keyAttr = hashKeyAttr ++ rangeKeyAttr
-    createTableRequest
-      .keySchema(keySchema: _*)
-      .attributeDefinitions(keyAttr: _*)
-    createTable[F](createTableRequest.build(), waitTillReady)(jClient)
+    val builder1 = builder0
+      .keySchema(hashKeySchema ++ rangeKeySchema: _*)
+      .attributeDefinitions(attrDef: _*)
+    val builder2 = {
+      if (globalSecondaryIndexes.isEmpty) builder1
+      else builder1.globalSecondaryIndexes(globalSecondaryIndexes.toSeq: _*)
+    }
+    val builder3 = {
+      if (localSecondaryIndexes.isEmpty) builder2
+      else builder2.localSecondaryIndexes(localSecondaryIndexes.toSeq: _*)
+    }
+    createTable[F](builder3.build(), waitTillReady)(jClient)
   }
 
   private def createTable[F[_]: Concurrent: Timer](
@@ -108,11 +112,11 @@ trait TableOps {
 
   private def dynamoAttribute(
     attributeName: String,
-    attributeType: ScalarAttributeType
+    attributeType: DynamoDbType
   ): AttributeDefinition =
     AttributeDefinition
       .builder()
       .attributeName(attributeName)
-      .attributeType(attributeType)
+      .attributeType(attributeType.toScalarAttributeType)
       .build()
 }

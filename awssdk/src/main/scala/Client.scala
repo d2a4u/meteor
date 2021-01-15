@@ -21,6 +21,8 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.{
   AttributeValue,
   BillingMode,
+  GlobalSecondaryIndex,
+  LocalSecondaryIndex,
   ReturnValue,
   TableDescription
 }
@@ -445,6 +447,9 @@ trait Client[F[_]] {
     */
   def createTable(
     table: Table,
+    attributeDefinition: Map[String, DynamoDbType],
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex],
+    localSecondaryIndexes: Set[LocalSecondaryIndex],
     billingMode: BillingMode
   ): F[Unit]
 

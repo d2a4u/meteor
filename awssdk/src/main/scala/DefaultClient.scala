@@ -412,9 +412,19 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
 
   def createTable(
     table: Table,
+    attributeDefinition: Map[String, DynamoDbType],
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex],
+    localSecondaryIndexes: Set[LocalSecondaryIndex],
     billingMode: BillingMode
   ): F[Unit] =
-    createTableOp[F](table, billingMode, waitTillReady = true)(jClient)
+    createTableOp[F](
+      table,
+      attributeDefinition,
+      globalSecondaryIndexes,
+      localSecondaryIndexes,
+      billingMode,
+      waitTillReady = true
+    )(jClient)
 
   def deleteTable(tableName: String): F[Unit] =
     deleteTableOp[F](tableName)(jClient)

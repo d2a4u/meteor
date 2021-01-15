@@ -52,6 +52,9 @@ object Util {
       _ <- Resource.make(
         client.createTable(
           table,
+          Map.empty,
+          Set.empty,
+          Set.empty,
           BillingMode.PAY_PER_REQUEST
         )
       )(_ => client.deleteTable(table.name))
