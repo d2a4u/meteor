@@ -2,7 +2,6 @@ package meteor
 
 import cats.implicits._
 
-import meteor.DynamoDbType
 import software.amazon.awssdk.services.dynamodb.model.TableStatus
 
 object errors {

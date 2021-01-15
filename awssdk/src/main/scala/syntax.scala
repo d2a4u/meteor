@@ -3,7 +3,6 @@ package meteor
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import meteor.codec._
-import meteor.DynamoDbType
 import meteor.errors.DecoderError
 
 trait syntax {

@@ -8,6 +8,7 @@ import cats._
 import cats.implicits._
 import software.amazon.awssdk.services.dynamodb.model._
 
+import scala.collection.immutable
 import scala.jdk.CollectionConverters._
 
 trait Encoder[A] {
@@ -57,7 +58,7 @@ object Encoder {
       fa.fold(AttributeValue.builder().nul(true).build())(Encoder[A].write)
     }
 
-  implicit def dynamoEncoderForSeq[A: Encoder]: Encoder[Seq[A]] =
+  implicit def dynamoEncoderForSeq[A: Encoder]: Encoder[immutable.Seq[A]] =
     Encoder.instance { fa =>
       AttributeValue.builder().l(fa.map(Encoder[A].write): _*).build()
     }
