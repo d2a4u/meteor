@@ -11,6 +11,8 @@ class BatchWriteOpsSpec extends ITSpec {
 
   behavior.of("batch write operation")
 
+  val backOff = Client.BackoffStrategy.default
+
   it should "batch put items via Pipe" in {
     val size = 200
     val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
@@ -24,7 +26,7 @@ class BatchWriteOpsSpec extends ITSpec {
     tableWithKeys[IO].use {
       case (client, table) =>
         val put =
-          client.batchPut[TestData](table, 1.second)
+          client.batchPut[TestData](table, 1.second, backOff)
         val get =
           client.batchGet[Id, Range, TestData](
             table,
@@ -41,7 +43,8 @@ class BatchWriteOpsSpec extends ITSpec {
               Map.empty
             ),
             100.millis,
-            32
+            32,
+            backOff
           )
         put(input).compile.drain >> get(keys).compile.drain
     }.unsafeToFuture().futureValue shouldBe an[Unit]
@@ -75,9 +78,12 @@ class BatchWriteOpsSpec extends ITSpec {
               Map.empty
             ),
             100.millis,
-            32
+            32,
+            backOff
           )
-        client.batchPut[TestData](table, input) >> get(keys).compile.drain
+        client.batchPut[TestData](table, input, backOff) >> get(
+          keys
+        ).compile.drain
     }.unsafeToFuture().futureValue shouldBe an[Unit]
   }
 
@@ -91,7 +97,7 @@ class BatchWriteOpsSpec extends ITSpec {
     tableWithKeys[IO].use {
       case (client, table) =>
         val put =
-          client.batchPut[TestData](table, 1.second)
+          client.batchPut[TestData](table, 1.second, backOff)
         val get =
           client.get[Id, Range, TestData](
             table,

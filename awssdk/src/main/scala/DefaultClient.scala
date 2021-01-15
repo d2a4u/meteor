@@ -4,6 +4,7 @@ import cats.effect.{Concurrent, Timer}
 import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
@@ -215,34 +216,39 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def batchGet(
-    requests: Map[String, BatchGet]
+    requests: Map[String, BatchGet],
+    backoffStrategy: BackoffStrategy
   ): F[Map[String, Iterable[AttributeValue]]] =
-    batchGetOp[F](requests)(jClient)
+    batchGetOp[F](requests, backoffStrategy)(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
     table: Table,
     consistentRead: Boolean,
     projection: Expression,
-    keys: Iterable[P]
+    keys: Iterable[P],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, U](
       table,
       consistentRead,
       projection,
-      keys
+      keys,
+      backoffStrategy
     )(jClient)
 
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: Table,
     consistentRead: Boolean,
     projection: Expression,
-    keys: Iterable[(P, S)]
+    keys: Iterable[(P, S)],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, S, U](
       table,
       consistentRead,
       projection,
-      keys
+      keys,
+      backoffStrategy
     )(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
@@ -250,14 +256,16 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, P, U] =
     batchGetOp[F, P, U](
       table,
       consistentRead,
       projection,
       maxBatchWait,
-      parallelism
+      parallelism,
+      backoffStrategy
     )(jClient)
 
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
@@ -265,59 +273,85 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, (P, S), U] =
     batchGetOp[F, P, S, U](
       table,
       consistentRead,
       projection,
       maxBatchWait,
-      parallelism
+      parallelism,
+      backoffStrategy
     )(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
     table: Table,
     consistentRead: Boolean,
-    keys: Iterable[P]
+    keys: Iterable[P],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
-    batchGetOp[F, P, U](table, consistentRead, Expression.empty, keys)(
+    batchGetOp[F, P, U](
+      table,
+      consistentRead,
+      Expression.empty,
+      keys,
+      backoffStrategy
+    )(
       jClient
     )
 
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: Table,
     consistentRead: Boolean,
-    keys: Iterable[(P, S)]
+    keys: Iterable[(P, S)],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
-    batchGetOp[F, P, S, U](table, consistentRead, Expression.empty, keys)(
+    batchGetOp[F, P, S, U](
+      table,
+      consistentRead,
+      Expression.empty,
+      keys,
+      backoffStrategy
+    )(
       jClient
     )
 
   def batchWrite[P: Encoder, I: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, Either[P, I], Unit] =
-    batchWriteInorderedOp[F, P, I](table, maxBatchWait)(jClient)
+    batchWriteInorderedOp[F, P, I](table, maxBatchWait, backoffStrategy)(
+      jClient
+    )
 
   def batchWrite[P: Encoder, S: Encoder, I: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, Either[(P, S), I], Unit] =
-    batchWriteInorderedOp[F, P, S, I](table, maxBatchWait)(jClient)
+    batchWriteInorderedOp[F, P, S, I](table, maxBatchWait, backoffStrategy)(
+      jClient
+    )
 
   def batchPut[T: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, T, Unit] =
-    batchPutInorderedOp[F, T](table, maxBatchWait)(jClient)
+    batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
   def batchPut[T: Encoder](
     table: Table,
-    items: Iterable[T]
+    items: Iterable[T],
+    backoffStrategy: BackoffStrategy
   ): F[Unit] = {
     val itemsStream = Stream.iterable(items).covary[F]
     val pipe =
-      batchPutInorderedOp[F, T](table, Int.MaxValue.seconds)(jClient)
+      batchPutInorderedOp[F, T](table, Int.MaxValue.seconds, backoffStrategy)(
+        jClient
+      )
     pipe.apply(itemsStream).compile.drain
   }
 
@@ -325,21 +359,33 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     table: Table,
     items: Set[T],
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): F[Unit] = {
     val itemsStream = Stream.iterable(items).covary[F]
     val pipe =
-      batchPutUnorderedOp[F, T](table.name, maxBatchWait, parallelism)(jClient)
+      batchPutUnorderedOp[F, T](
+        table.name,
+        maxBatchWait,
+        parallelism,
+        backoffStrategy
+      )(jClient)
     pipe.apply(itemsStream).compile.drain
   }
 
   def batchDelete[P: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, P, Unit] =
     _.through(
-      batchDeleteUnorderedOp[F, P](table, maxBatchWait, parallelism)(
+      batchDeleteUnorderedOp[F, P](
+        table,
+        maxBatchWait,
+        parallelism,
+        backoffStrategy
+      )(
         jClient
       )
     )
@@ -347,10 +393,16 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   def batchDelete[P: Encoder, S: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, (P, S), Unit] =
     _.through(
-      batchDeleteUnorderedOp[F, P, S](table, maxBatchWait, parallelism)(
+      batchDeleteUnorderedOp[F, P, S](
+        table,
+        maxBatchWait,
+        parallelism,
+        backoffStrategy
+      )(
         jClient
       )
     )

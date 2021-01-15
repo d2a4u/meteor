@@ -24,7 +24,11 @@ class ScanOpsSpec extends ITSpec {
     def updated(ref: Ref[IO, Int]) =
       tableWithKeys[IO].use {
         case (client, table) =>
-          client.batchPut[TestData](table, 100.millis).apply(
+          client.batchPut[TestData](
+            table,
+            100.millis,
+            Client.BackoffStrategy.default
+          ).apply(
             input
           ).compile.drain >>
             client.scan[TestData](

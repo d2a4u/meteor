@@ -1,9 +1,7 @@
 package meteor
 
-import java.net.URI
-import java.util.concurrent.Executor
 import cats.effect.{Concurrent, Resource, Sync, Timer}
-import fs2.{Pipe, RaiseThrowable, Stream}
+import fs2.Pipe
 import meteor.api.BatchGet
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.auth.credentials.{
@@ -14,17 +12,22 @@ import software.amazon.awssdk.core.client.config.{
   ClientAsyncConfiguration,
   SdkAdvancedAsyncClientOption
 }
+import software.amazon.awssdk.core.retry.backoff.{
+  BackoffStrategy,
+  FullJitterBackoffStrategy
+}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.{
   AttributeValue,
   BillingMode,
-  KeyType,
   ReturnValue,
-  ScalarAttributeType,
   TableDescription
 }
 
+import java.net.URI
+import java.time.Duration
+import java.util.concurrent.Executor
 import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
@@ -268,7 +271,8 @@ trait Client[F[_]] {
     * Batch get items from multiple tables.
     */
   def batchGet(
-    requests: Map[String, BatchGet]
+    requests: Map[String, BatchGet],
+    backoffStrategy: BackoffStrategy
   ): F[Map[String, Iterable[AttributeValue]]]
 
   /**
@@ -279,7 +283,8 @@ trait Client[F[_]] {
     table: Table,
     consistentRead: Boolean,
     projection: Expression,
-    keys: Iterable[P]
+    keys: Iterable[P],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
   /**
@@ -290,7 +295,8 @@ trait Client[F[_]] {
     table: Table,
     consistentRead: Boolean,
     projection: Expression,
-    keys: Iterable[(P, S)]
+    keys: Iterable[(P, S)],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
   /**
@@ -302,7 +308,8 @@ trait Client[F[_]] {
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, P, U]
 
   /**
@@ -314,7 +321,8 @@ trait Client[F[_]] {
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, (P, S), U]
 
   /**
@@ -324,7 +332,8 @@ trait Client[F[_]] {
   def batchGet[P: Encoder, U: Decoder](
     table: Table,
     consistentRead: Boolean,
-    keys: Iterable[P]
+    keys: Iterable[P],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
   /**
@@ -334,7 +343,8 @@ trait Client[F[_]] {
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: Table,
     consistentRead: Boolean,
-    keys: Iterable[(P, S)]
+    keys: Iterable[(P, S)],
+    backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
   /**
@@ -348,7 +358,8 @@ trait Client[F[_]] {
     */
   def batchPut[T: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, T, Unit]
 
   /**
@@ -362,7 +373,8 @@ trait Client[F[_]] {
     */
   def batchPut[T: Encoder](
     table: Table,
-    items: Iterable[T]
+    items: Iterable[T],
+    backoffStrategy: BackoffStrategy
   ): F[Unit]
 
   /**
@@ -372,7 +384,8 @@ trait Client[F[_]] {
     table: Table,
     items: Set[T],
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): F[Unit]
 
   /**
@@ -385,7 +398,8 @@ trait Client[F[_]] {
   def batchDelete[P: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, P, Unit]
 
   /**
@@ -398,7 +412,8 @@ trait Client[F[_]] {
   def batchDelete[P: Encoder, S: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
-    parallelism: Int
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, (P, S), Unit]
 
   /**
@@ -416,7 +431,8 @@ trait Client[F[_]] {
     */
   def batchWrite[D: Encoder, P: Encoder](
     table: Table,
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
   ): Pipe[F, Either[D, P], Unit]
 
   /**
@@ -498,5 +514,12 @@ object Client {
         ).credentialsProvider(cred).build()
       }
     }.map(apply[F])
+  }
+
+  object BackoffStrategy {
+    // same as default from DynamoDbRetryPolicy
+    val default: BackoffStrategy = FullJitterBackoffStrategy.builder.baseDelay(
+      Duration.ofMillis(25)
+    ).maxBackoffTime(Duration.ofMillis(20000)).build
   }
 }

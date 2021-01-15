@@ -2,11 +2,9 @@ package meteor
 
 import java.net.URI
 import java.util.UUID
-import cats._
 import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, Resource, Sync, Timer}
 import cats.implicits._
-import meteor.DynamoDbType
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
   AwsCredentialsProviderChain

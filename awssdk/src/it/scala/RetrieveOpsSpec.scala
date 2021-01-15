@@ -48,6 +48,7 @@ class RetrieveOpsSpec extends ITSpec {
             table,
             Query[Id, Range](
               partitionKey,
+              SortKeyQuery.Empty[Range](),
               Expression(
                 "#b = :bool and #i > :int",
                 Map("#b" -> "bool", "#i" -> "int"),
@@ -78,7 +79,7 @@ class RetrieveOpsSpec extends ITSpec {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
             table,
-            Query[Id, Range](partitionKey),
+            Query[Id, Range](partitionKey, SortKeyQuery.Empty[Range]()),
             consistentRead = false,
             1
           ).chunks.compile.toList
