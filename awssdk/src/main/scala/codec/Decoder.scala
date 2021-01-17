@@ -89,7 +89,11 @@ object Decoder {
 
   implicit val dynamoDecoderForString: Decoder[String] =
     Decoder.instance { av =>
-      Option(av.s()).toRight(DecoderError.invalidTypeFailure(DynamoDbType.S))
+      if (Option(av.nul()).exists(_.booleanValue())) {
+        Right[DecoderError, String](null)
+      } else {
+        Option(av.s()).toRight(DecoderError.invalidTypeFailure(DynamoDbType.S))
+      }
     }
 
   implicit val dynamoDecoderForUUID: Decoder[ju.UUID] =

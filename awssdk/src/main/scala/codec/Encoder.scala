@@ -79,7 +79,13 @@ object Encoder {
     Encoder.instance(bool => AttributeValue.builder().bool(bool).build())
 
   implicit val dynamoEncoderForString: Encoder[String] =
-    Encoder.instance(str => AttributeValue.builder().s(str).build())
+    Encoder.instance { str =>
+      if (str == null) {
+        AttributeValue.builder().nul(true).build()
+      } else {
+        AttributeValue.builder().s(str).build()
+      }
+    }
 
   implicit val dynamoEncoderForUUID: Encoder[ju.UUID] =
     Encoder[String].contramap(_.toString)

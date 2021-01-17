@@ -25,6 +25,10 @@ class CodecSpec
     roundTrip(str) shouldEqual Right(str)
   }
 
+  it should "successful round trip for null String" in {
+    roundTrip[String](null) shouldEqual Right(null)
+  }
+
   it should "successful round trip for UUID" in forAll { uuid: UUID =>
     roundTrip(uuid) shouldEqual Right(uuid)
   }
@@ -60,6 +64,10 @@ class CodecSpec
       str: Option[String]
     ) =>
       roundTrip(str) shouldEqual Right(str)
+  }
+
+  it should "successful round trip for Some of empty String" in {
+    roundTrip[Option[String]](Some("")) shouldEqual Right(Some(""))
   }
 
   it should "successful round trip for Map[String, String]" in forAll {
