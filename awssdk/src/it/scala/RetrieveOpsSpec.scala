@@ -35,6 +35,24 @@ class RetrieveOpsSpec extends ITSpec {
       }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
 
+  it should "exact item by EqualTo key expression" in forAll {
+    test: TestData =>
+      val result = tableWithKeys[IO].use[IO, TestData] {
+        case (client, table) =>
+          val retrieval = client.retrieve[Id, Range, TestData](
+            table,
+            Query[Id, Range](
+              test.id,
+              SortKeyQuery.EqualTo(test.range)
+            ),
+            consistentRead = false,
+            Int.MaxValue
+          ).compile.lastOrError
+          client.put[TestData](table.name, test) >> retrieval
+      }.unsafeToFuture().futureValue
+      result shouldEqual test
+  }
+
   it should "filter results by given filter expression" in forAll {
     test: List[TestData] =>
       val unique = test.map(t => (t.id, t.range) -> t).toMap.values.toList
