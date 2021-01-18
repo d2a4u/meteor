@@ -47,13 +47,12 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     retrieveOp[F, P, S, U](table, query, consistentRead, limit)(jClient)
 
   def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    secondaryIndex: SecondaryIndex,
     query: Query[P, S],
     consistentRead: Boolean,
-    index: Index,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, P, S, U](table, query, consistentRead, index, limit)(
+    retrieveOp[F, P, S, U](secondaryIndex, query, consistentRead, limit)(
       jClient
     )
 
@@ -72,13 +71,12 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     P: Encoder,
     U: Decoder
   ](
-    table: Table,
+    secondaryIndex: SecondaryIndex,
     partitionKey: P,
     consistentRead: Boolean,
-    index: Index,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, P, U](table, partitionKey, consistentRead, index, limit)(
+    retrieveOp[F, P, U](secondaryIndex, partitionKey, consistentRead, limit)(
       jClient
     )
 

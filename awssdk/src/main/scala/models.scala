@@ -17,11 +17,13 @@ case class Key(
   attributeType: DynamoDbType
 )
 
+sealed trait Index
+
 case class Table(
   name: String,
   partitionKey: Key,
   sortKey: Option[Key]
-) {
+) extends Index {
   def keys[P: Encoder, S: Encoder](
     partitionKeyValue: P,
     sortKeyValue: Option[S]
@@ -40,7 +42,12 @@ case class Table(
   }
 }
 
-case class Index(name: String) extends AnyVal
+case class SecondaryIndex(
+  tableName: String,
+  indexName: String,
+  partitionKey: Key,
+  sortKey: Option[Key]
+) extends Index
 
 sealed trait SortKeyQuery[T]
 object SortKeyQuery {
@@ -93,7 +100,11 @@ case class Query[P: Encoder, S: Encoder](
   sortKeyQuery: SortKeyQuery[S],
   filter: Expression
 ) {
-  def keyCondition(table: Table): Expression = {
+  def keyCondition(index: Index): Expression = {
+    val (partitionKeySchema, optSortKeySchema) = index match {
+      case Table(_, pk, sk)             => (pk, sk)
+      case SecondaryIndex(_, _, pk, sk) => (pk, sk)
+    }
 
     def mkSortKeyExpression(sortKeyName: String) =
       sortKeyQuery match {
@@ -165,13 +176,13 @@ case class Query[P: Encoder, S: Encoder](
     val placeholder = ":t0"
 
     val partitionKeyExpression = Expression(
-      s"#${table.partitionKey.name} = $placeholder",
-      Map(s"#${table.partitionKey.name}" -> table.partitionKey.name),
+      s"#${partitionKeySchema.name} = $placeholder",
+      Map(s"#${partitionKeySchema.name}" -> partitionKeySchema.name),
       Map(placeholder -> partitionKeyAV)
     )
 
     val optSortKeyExpression = for {
-      sortKey <- table.sortKey
+      sortKey <- optSortKeySchema
       sortKeyExp <- mkSortKeyExpression(sortKey.name)
     } yield sortKeyExp
 
