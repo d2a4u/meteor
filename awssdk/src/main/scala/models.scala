@@ -100,7 +100,7 @@ case class Query[P: Encoder, S: Encoder](
         case SortKeyQuery.EqualTo(value) =>
           val placeholder = ":t1"
           Expression(
-            s"#$sortKeyName EQ $placeholder",
+            s"#$sortKeyName = $placeholder",
             Map(s"#$sortKeyName" -> sortKeyName),
             Map(placeholder -> value.asAttributeValue)
           ).some
@@ -108,7 +108,7 @@ case class Query[P: Encoder, S: Encoder](
         case SortKeyQuery.LessThan(value) =>
           val placeholder = ":t1"
           Expression(
-            s"#$sortKeyName LT $placeholder",
+            s"#$sortKeyName < $placeholder",
             Map(s"#$sortKeyName" -> sortKeyName),
             Map(placeholder -> value.asAttributeValue)
           ).some
@@ -116,7 +116,7 @@ case class Query[P: Encoder, S: Encoder](
         case SortKeyQuery.LessOrEqualTo(value) =>
           val placeholder = ":t1"
           Expression(
-            s"#$sortKeyName LE $placeholder",
+            s"#$sortKeyName <= $placeholder",
             Map(s"#$sortKeyName" -> sortKeyName),
             Map(placeholder -> value.asAttributeValue)
           ).some
@@ -124,7 +124,7 @@ case class Query[P: Encoder, S: Encoder](
         case SortKeyQuery.GreaterThan(value) =>
           val placeholder = ":t1"
           Expression(
-            s"#$sortKeyName GT $placeholder",
+            s"#$sortKeyName > $placeholder",
             Map(s"#$sortKeyName" -> sortKeyName),
             Map(placeholder -> value.asAttributeValue)
           ).some
@@ -132,7 +132,7 @@ case class Query[P: Encoder, S: Encoder](
         case SortKeyQuery.GreaterOrEqualTo(value) =>
           val placeholder = ":t1"
           Expression(
-            s"#$sortKeyName GE $placeholder",
+            s"#$sortKeyName >= $placeholder",
             Map(s"#$sortKeyName" -> sortKeyName),
             Map(placeholder -> value.asAttributeValue)
           ).some
