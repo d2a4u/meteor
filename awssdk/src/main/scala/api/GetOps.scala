@@ -75,7 +75,6 @@ trait GetOps {
       table,
       query,
       consistentRead,
-      None,
       limit
     ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
   }
@@ -85,18 +84,16 @@ trait GetOps {
     P: Encoder,
     T: Decoder
   ](
-    table: Table,
+    secondaryIndex: SecondaryIndex,
     partitionKey: P,
     consistentRead: Boolean,
-    index: Index,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
     val query = Query[P](partitionKey)
     mkBuilder[F, P, Nothing](
-      table,
+      secondaryIndex,
       query,
       consistentRead,
-      Some(index),
       limit
     ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
   }
@@ -116,7 +113,6 @@ trait GetOps {
       table,
       query,
       consistentRead,
-      None,
       limit
     ).flatMap(builder => sendQueryRequest[F, U](builder)(jClient))
 
@@ -126,17 +122,15 @@ trait GetOps {
     S: Encoder,
     U: Decoder
   ](
-    table: Table,
+    secondaryIndex: SecondaryIndex,
     query: Query[P, S],
     consistentRead: Boolean,
-    index: Index,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] =
     mkBuilder[F, P, S](
-      table,
+      secondaryIndex,
       query,
       consistentRead,
-      Some(index),
       limit
     ).flatMap(builder => sendQueryRequest[F, U](builder)(jClient))
 
@@ -170,13 +164,17 @@ trait GetOps {
   }
 
   private def mkBuilder[F[_]: Concurrent, P: Encoder, S: Encoder](
-    table: Table,
+    index: Index,
     query: Query[P, S],
     consistentRead: Boolean,
-    index: Option[Index],
     limit: Int
   ) = {
-    val exp = query.keyCondition(table)
+    val (tableName, optIndexName) = index match {
+      case Table(name, _, _) => (name, None)
+      case SecondaryIndex(tableName, indexName, _, _) =>
+        (tableName, Some(indexName))
+    }
+    val exp = query.keyCondition(index)
     fs2.Stream.fromEither[F](
       if (exp.nonEmpty) Right(exp)
       else Left(InvalidExpression)
@@ -184,11 +182,11 @@ trait GetOps {
       cond =>
         val builder0 =
           QueryRequest.builder()
-            .tableName(table.name)
+            .tableName(tableName)
             .consistentRead(consistentRead)
             .keyConditionExpression(cond.expression)
             .limit(limit)
-        val builder1 = index.fold(builder0)(i => builder0.indexName(i.name))
+        val builder1 = optIndexName.fold(builder0)(builder0.indexName)
         if (query.filter.isEmpty) {
           builder1
             .expressionAttributeNames(cond.attributeNames.asJava)

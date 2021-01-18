@@ -53,6 +53,25 @@ class RetrieveOpsSpec extends ITSpec {
       result shouldEqual test
   }
 
+  it should "query secondary index" in forAll {
+    test: TestData =>
+      val input = test.copy(str = "test", int = 0)
+      val result = tableWithKeysAndSecondaryIndex[IO]("second-index").use {
+        case (client, table, secondaryIndex) =>
+          val retrieval = client.retrieve[String, Int, TestData](
+            secondaryIndex,
+            Query[String, Int](
+              input.str,
+              SortKeyQuery.EqualTo(input.int)
+            ),
+            consistentRead = false,
+            Int.MaxValue
+          ).compile.lastOrError
+          client.put[TestData](table.name, input) >> retrieval
+      }.unsafeToFuture().futureValue
+      result shouldEqual input
+  }
+
   it should "filter results by given filter expression" in forAll {
     test: List[TestData] =>
       val unique = test.map(t => (t.id, t.range) -> t).toMap.values.toList

@@ -69,10 +69,9 @@ trait Client[F[_]] {
     * Retrieve values from a table using a query on a secondary index.
     */
   def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    secondaryIndex: SecondaryIndex,
     query: Query[P, S],
     consistentRead: Boolean,
-    index: Index,
     limit: Int
   ): fs2.Stream[F, U]
 
@@ -96,10 +95,9 @@ trait Client[F[_]] {
     P: Encoder,
     U: Decoder
   ](
-    table: Table,
+    secondaryIndex: SecondaryIndex,
     partitionKey: P,
     consistentRead: Boolean,
-    index: Index,
     limit: Int
   ): fs2.Stream[F, U]
 
