@@ -14,8 +14,8 @@ object errors {
     def invalidTypeFailure(t: DynamoDbType): DecoderError =
       DecoderError(s"The AttributeValue must be of type ${t.show}")
 
-    val nullValue: DecoderError =
-      DecoderError("Returned value is null")
+    def missingKeyFailure(key: String): DecoderError =
+      DecoderError(s"The AttributeValue is a map but $key key doesn't exists")
   }
 
   case object InvalidExpression extends DynamoError {

@@ -2,13 +2,15 @@ package meteor
 package scanamo
 package formats
 
-import meteor.codec.{Decoder, Encoder}
+import meteor.codec.{Codec, Decoder, Encoder}
+import meteor.syntax._
 import meteor.scanamo.formats.conversions._
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import org.scanamo.DynamoFormat
+import org.scanamo.error.DynamoReadError
+import org.scanamo.{DynamoFormat, DynamoValue}
 
 import scala.collection.immutable
 
@@ -24,30 +26,42 @@ class ConversionsSpec
   implicit val arbNonEmptyString: Arbitrary[String] =
     Arbitrary(genNonEmptyString)
 
+  def roundTrip[T: Codec: DynamoFormat](t: T): Boolean = {
+    val dynamoFormatWrite =
+      sdk1ToSdk2AttributeValue(
+        DynamoFormat[T].write(t).toAttributeValue
+      )
+    val encoderWrite =
+      sdk2ToSdk1AttributeValue(Encoder[T].write(t))
+
+    val round1 = Decoder[T].read(dynamoFormatWrite).toOption
+    val round2 = DynamoFormat[T].read(encoderWrite).toOption
+    round1.get == round2.get
+  }
+
+  def roundTripOpt[T: Decoder](
+    t: Option[T]
+  )(implicit enc: Encoder[Option[T]], fmt: DynamoFormat[Option[T]]): Boolean = {
+    val dynamoFormatWrite =
+      sdk1ToSdk2AttributeValue(
+        fmt.write(t).toAttributeValue
+      )
+    val encoderWrite =
+      sdk2ToSdk1AttributeValue(enc.write(t))
+
+    val round1 = dynamoFormatWrite.asOpt[T].toOption
+    val round2 = fmt.read(encoderWrite).toOption
+    round1.flatten == round2.flatten
+  }
+
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Int" in forAll {
     int: Int =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Int].write(int).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Int].write(int))
-
-      Decoder[Int].read(dynamoFormatWrite) shouldEqual Right(int)
-      DynamoFormat[Int].read(encoderWrite) shouldEqual Right(int)
+      roundTrip(int) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for non empty String" in forAll {
     str: String =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[String].write(str).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[String].write(str))
-
-      Decoder[String].read(dynamoFormatWrite) shouldEqual Right(str)
-      DynamoFormat[String].read(encoderWrite) shouldEqual Right(str)
+      roundTrip(str) shouldBe true
   }
 
   // test to demonstrate Scanamo's issue where it writes None and Some("") both to Dynamo' null, which
@@ -60,162 +74,68 @@ class ConversionsSpec
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Boolean" in forAll {
     bool: Boolean =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Boolean].write(bool).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Boolean].write(bool))
-
-      Decoder[Boolean].read(dynamoFormatWrite) shouldEqual Right(bool)
-      DynamoFormat[Boolean].read(encoderWrite) shouldEqual Right(bool)
+      roundTrip(bool) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Long" in forAll {
     long: Long =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Long].write(long).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Long].write(long))
-
-      Decoder[Long].read(dynamoFormatWrite) shouldEqual Right(long)
-      DynamoFormat[Long].read(encoderWrite) shouldEqual Right(long)
+      roundTrip(long) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Float" in forAll {
     float: Float =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Float].write(float).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Float].write(float))
-
-      Decoder[Float].read(dynamoFormatWrite) shouldEqual Right(float)
-      DynamoFormat[Float].read(encoderWrite) shouldEqual Right(float)
+      roundTrip(float) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Byte" in forAll {
     byte: Byte =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Byte].write(byte).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Byte].write(byte))
-
-      Decoder[Byte].read(dynamoFormatWrite) shouldEqual Right(byte)
-      DynamoFormat[Byte].read(encoderWrite) shouldEqual Right(byte)
+      roundTrip(byte) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Double" in forAll {
     double: Double =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Double].write(double).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Double].write(double))
-
-      Decoder[Double].read(dynamoFormatWrite) shouldEqual Right(double)
-      DynamoFormat[Double].read(encoderWrite) shouldEqual Right(double)
+      roundTrip(double) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Short" in forAll {
     short: Short =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Short].write(short).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Short].write(short))
-
-      Decoder[Short].read(dynamoFormatWrite) shouldEqual Right(short)
-      DynamoFormat[Short].read(encoderWrite) shouldEqual Right(short)
+      roundTrip(short) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for BigDecimal" in forAll {
     bd: BigDecimal =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[BigDecimal].write(bd).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[BigDecimal].write(bd))
-
-      Decoder[BigDecimal].read(dynamoFormatWrite) shouldEqual Right(bd)
-      DynamoFormat[BigDecimal].read(encoderWrite) shouldEqual Right(bd)
+      roundTrip(bd) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Option[Int]" in forAll {
     opt: Option[Int] =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Option[Int]].write(opt).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(
-          Encoder[Option[Int]].write(opt)
-        )
-
-      Decoder[Option[Int]].read(dynamoFormatWrite) shouldEqual Right(
-        opt
-      )
-      DynamoFormat[Option[Int]].read(encoderWrite) shouldEqual Right(
-        opt
-      )
+      roundTripOpt(opt) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for List[Int]" in forAll {
     list: List[Int] =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[List[Int]].write(list).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[List[Int]].write(list))
-
-      Decoder[List[Int]].read(dynamoFormatWrite) shouldEqual Right(
-        list
-      )
-      DynamoFormat[List[Int]].read(encoderWrite) shouldEqual Right(
-        list
-      )
+      roundTrip(list) shouldBe true
   }
+
+  val seqFmt = implicitly[DynamoFormat[Seq[Int]]]
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Seq[Int]" in forAll {
     seq: immutable.Seq[Int] =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Seq[Int]].write(seq).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[immutable.Seq[Int]].write(seq))
+      implicit val immutableFmt: DynamoFormat[immutable.Seq[Int]] =
+        new DynamoFormat[immutable.Seq[Int]] {
+          override def read(av: DynamoValue)
+            : Either[DynamoReadError, immutable.Seq[Int]] =
+            seqFmt.read(av).map(_.toList)
 
-      Decoder[immutable.Seq[Int]].read(dynamoFormatWrite) shouldEqual Right(
-        seq
-      )
-      DynamoFormat[Seq[Int]].read(encoderWrite) shouldEqual Right(
-        seq
-      )
+          override def write(t: immutable.Seq[Int]): DynamoValue =
+            seqFmt.write(t)
+        }
+      implicitly[DynamoFormat[Seq[Int]]]
+      roundTrip(seq) shouldBe true
   }
 
   it should "cross read/write from DynamoFormat and Encoder/Decoder for Map[String, Int]" in forAll {
     map: Map[String, Int] =>
-      val dynamoFormatWrite =
-        sdk1ToSdk2AttributeValue(
-          DynamoFormat[Map[String, Int]].write(map).toAttributeValue
-        )
-      val encoderWrite =
-        sdk2ToSdk1AttributeValue(Encoder[Map[String, Int]].write(map))
-
-      Decoder[Map[String, Int]].read(dynamoFormatWrite) shouldEqual Right(
-        map
-      )
-      DynamoFormat[Map[String, Int]].read(encoderWrite) shouldEqual Right(
-        map
-      )
+      roundTrip(map) shouldBe true
   }
 }

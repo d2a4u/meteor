@@ -66,15 +66,6 @@ object Decoder {
   implicit val dynamoDecoderForAttributeValue: Decoder[AttributeValue] =
     Decoder.instance(av => av.asRight[DecoderError])
 
-  implicit def dynamoDecoderForOption[A: Decoder]: Decoder[Option[A]] =
-    Decoder.instance { av =>
-      if (Option(av.nul()).exists(_.booleanValue())) {
-        none[A].asRight[DecoderError]
-      } else {
-        Decoder[A].read(av).map(_.some)
-      }
-    }
-
   implicit def dynamoDecoderForSeq[A: Decoder]: Decoder[immutable.Seq[A]] =
     Decoder.instance { av =>
       if (av.hasL) {

@@ -53,6 +53,13 @@ object Encoder {
       AttributeValue.builder().build()
     }
 
+  /*
+   * It is intentional to not have a Decoder[Option[A]] instance
+   * because we don't have control over the data which have been written.
+   * We cannot distinguish between nul(true) and nonexistent key scenario to be read as None.
+   * Hence, instead of providing an Encoder for Option, the lib provides a syntax `getOpt`
+   * as an explicit way to treat both.
+   */
   implicit def dynamoEncoderForOption[A: Encoder]: Encoder[Option[A]] =
     Encoder.instance { fa =>
       fa.fold(AttributeValue.builder().nul(true).build())(Encoder[A].write)
@@ -80,11 +87,7 @@ object Encoder {
 
   implicit val dynamoEncoderForString: Encoder[String] =
     Encoder.instance { str =>
-      if (str == null) {
-        AttributeValue.builder().nul(true).build()
-      } else {
-        AttributeValue.builder().s(str).build()
-      }
+      AttributeValue.builder().s(str).build()
     }
 
   implicit val dynamoEncoderForUUID: Encoder[ju.UUID] =

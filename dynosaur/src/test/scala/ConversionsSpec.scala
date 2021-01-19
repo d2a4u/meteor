@@ -2,7 +2,9 @@ package meteor.dynosaur
 package formats
 
 import dynosaur.Schema
-import meteor.codec.Codec
+import meteor.codec.Codec.dynamoCodecFromEncoderAndDecoder
+import meteor.codec.{Codec, Decoder, Encoder}
+import meteor.syntax._
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -22,53 +24,64 @@ class ConversionsSpec
   implicit val arbNonEmptyString: Arbitrary[String] =
     Arbitrary(genNonEmptyString)
 
-  def roundTrip[T](codec: Codec[T], schema: Schema[T], t: T): Boolean = {
+  def roundTrip[T: Codec: Schema](t: T): Boolean = {
+    val convertedCodec = conversions.schemaToCodec(Schema[T])
+    val round1 = Codec[T].read(convertedCodec.write(t))
+    val round2 = convertedCodec.read(Codec[T].write(t))
+    round1.isRight && round1 == round2
+  }
+
+  def roundTripOpt[T: Decoder](
+    encoder: Encoder[Option[T]],
+    schema: Schema[Option[T]],
+    t: Option[T]
+  ): Boolean = {
     val convertedCodec = conversions.schemaToCodec(schema)
-    val round1 = codec.read(convertedCodec.write(t))
-    val round2 = convertedCodec.read(codec.write(t))
+    val round1 = convertedCodec.write(t).asOpt[T]
+    val round2 = convertedCodec.read(encoder.write(t))
     round1.isRight && round1 == round2
   }
 
   //TODO: test for Array[Byte]
   it should "cross read/write from Schema to Codec for Int" in forAll {
     int: Int =>
-      roundTrip[Int](Codec[Int], Schema.int, int) shouldBe true
+      roundTrip(int) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for non empty String" in forAll {
     str: String =>
-      roundTrip[String](Codec[String], Schema.string, str) shouldBe true
+      roundTrip(str) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Boolean" in forAll {
     bool: Boolean =>
-      roundTrip[Boolean](Codec[Boolean], Schema.boolean, bool) shouldBe true
+      roundTrip(bool) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Long" in forAll {
     long: Long =>
-      roundTrip[Long](Codec[Long], Schema.long, long) shouldBe true
+      roundTrip(long) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Float" in forAll {
     float: Float =>
-      roundTrip[Float](Codec[Float], Schema.float, float) shouldBe true
+      roundTrip(float) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Double" in forAll {
     double: Double =>
-      roundTrip[Double](Codec[Double], Schema.double, double) shouldBe true
+      roundTrip(double) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Short" in forAll {
     short: Short =>
-      roundTrip[Short](Codec[Short], Schema.short, short) shouldBe true
+      roundTrip(short) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Option[Int]" in forAll {
     opt: Option[Int] =>
-      roundTrip[Option[Int]](
-        Codec[Option[Int]],
+      roundTripOpt[Int](
+        Encoder[Option[Int]],
         Schema.nullable[Int],
         opt
       ) shouldBe true
@@ -76,28 +89,16 @@ class ConversionsSpec
 
   it should "cross read/write from Schema to Codec for List[Int]" in forAll {
     list: List[Int] =>
-      roundTrip[List[Int]](
-        Codec[List[Int]],
-        Schema.list[Int],
-        list
-      ) shouldBe true
+      roundTrip(list) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Seq[Int]" in forAll {
     seq: immutable.Seq[Int] =>
-      roundTrip[immutable.Seq[Int]](
-        Codec[immutable.Seq[Int]],
-        Schema.seq[Int],
-        seq
-      ) shouldBe true
+      roundTrip(seq) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Map[String, Int]" in forAll {
     map: Map[String, Int] =>
-      roundTrip[Map[String, Int]](
-        Codec[Map[String, Int]],
-        Schema.dict[Int],
-        map
-      ) shouldBe true
+      roundTrip(map) shouldBe true
   }
 }

@@ -1,7 +1,8 @@
 package meteor
 
 import meteor.Arbitraries._
-import meteor.codec.Codec
+import meteor.codec.{Codec, Decoder, Encoder}
+import meteor.syntax._
 import meteor.errors.DecoderError
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -23,10 +24,6 @@ class CodecSpec
 
   it should "successful round trip for String" in forAll { str: String =>
     roundTrip(str) shouldEqual Right(str)
-  }
-
-  it should "successful round trip for null String" in {
-    roundTrip[String](null) shouldEqual Right(null)
   }
 
   it should "successful round trip for UUID" in forAll { uuid: UUID =>
@@ -63,11 +60,11 @@ class CodecSpec
     (
       str: Option[String]
     ) =>
-      roundTrip(str) shouldEqual Right(str)
+      roundTripOpt(str) shouldEqual Right(str)
   }
 
   it should "successful round trip for Some of empty String" in {
-    roundTrip[Option[String]](Some("")) shouldEqual Right(Some(""))
+    roundTripOpt(Some("")) shouldEqual Right(Some(""))
   }
 
   it should "successful round trip for Map[String, String]" in forAll {
@@ -81,5 +78,10 @@ class CodecSpec
     Codec[T].read(
       Codec[T].write(t)
     )
+  }
+
+  def roundTripOpt[T: Decoder](t: Option[T])(implicit
+  enc: Encoder[Option[T]]): Either[DecoderError, Option[T]] = {
+    enc.write(t).asOpt[T]
   }
 }
