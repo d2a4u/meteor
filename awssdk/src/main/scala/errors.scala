@@ -8,7 +8,9 @@ object errors {
   sealed abstract class DynamoError extends Exception
 
   case class DecoderError(message: String, cause: Option[Throwable] = None)
-      extends DynamoError
+      extends DynamoError {
+    override def getMessage: String = message
+  }
 
   object DecoderError {
     def invalidTypeFailure(t: DynamoDbType): DecoderError =
