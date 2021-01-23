@@ -2,6 +2,7 @@
 
 ![build](https://github.com/d2a4u/meteor/workflows/build/badge.svg)
 [ ![Download](https://api.bintray.com/packages/d2a4u/meteor/meteor-awssdk/images/download.svg) ](https://bintray.com/d2a4u/meteor/meteor-awssdk/_latestVersion)
+[![Join the chat at https://gitter.im/dynamodb-meteor/community](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dynamodb-meteor/community)
 
 A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2.
 
