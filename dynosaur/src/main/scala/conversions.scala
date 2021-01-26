@@ -12,7 +12,7 @@ object conversions {
     new Codec[A] {
       override def write(a: A): AttributeValue = {
         schema.write(a).fold(
-          _ => AttributeValue.builder().build(),
+          e => throw e,
           _.value
         )
       }

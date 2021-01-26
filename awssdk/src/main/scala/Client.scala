@@ -383,7 +383,6 @@ trait Client[F[_]] {
   def batchPutUnordered[T: Encoder](
     table: Table,
     items: Set[T],
-    maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Unit]
