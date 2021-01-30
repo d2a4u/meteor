@@ -6,6 +6,7 @@ on:
       - '!master'
     paths-ignore:
       - '**.md'
+      - 'website/**'
   pull_request:
     branches: [ master ]
 

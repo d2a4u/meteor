@@ -9,7 +9,7 @@ images: []
 menu: 
   docs:
     parent: "introduction"
-weight: 999
+weight: 900
 toc: true
 ---
 
@@ -21,14 +21,14 @@ as `fs2` Stream, auto processes left over items and many other features.
 
 Add Bintray resolver:
 
-```sbt
+```scala
 resolvers += Resolver.bintrayRepo("d2a4u", "meteor")
 ```
 
 Add the following to your `build.sbt`, see [this](https://bintray.com/d2a4u/meteor/meteor-awssdk/_latestVersion) for latest version. Supports Scala 2.12 and
 2.13.
 
-```sbt
+```scala
 libraryDependencies += "meteor" %% "meteor-awssdk" % "LATEST_VERSION"
 ```
 
@@ -41,12 +41,20 @@ libraryDependencies += "meteor" %% "meteor-awssdk" % "LATEST_VERSION"
 String, this version of `Scanamo` serializes these cases: `""`, `None` and `Some("")` to Dynamo's 
 `NULL`. This is problematic because once the value is written down, reading it back is difficult.
 
-```sbt
+```scala
 libraryDependencies += "meteor" %% "meteor-scanamo" % "LATEST_VERSION"
 ```
 
 #### [Dynosaur Codecs](https://systemfw.org/dynosaur)
 
-```sbt
+```scala
 libraryDependencies += "meteor" %% "meteor-dynosaur" % "LATEST_VERSION"
 ```
+
+## Fine Tuning
+
+`meteor` uses AWS SDK v2 `DynamoDbAsyncClient` under the hood to make calls to the underline Java
+API. The `DynamoDbAsyncClient` internally create a `NettyNioAsyncHttpClient` with a default value
+for maximum connections of 50. This can be increased depending on the hardware/virtual resources.
+There is also an alternative [AWS CRT HTTP client](https://aws.amazon.com/about-aws/whats-new/2020/09/aws-crt-http-client-in-aws-sdk-for-java-2x/) 
+that can be used and tuned similarly.

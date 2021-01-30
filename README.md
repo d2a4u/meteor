@@ -70,9 +70,9 @@ for more usage example.
 - `scanamo` module which provides auto conversion to and from Scanamo's `DynamoFormat` and meteor's 
 `Encoder`/`Decoder`
 
-*Note:* `meteor` uses `Scanamo`'s version `1.0.0-M11` instead of latest because in my experience,
-this is the most stable version. However, because it is an older version when DynamoDB's did not 
-support empty String, this version of `Scanamo` serializes these cases: `""`, `None` and `Some("")`
+*note:* `meteor` uses `scanamo`'s version `1.0.0-m11` instead of latest because in my experience,
+this is the most stable version. however, because it is an older version when dynamodb's did not 
+support empty string, this version of `scanamo` serializes these cases: `""`, `none` and `some("")`
 to Dynamo's `NULL`. This is problematic because once the value is written down, reading it back is
 difficult.
 

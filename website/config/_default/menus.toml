@@ -1,7 +1,25 @@
 [[main]]
   name = "Docs"
-  url = "/docs/getstarted/"
+  url = "/docs/introduction/getstarted/"
   weight = 10
+
+[[docs]]
+  name = "Introduction"
+  weight = 11
+  identifier = "introduction"
+  url = "/docs/introduction/"
+
+[[docs]]
+  name = "Codec"
+  weight = 12
+  identifier = "codec"
+  url = "/docs/codec/"
+
+[[docs]]
+  name = "API"
+  weight = 13
+  identifier = "api"
+  url = "/docs/api/"
 
 [[social]]
   name = "GitHub"
