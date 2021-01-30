@@ -20,11 +20,11 @@ portraitPhotoWidths = [800, 700, 600, 500]
 lqipWidth = "20x"
 
 # Footer
-#footer = ""
+footer = ""
 
 # Alert
-#alert = false
-#alertText = ""
+alert = false
+alertText = ""
 
 # Edit Page
 docsRepo = "https://github.com/d2a4u/meteor"
