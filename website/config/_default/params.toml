@@ -1,0 +1,31 @@
+# Meta Data for SEO
+
+## Homepage
+title = "meteor"
+titleSeparator = "-"
+titleAddition = "A Scala DynamoDB client library"
+description = "A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2."
+
+## Sitelinks Search Box
+siteLinksSearchBox = false
+
+## Chrome Browser
+themeColor = "#fff"
+
+# Images
+quality = 85
+bgColor = "#fff"
+landscapePhotoWidths = [900, 800, 700, 600, 500]
+portraitPhotoWidths = [800, 700, 600, 500]
+lqipWidth = "20x"
+
+# Footer
+#footer = ""
+
+# Alert
+#alert = false
+#alertText = ""
+
+# Edit Page
+docsRepo = "https://github.com/d2a4u/meteor"
+editPage = false

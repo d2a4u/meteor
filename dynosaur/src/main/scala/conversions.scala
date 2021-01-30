@@ -8,7 +8,7 @@ import meteor.errors.DecoderError
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 
 object conversions {
-  def schemaToCodec[A](schema: Schema[A]): Codec[A] = {
+  implicit def schemaToCodec[A](schema: Schema[A]): Codec[A] = {
     new Codec[A] {
       override def write(a: A): AttributeValue = {
         schema.write(a).fold(

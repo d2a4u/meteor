@@ -1,0 +1,34 @@
+{{ define "main" }}
+<section class="section container-fluid mt-n3 pb-3">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 text-center">
+      <h1 class="mt-0">{{ .Title }}</h1>
+    </div>
+    <div class="col-lg-9 col-xl-8 text-center">
+      <p class="lead">{{ .Params.Lead | safeHTML }}</p>
+      <a class="btn btn-primary btn-lg px-4 mb-2" href="{{ "docs/introduction/getstarted/" | absURL }}" role="button">Get started</a>
+      <p class="meta"><a target="_blank" rel="noopener noreferrer" href="https://github.com/d2a4u/meteor/workflows/build/badge.svg"><img src="https://github.com/d2a4u/meteor/workflows/build/badge.svg" alt="build" style="max-width:100%;"></a>
+        <a href="https://bintray.com/d2a4u/meteor/meteor-awssdk/_latestVersion" rel="nofollow"> <img src="https://camo.githubusercontent.com/864ed02e58305b8ba34ff25d2addff5d1d237bfb41f5c9b89d90d907886b8b90/68747470733a2f2f6170692e62696e747261792e636f6d2f7061636b616765732f64326134752f6d6574656f722f6d6574656f722d61777373646b2f696d616765732f646f776e6c6f61642e737667" alt="Download" data-canonical-src="https://api.bintray.com/packages/d2a4u/meteor/meteor-awssdk/images/download.svg" style="max-width:100%;"> </a>
+        <a href="https://gitter.im/dynamodb-meteor/community" rel="nofollow"><img src="https://camo.githubusercontent.com/5dbac0213da25c445bd11f168587c11a200ba153ef3014e8408e462e410169b3/68747470733a2f2f6261646765732e6769747465722e696d2f4a6f696e253230436861742e737667" alt="Join the chat at https://gitter.im/dynamodb-meteor/community" data-canonical-src="https://badges.gitter.im/Join%20Chat.svg" style="max-width:100%;"></a>
+      </p>
+    </div>
+  </div>
+</section>
+{{ end }}
+
+{{ define "sidebar-prefooter" }}
+<section class="section section-sm">
+  <div class="container">
+  </div>
+</section>
+{{ end }}
+
+{{ define "sidebar-footer" }}
+<section class="section section-sm container-fluid">
+  <div class="row justify-content-center text-center">
+    <div class="col-lg-9">
+      {{- .Content -}}
+    </div>
+  </div>
+</section>
+{{ end }}
