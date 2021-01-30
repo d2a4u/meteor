@@ -21,10 +21,12 @@ jobs:
           hugo-version: '0.79.1'
 
       - name: Build
-        run: hugo --minify
+        run: |
+          cd website
+          hugo --minify
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          publish_dir: ./website/public
