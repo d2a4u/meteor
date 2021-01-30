@@ -16,10 +16,10 @@ class BatchWriteOpsSpec extends ITSpec {
   it should "batch put items via Pipe" in {
     val size = 200
     val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
-    val input = fs2.Stream.range(0, size).map { i =>
+    val input = (0 until size).map { i =>
       testData.copy(id = Id(i.toString))
-    }.covary[IO]
-    val keys = input.map { data =>
+    }
+    val keys = fs2.Stream.emits(input).covary[IO].map { data =>
       (data.id, data.range)
     }
 
@@ -46,8 +46,10 @@ class BatchWriteOpsSpec extends ITSpec {
             32,
             backOff
           )
-        put(input).compile.drain >> get(keys).compile.drain
-    }.unsafeToFuture().futureValue shouldBe an[Unit]
+        put(fs2.Stream.emits(input).covary[IO]).compile.drain >> get(
+          keys
+        ).compile.toList
+    }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
 
   it should "batch put fixed size Seq" in {
@@ -83,8 +85,8 @@ class BatchWriteOpsSpec extends ITSpec {
           )
         client.batchPut[TestData](table, input, backOff) >> get(
           keys
-        ).compile.drain
-    }.unsafeToFuture().futureValue shouldBe an[Unit]
+        ).compile.toList
+    }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
 
   it should "preserve order when batch put items" in {
@@ -108,5 +110,47 @@ class BatchWriteOpsSpec extends ITSpec {
         put(input).compile.drain >> get
     }.unsafeToFuture().futureValue shouldEqual Some(testData.copy(int =
       size - 1))
+  }
+
+  it should "batch put items unordered" in {
+    val size = 200
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val input = (0 until size).map { i =>
+      testData.copy(id = Id(i.toString))
+    }
+    val keys = fs2.Stream.emits(input.map { data =>
+      (data.id, data.range)
+    })
+
+    tableWithKeys[IO].use {
+      case (client, table) =>
+        val get =
+          client.batchGet[Id, Range, TestData](
+            table,
+            consistentRead = false,
+            Expression(
+              "#id, #range, #str, #int, #bool",
+              Map(
+                "#id" -> "id",
+                "#range" -> "range",
+                "#str" -> "str",
+                "#int" -> "int",
+                "#bool" -> "bool"
+              ),
+              Map.empty
+            ),
+            100.millis,
+            32,
+            backOff
+          )
+        client.batchPutUnordered[TestData](
+          table,
+          input.toSet,
+          24,
+          backOff
+        ) >> get(
+          keys
+        ).compile.toList
+    }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
 }

@@ -356,7 +356,6 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   def batchPutUnordered[T: Encoder](
     table: Table,
     items: Set[T],
-    maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Unit] = {
@@ -364,7 +363,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     val pipe =
       batchPutUnorderedOp[F, T](
         table.name,
-        maxBatchWait,
+        Int.MaxValue.seconds,
         parallelism,
         backoffStrategy
       )(jClient)
