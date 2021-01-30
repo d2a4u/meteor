@@ -1,4 +1,4 @@
-name: build
+name: build-branches
 
 on:
   push:
