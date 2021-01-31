@@ -6,11 +6,8 @@
     </div>
     <div class="col-lg-9 col-xl-8 text-center">
       <p class="lead">{{ .Params.Lead | safeHTML }}</p>
-      <a class="btn btn-primary btn-lg px-4 mb-2" href="{{ "docs/introduction/getstarted/" | absURL }}" role="button">Get started</a>
-      <p class="meta"><a target="_blank" rel="noopener noreferrer" href="https://github.com/d2a4u/meteor/workflows/build/badge.svg"><img src="https://github.com/d2a4u/meteor/workflows/build/badge.svg" alt="build" style="max-width:100%;"></a>
-        <a href="https://bintray.com/d2a4u/meteor/meteor-awssdk/_latestVersion" rel="nofollow"> <img src="https://camo.githubusercontent.com/864ed02e58305b8ba34ff25d2addff5d1d237bfb41f5c9b89d90d907886b8b90/68747470733a2f2f6170692e62696e747261792e636f6d2f7061636b616765732f64326134752f6d6574656f722f6d6574656f722d61777373646b2f696d616765732f646f776e6c6f61642e737667" alt="Download" data-canonical-src="https://api.bintray.com/packages/d2a4u/meteor/meteor-awssdk/images/download.svg" style="max-width:100%;"> </a>
-        <a href="https://gitter.im/dynamodb-meteor/community" rel="nofollow"><img src="https://camo.githubusercontent.com/5dbac0213da25c445bd11f168587c11a200ba153ef3014e8408e462e410169b3/68747470733a2f2f6261646765732e6769747465722e696d2f4a6f696e253230436861742e737667" alt="Join the chat at https://gitter.im/dynamodb-meteor/community" data-canonical-src="https://badges.gitter.im/Join%20Chat.svg" style="max-width:100%;"></a>
-      </p>
+      <a class="btn btn-primary btn-lg px-4 mb-2" href="{{ "docs/prologue/introduction/" | absURL }}" role="button">Get started</a>
+      <p class="meta">Open-source MIT Licensed. <a href="https://github.com/h-enk/doks">GitHub v{{ .Site.Data.doks.version }}</a></p>
     </div>
   </div>
 </section>
@@ -19,6 +16,34 @@
 {{ define "sidebar-prefooter" }}
 <section class="section section-sm">
   <div class="container">
+    <div class="row justify-content-center text-center">
+      <div class="col-lg-5">
+        <h2 class="h4">Security aware</h2>
+        <p>Get A+ scores on <a href="https://observatory.mozilla.org/analyze/doks.netlify.app">Mozilla Observatory</a> out of the box. Easily change the default Security Headers to suit your needs.</p>
+      </div>
+      <div class="col-lg-5">
+        <h2 class="h4">Fast by default</h2>
+        <p>Get 100 scores on <a href="https://googlechrome.github.io/lighthouse/viewer/?gist=7731347bb8ce999eff7428a8e763b637">Google Lighthouse</a> by default. Doks removes unused css, prefetches links, and lazy loads images.</p>
+      </div>
+      <div class="col-lg-5">
+        <h2 class="h4">SEO-ready</h2>
+        <p>Use sensible defaults for structured data, open graph, and Twitter cards. Or easily change the SEO settings to your liking.</p>
+      </div>
+    </div>
+    <div class="row justify-content-center text-center">
+      <div class="col-lg-5">
+        <h2 class="h4">Full text search</h2>
+        <p>Search your Doks site with FlexSearch. Easily customize index settings and search options to your liking.</p>
+      </div>
+      <div class="col-lg-5">
+        <h2 class="h4">Page layouts</h2>
+        <p>Build pages with a landing page, blog, or documentation layout. Add custom sections and components to suit your needs.</p>
+      </div>
+      <div class="col-lg-5">
+        <h2 class="h4">Dark mode</h2>
+        <p>Switch to a low-light UI with the click of a button. Change colors with variables to match your branding.</p>
+      </div>
+    </div>
   </div>
 </section>
 {{ end }}

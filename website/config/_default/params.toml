@@ -1,10 +1,26 @@
 # Meta Data for SEO
 
 ## Homepage
-title = "meteor"
+title = "Doks"
 titleSeparator = "-"
-titleAddition = "A Scala DynamoDB client library"
-description = "A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2."
+titleAddition = "Modern Documentation Theme"
+description = "Doks is a Hugo theme helping you build modern documentation websites that are secure, fast, and SEO-ready — by default."
+
+## Open Graph + Twitter Cards
+images = ["doks.png"]
+twitterSite = "henkverlinde"
+twitterCreator = "henkverlinde"
+facebookAuthor = "verlinde.henk"
+facebookPublisher = "verlinde.henk"
+ogLocale = "en_US"
+
+## JSON-LD
+schemaType = "Organization"
+schemaLogo = "logo-doks.png"
+schemaTwitter = "https://twitter.com/henkverlinde"
+schemaLinkedIn = "https://www.linkedin.com/in/henkverlinde/"
+schemaGitHub = "https://github.com/h-enk"
+schemaSection = "blog"
 
 ## Sitelinks Search Box
 siteLinksSearchBox = false
@@ -20,12 +36,12 @@ portraitPhotoWidths = [800, 700, 600, 500]
 lqipWidth = "20x"
 
 # Footer
-footer = ""
+footer = "Powered by <a href=\"https://www.netlify.com/\">Netlify</a>, <a href=\"https://gohugo.io/\">Hugo</a>, and <a href=\"https://getdoks.org/\">Doks</a>"
 
 # Alert
 alert = false
-alertText = ""
+alertText = "Like Doks? <a class=\"alert-link\" href=\"https://github.com/h-enk/doks/stargazers\">Star on GitHub</a>. Thanks!</a>"
 
 # Edit Page
-docsRepo = "https://github.com/d2a4u/meteor"
+docsRepo = "https://github.com/h-enk/doks"
 editPage = false
