@@ -59,6 +59,8 @@ object SortKeyQuery {
   case class GreaterOrEqualTo[T](value: T) extends SortKeyQuery[T]
   case class Between[T: Ordering](from: T, to: T) extends SortKeyQuery[T]
   case class BeginsWith[T](value: T) extends SortKeyQuery[T]
+
+  def empty[T]: SortKeyQuery[T] = Empty[T]()
 }
 
 case class Expression(
@@ -194,9 +196,8 @@ object Query {
   def apply[P: Encoder](
     partitionKey: P
   ): Query[P, Nothing] =
-    Query[P, Nothing](
+    Query[P](
       partitionKey,
-      SortKeyQuery.Empty[Nothing](),
       Expression.empty
     )
 
@@ -209,7 +210,7 @@ object Query {
     partitionKey: P,
     filter: Expression
   ): Query[P, Nothing] =
-    Query[P, Nothing](partitionKey, SortKeyQuery.Empty[Nothing](), filter)
+    Query[P, Nothing](partitionKey, SortKeyQuery.empty[Nothing], filter)
 }
 
 trait DynamoDbType {

@@ -1,4 +1,4 @@
-baseurl = "/"
+baseurl = "https://d2a4u.github.io/meteor/"
 disableAliases = true
 disableHugoGeneratorInject = true
 enableEmoji = true
@@ -7,6 +7,8 @@ enableRobotsTXT = true
 languageCode = "en-US"
 paginate = 7
 rssLimit = 10
+pygmentsCodeFences = true
+pygmentsUseClasses = true
 
 # add redirects/headers
 [outputs]
@@ -49,14 +51,14 @@ rel  = "sitemap"
       unsafe = true
   [markup.highlight]
     codeFences = true
-    guessSyntax = false
+    guessSyntax = true
     hl_Lines = ""
     lineNoStart = 1
     lineNos = false
     lineNumbersInTable = true
     noClasses = false
-    style = "dracula"
-    tabWidth = 4
+    style = "solarized-light"
+    tabWidth = 2
 
 [sitemap]
   changefreq = "weekly"
