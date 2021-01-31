@@ -3,84 +3,84 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>/docs/introduction/getstarted/</loc>
+    <loc>meteor/docs/introduction/getstarted/</loc>
     <lastmod>2021-01-25T23:54:06+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/introduction/helloworld/</loc>
+    <loc>meteor/docs/introduction/helloworld/</loc>
     <lastmod>2021-01-26T22:25:49+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/introduction/runtests/</loc>
+    <loc>meteor/docs/introduction/runtests/</loc>
     <lastmod>2021-01-27T00:39:02+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/api/tableactions/</loc>
+    <loc>meteor/docs/api/tableactions/</loc>
     <lastmod>2021-01-27T00:17:07+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/api/itemactions/</loc>
+    <loc>meteor/docs/api/itemactions/</loc>
     <lastmod>2021-01-27T00:17:27+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/api/batchactions/</loc>
+    <loc>meteor/docs/api/batchactions/</loc>
     <lastmod>2021-01-27T00:17:46+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/codec/meteor/</loc>
+    <loc>meteor/docs/codec/meteor/</loc>
     <lastmod>2021-01-26T22:18:50+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/codec/dynosaur/</loc>
+    <loc>meteor/docs/codec/dynosaur/</loc>
     <lastmod>2021-01-26T22:19:06+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/codec/scanamo/</loc>
+    <loc>meteor/docs/codec/scanamo/</loc>
     <lastmod>2021-01-26T22:19:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/docs/</loc>
+    <loc>meteor/docs/</loc>
     <lastmod>2021-01-25T23:25:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/</loc>
+    <loc>meteor/</loc>
     <lastmod>2021-01-25T23:25:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   
   <url>
-    <loc>/contributors/</loc>
+    <loc>meteor/contributors/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>

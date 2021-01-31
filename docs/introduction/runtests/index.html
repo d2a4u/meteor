@@ -4,16 +4,16 @@
   <meta charset="utf-8">
   <meta http-equiv="x-ua-compatible" content="ie=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <link rel="preload" as="font" href="/fonts/vendor/jost/jost-v4-latin-regular.woff2" type="font/woff2" crossorigin>
-<link rel="preload" as="font" href="/fonts/vendor/jost/jost-v4-latin-700.woff2" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/main.16f1dd110bc334c503eed67a0a274ac2e573e8c3f41544ebe3f22c630081f283d27d3acc20750d8aa30995ac67355f0026a11db0bee7eaf0c353ae25544426ce.css" integrity="sha512-FvHdEQvDNMUD7tZ6CidKwuVz6MP0FUTr4/IsYwCB8oPSfTrMIHUNiqMJlaxnNV8AJqEdsL7n6vDDU64lVEQmzg==" crossorigin="anonymous">
+  <link rel="preload" as="font" href="meteor/fonts/vendor/jost/jost-v4-latin-regular.woff2" type="font/woff2" crossorigin>
+<link rel="preload" as="font" href="meteor/fonts/vendor/jost/jost-v4-latin-700.woff2" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/meteor/main.16f1dd110bc334c503eed67a0a274ac2e573e8c3f41544ebe3f22c630081f283d27d3acc20750d8aa30995ac67355f0026a11db0bee7eaf0c353ae25544426ce.css" integrity="sha512-FvHdEQvDNMUD7tZ6CidKwuVz6MP0FUTr4/IsYwCB8oPSfTrMIHUNiqMJlaxnNV8AJqEdsL7n6vDDU64lVEQmzg==" crossorigin="anonymous">
 <noscript><style>img.lazyload { display: none; }</style></noscript>
   <meta name="robots" content="index, follow">
   <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <title>Build and Tests - meteor</title>
 <meta name="description" content="A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2.">
-<link rel="canonical" href="/docs/introduction/runtests/">
+<link rel="canonical" href="meteor/docs/introduction/runtests/">
 <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Build and Tests">
 <meta name="twitter:description" content="Build The project requires Scala 2.12.12 or 2.13.3. To build the project locally:
@@ -28,7 +28,7 @@ docker-compose up -d # make sure that the service is ready before running tests 
 git@github.com:d2a4u/meteor.git cd ./meteor sbt compile Tests Local Unit tests can be run locally by sbt test. Integration tests run against docker container of DynamoDB Local. Hence, you will need docker installed and then to run integration tests:
 docker-compose up -d # make sure that the service is ready before running tests sbt it:test A docker-compose.yml is provided at the root of the project.">
 <meta property="og:type" content="article">
-<meta property="og:url" content="/docs/introduction/runtests/">
+<meta property="og:url" content="meteor/docs/introduction/runtests/">
 
   <meta property="article:published_time" content="2021-01-27T00:39:02+00:00">
   <meta property="article:modified_time" content="2021-01-27T00:39:02+00:00">
@@ -46,21 +46,31 @@ docker-compose up -d # make sure that the service is ready before running tests 
         "@type": "ListItem",
         "position":  1 ,
         "name": "Home",
-        "item": "\/"
+        "item": "meteor\/"
     },{
         "@type": "ListItem",
         "position":  2 ,
-        "name": "Docsintroductionruntests",
-        "item": "\/docsintroductionruntests\/"
+        "name": "Docs",
+        "item": "meteor\/docs\/"
+    },{
+        "@type": "ListItem",
+        "position":  3 ,
+        "name": "Introduction",
+        "item": "meteor\/docs\/introduction\/"
+    },{
+        "@type": "ListItem",
+        "position":  4 ,
+        "name": "Runtests",
+        "item": "meteor\/docs\/introduction\/runtests\/"
     }]
 }
 </script>
 
   <meta name="theme-color" content="#fff">
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="meteor/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="meteor/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="meteor/favicon-16x16.png">
+<link rel="manifest" href="meteor/site.webmanifest">
   
 </head>
   <body class="docs single">
@@ -81,7 +91,7 @@ docker-compose up -d # make sure that the service is ready before running tests 
       </ul>
     <div class="collapse navbar-collapse order-4 order-md-1">
       <ul class="navbar-nav main-nav mr-auto order-5 order-md-2"><li class="nav-item active">
-            <a class="nav-link" href="/docs/introduction/getstarted/">Docs</a>
+            <a class="nav-link" href="meteor/meteor/docs/introduction/getstarted/">Docs</a>
           </li>
         </ul>
       <div class="break order-6 d-md-none"></div>
@@ -100,21 +110,21 @@ docker-compose up -d # make sure that the service is ready before running tests 
 			<nav class="docs-links" aria-label="Main navigation">
 				<h3>Introduction</h3>
   <ul class="list-unstyled">
-    <li><a class="docs-link" href="/docs/introduction/getstarted/">Get Started</a></li>
-    <li><a class="docs-link" href="/docs/introduction/helloworld/">Hello World</a></li>
-    <li><a class="docs-link active" href="/docs/introduction/runtests/">Build and Tests</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/introduction/getstarted/">Get Started</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/introduction/helloworld/">Hello World</a></li>
+    <li><a class="docs-link active" href="meteor/meteor/docs/introduction/runtests/">Build and Tests</a></li>
     </ul>
   <h3>Codec</h3>
   <ul class="list-unstyled">
-    <li><a class="docs-link" href="/docs/codec/meteor/">meteor Codec</a></li>
-    <li><a class="docs-link" href="/docs/codec/dynosaur/">Dynosaur Schema</a></li>
-    <li><a class="docs-link" href="/docs/codec/scanamo/">Scanamo Format</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/codec/meteor/">meteor Codec</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/codec/dynosaur/">Dynosaur Schema</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/codec/scanamo/">Scanamo Format</a></li>
     </ul>
   <h3>API</h3>
   <ul class="list-unstyled">
-    <li><a class="docs-link" href="/docs/api/tableactions/">Table Actions</a></li>
-    <li><a class="docs-link" href="/docs/api/itemactions/">Item Actions</a></li>
-    <li><a class="docs-link" href="/docs/api/batchactions/">Batch Actions</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/api/tableactions/">Table Actions</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/api/itemactions/">Item Actions</a></li>
+    <li><a class="docs-link" href="meteor/meteor/docs/api/batchactions/">Batch Actions</a></li>
     </ul>
   
 			</nav>        
@@ -163,14 +173,14 @@ other version bump, add <code>#major</code> or <code>#patch</code> to commit mes
 
 			<div class="docs-navigation d-flex justify-content-between">
 	
-	<a href="/docs/introduction/helloworld/">
+	<a href="meteor/docs/introduction/helloworld/">
 			<div class="card my-1">
 				<div class="card-body py-2">
 					&larr; Hello World
 				</div>
 			</div>
 		</a>
-	<a class="ml-auto" href="/docs/api/tableactions/">
+	<a class="ml-auto" href="meteor/docs/api/tableactions/">
 			<div class="card my-1">
 				<div class="card-body py-2">
 					Table Actions &rarr;
@@ -202,8 +212,8 @@ other version bump, add <code>#major</code> or <code>#patch</code> to commit mes
   </div>
 </footer>
     
-    <script src="/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="/index.min.4270f008175cf5140149c705314c764e77dc9215b223bc60c6e6894a09ea282441106b5568e67069eb0bbd3ddb16356bc586df73dcae00a296cd0b0dbf2987a4.js" integrity="sha512-QnDwCBdc9RQBSccFMUx2TnfckhWyI7xgxuaJSgnqKCRBEGtVaOZwaesLvT3bFjVrxYbfc9yuAKKWzQsNvymHpA==" crossorigin="anonymous" defer></script>
+    <script src="/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
+  <script src="/meteor/index.min.f53ac53c351f268971be3ee75e28bc5448c341caa5e5b065afe64d8796499ecf78f95ca5679188ae8aba786c65ae58c2712d13b48c507333c8add698f366836b.js" integrity="sha512-9TrFPDUfJolxvj7nXii8VEjDQcql5bBlr&#43;ZNh5ZJns94&#43;VylZ5GIroq6eGxlrljCcS0TtIxQczPIrdaY82aDaw==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>
