@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Docs on </title>
-    <link>meteor/docs/</link>
+    <link>https://d2a4u.github.io/meteor/docs/</link>
     <description>Recent content in Docs on </description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-US</language>
-    <lastBuildDate>Mon, 25 Jan 2021 23:25:00 +0000</lastBuildDate><atom:link href="meteor/docs/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 25 Jan 2021 23:25:00 +0000</lastBuildDate><atom:link href="https://d2a4u.github.io/meteor/docs/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Get Started</title>
-      <link>meteor/docs/introduction/getstarted/</link>
+      <link>https://d2a4u.github.io/meteor/docs/introduction/getstarted/</link>
       <pubDate>Mon, 25 Jan 2021 23:54:06 +0000</pubDate>
       
-      <guid>meteor/docs/introduction/getstarted/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/introduction/getstarted/</guid>
       <description>meteor is a wrapper around Java AWS SDK v2 library, provides higher level API over standard DynamoDB&amp;rsquo;s operations such as batch write or scan table as fs2 Stream, auto processes left over items and many other features.
 Installation Add Bintray resolver:
 resolvers += Resolver.bintrayRepo(&amp;#34;d2a4u&amp;#34;, &amp;#34;meteor&amp;#34;) Add the following to your build.sbt, see this for latest version. Supports Scala 2.12 and 2.13.
@@ -21,10 +21,10 @@ libraryDependencies += &amp;#34;meteor&amp;#34; %% &amp;#34;meteor-awssdk&amp;#3
     
     <item>
       <title>Hello World</title>
-      <link>meteor/docs/introduction/helloworld/</link>
+      <link>https://d2a4u.github.io/meteor/docs/introduction/helloworld/</link>
       <pubDate>Tue, 26 Jan 2021 22:25:49 +0000</pubDate>
       
-      <guid>meteor/docs/introduction/helloworld/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/introduction/helloworld/</guid>
       <description>Quick complete example to write and read from a DynamoDB table.
 Define Codec Type Classes Codec (Encoder and Decoder) type classes are required to write and read a value of type T to and from Java&amp;rsquo;s AttributeValue.
 import meteor._ import meteor.codec._ import meteor.syntax._ case class Book(id: Int, content: String) object Book { implicit val bookEncoder: Encoder[Book] = Encoder.instance { book =&amp;gt; Map( &amp;#34;id&amp;#34; -&amp;gt; book.id.asAttributeValue, &amp;#34;content&amp;#34; -&amp;gt; book.content.asAttributeValue ).asAttributeValue } implicit val bookDecoder: Decoder[Book] = Decoder.</description>
@@ -32,10 +32,10 @@ import meteor._ import meteor.codec._ import meteor.syntax._ case class Book(id:
     
     <item>
       <title>Build and Tests</title>
-      <link>meteor/docs/introduction/runtests/</link>
+      <link>https://d2a4u.github.io/meteor/docs/introduction/runtests/</link>
       <pubDate>Wed, 27 Jan 2021 00:39:02 +0000</pubDate>
       
-      <guid>meteor/docs/introduction/runtests/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/introduction/runtests/</guid>
       <description>Build The project requires Scala 2.12.12 or 2.13.3. To build the project locally:
 git@github.com:d2a4u/meteor.git cd ./meteor sbt compile Tests Local Unit tests can be run locally by sbt test. Integration tests run against docker container of DynamoDB Local. Hence, you will need docker installed and then to run integration tests:
 docker-compose up -d # make sure that the service is ready before running tests sbt it:test A docker-compose.yml is provided at the root of the project.</description>
@@ -43,58 +43,58 @@ docker-compose up -d # make sure that the service is ready before running tests 
     
     <item>
       <title>Table Actions</title>
-      <link>meteor/docs/api/tableactions/</link>
+      <link>https://d2a4u.github.io/meteor/docs/api/tableactions/</link>
       <pubDate>Wed, 27 Jan 2021 00:17:07 +0000</pubDate>
       
-      <guid>meteor/docs/api/tableactions/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/api/tableactions/</guid>
       <description>Create Table creation returns F[Unit] where F[_] is semantically blocked (no actual JVM thread being blocked) until the table has been created and its status is available.
 import meteor._ val table = Table(&amp;#34;books-table&amp;#34;, Key(&amp;#34;id&amp;#34;, DynamoDbType.N), None) val creation: F[Unit] = client.createTable( table = table, attributeDefinition = Map.empty, globalSecondaryIndexes = Set.empty, localSecondaryIndexes = Set.empty, billingMode = BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:</description>
     </item>
     
     <item>
       <title>Item Actions</title>
-      <link>meteor/docs/api/itemactions/</link>
+      <link>https://d2a4u.github.io/meteor/docs/api/itemactions/</link>
       <pubDate>Wed, 27 Jan 2021 00:17:27 +0000</pubDate>
       
-      <guid>meteor/docs/api/itemactions/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/api/itemactions/</guid>
       <description>Get Retrieve Put Delete Update </description>
     </item>
     
     <item>
       <title>Batch Actions</title>
-      <link>meteor/docs/api/batchactions/</link>
+      <link>https://d2a4u.github.io/meteor/docs/api/batchactions/</link>
       <pubDate>Wed, 27 Jan 2021 00:17:46 +0000</pubDate>
       
-      <guid>meteor/docs/api/batchactions/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/api/batchactions/</guid>
       <description>Batch Get Batch Put </description>
     </item>
     
     <item>
       <title>meteor Codec</title>
-      <link>meteor/docs/codec/meteor/</link>
+      <link>https://d2a4u.github.io/meteor/docs/codec/meteor/</link>
       <pubDate>Tue, 26 Jan 2021 22:18:50 +0000</pubDate>
       
-      <guid>meteor/docs/codec/meteor/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/codec/meteor/</guid>
       <description>meteor provides Encoder and Decoder type classes to convert any A to and from Java&amp;rsquo;s Attributevalue. Their signatures are followed:
 trait Encoder[A] { def write(a: A): AttributeValue } trait Decoder[A] { def read(av: AttributeValue): Either[DecoderError, A] } Please note that the write side is always success, such that, given an A, we can always write it to an AttributeValue. However, reading an AttributeValue into A might fail as we don&amp;rsquo;t know the schema of an AttributeValue.</description>
     </item>
     
     <item>
       <title>Dynosaur Schema</title>
-      <link>meteor/docs/codec/dynosaur/</link>
+      <link>https://d2a4u.github.io/meteor/docs/codec/dynosaur/</link>
       <pubDate>Tue, 26 Jan 2021 22:19:06 +0000</pubDate>
       
-      <guid>meteor/docs/codec/dynosaur/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/codec/dynosaur/</guid>
       <description>The meteor-dynosaur module provides integration with Dynosaur library. It provides implicit conversion from Dynosaur&amp;rsquo;s schema to meteor&amp;rsquo;s codec. This is an experiment feature, hence, it is subjected to change.
 import meteor.dynosaur.formats.conversions._ import meteor.Codec val bookSchema: Schema[Book] = ... val bookCodec: Codec[Book] = implicitly[Codec[Book]] </description>
     </item>
     
     <item>
       <title>Scanamo Format</title>
-      <link>meteor/docs/codec/scanamo/</link>
+      <link>https://d2a4u.github.io/meteor/docs/codec/scanamo/</link>
       <pubDate>Tue, 26 Jan 2021 22:19:00 +0000</pubDate>
       
-      <guid>meteor/docs/codec/scanamo/</guid>
+      <guid>https://d2a4u.github.io/meteor/docs/codec/scanamo/</guid>
       <description>The meteor-scanamo module provides integration with Scanamo format library. It provides implicit conversion from scanamo&amp;rsquo;s DynamoFormat to meteor&amp;rsquo;s codec.
 Note: The module uses scanamo-format&amp;rsquo;s version 1.0.0-M11 instead of latest because in my experience, this is the most stable version. however, because it is an older version when DynamoDB did not support empty String, the following scenario:
  Empty string: &amp;quot;&amp;quot; Optional none: None Optional some of empty string: Some(&amp;quot;&amp;quot;)  are all serialized to an AttributeValue of null.</description>

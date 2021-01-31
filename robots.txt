@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: meteor/sitemap.xml
+Sitemap: https://d2a4u.github.io/meteor/sitemap.xml
