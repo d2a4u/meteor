@@ -16,13 +16,17 @@
 <link rel="canonical" href="https://d2a4u.github.io/meteor/docs/api/itemactions/">
 <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Item Actions">
-<meta name="twitter:description" content="Get Retrieve Put Delete Update ">
+<meta name="twitter:description" content="Most actions have several overloading methods for a table with composite keys, or a simple table with only partition key.
+Get Most simple action to get an item from a table by key(s). Since return type U is only on the return type, all type parameters are required to be passed in explicitly.
+def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:">
 
 <meta name="twitter:site" content="@">
 <meta name="twitter:creator" content="@">
 
 <meta property="og:title" content="Item Actions">
-<meta property="og:description" content="Get Retrieve Put Delete Update ">
+<meta property="og:description" content="Most actions have several overloading methods for a table with composite keys, or a simple table with only partition key.
+Get Most simple action to get an item from a table by key(s). Since return type U is only on the return type, all type parameters are required to be passed in explicitly.
+def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://d2a4u.github.io/meteor/docs/api/itemactions/">
 
@@ -131,7 +135,11 @@
     <nav id="TableOfContents">
   <ul>
     <li><a href="#get">Get</a></li>
-    <li><a href="#retrieve">Retrieve</a></li>
+    <li><a href="#retrieve">Retrieve</a>
+      <ul>
+        <li><a href="#query">Query</a></li>
+      </ul>
+    </li>
     <li><a href="#put">Put</a></li>
     <li><a href="#delete">Delete</a></li>
     <li><a href="#update">Update</a></li>
@@ -143,8 +151,83 @@
 		<main class="docs-content col-lg-11 col-xl-9">
 		<h1>Item Actions</h1>
 			<p class="lead"></p>
-			<h2 id="get">Get<a href="#get" class="anchor" aria-hidden="true">#</a> </h2>
-<h2 id="retrieve">Retrieve<a href="#retrieve" class="anchor" aria-hidden="true">#</a> </h2>
+			<p>Most actions have several overloading methods for a table with composite keys, or a simple table
+with only partition key.</p>
+<h2 id="get">Get<a href="#get" class="anchor" aria-hidden="true">#</a> </h2>
+<p>Most simple action to get an item from a table by key(s). Since return type <code>U</code> is only on the
+return type, all type parameters are required to be passed in explicitly.</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">get</span><span class="o">[</span><span class="kt">P:</span> <span class="kt">Encoder</span>, <span class="kt">S:</span> <span class="kt">Encoder</span>, <span class="kt">U:</span> <span class="kt">Decoder</span><span class="o">](</span>
+  <span class="n">table</span><span class="k">:</span> <span class="kt">Table</span><span class="o">,</span>
+  <span class="n">partitionKey</span><span class="k">:</span> <span class="kt">P</span><span class="o">,</span>
+  <span class="n">sortKey</span><span class="k">:</span> <span class="kt">S</span><span class="o">,</span>
+  <span class="n">consistentRead</span><span class="k">:</span> <span class="kt">Boolean</span>
+<span class="o">)</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">U</span><span class="o">]]</span>
+</code></pre></div><h2 id="retrieve">Retrieve<a href="#retrieve" class="anchor" aria-hidden="true">#</a> </h2>
+<p>Similar to <code>Get</code> but can return multiple items by:</p>
+<ul>
+<li>retrieve multiple items which have the same partition key but different sort key</li>
+<li>retrieve multiple items given a <code>Query</code></li>
+</ul>
+<h3 id="query">Query<a href="#query" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Query can be used to <code>Retrive</code> multiple items which fulfills the query&rsquo;s condition.</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">case</span> <span class="k">class</span> <span class="nc">Query</span><span class="o">[</span><span class="kt">P:</span> <span class="kt">Encoder</span>, <span class="kt">S:</span> <span class="kt">Encoder</span><span class="o">](</span>
+  <span class="n">partitionKey</span><span class="k">:</span> <span class="kt">P</span><span class="o">,</span>
+  <span class="n">sortKeyQuery</span><span class="k">:</span> <span class="kt">SortKeyQuery</span><span class="o">[</span><span class="kt">S</span><span class="o">],</span>
+  <span class="n">filter</span><span class="k">:</span> <span class="kt">Expression</span>
+<span class="o">)</span>
+</code></pre></div><p>Consider the following dataset:</p>
+<table>
+<thead>
+<tr>
+<th>author (partition key)</th>
+<th>title (sort key)</th>
+<th>publishedAt</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jules Verne</td>
+<td>Around the Moon</td>
+<td>1872</td>
+</tr>
+<tr>
+<td>Jules Verne</td>
+<td>The Mysterious Island</td>
+<td>1875</td>
+</tr>
+<tr>
+<td>Jules Verne</td>
+<td>The Green Ray</td>
+<td>1882</td>
+</tr>
+</tbody>
+</table>
+<p>To retrieve <code>The Mysterious Island</code> item, the query can be:</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor.SortKeyQuery.BeginsWith</span>
+<span class="k">import</span> <span class="nn">meteor.</span><span class="o">{</span><span class="nc">Expression</span><span class="o">,</span> <span class="nc">Query</span><span class="o">}</span>
+<span class="k">import</span> <span class="nn">meteor.syntax._</span>
+
+<span class="nc">Query</span><span class="o">(</span>
+  <span class="n">partitionKey</span> <span class="k">=</span> <span class="s">&#34;Jules Verne&#34;</span><span class="o">,</span>
+  <span class="n">sortKeyQuery</span> <span class="k">=</span> <span class="nc">BeginsWith</span><span class="o">(</span><span class="s">&#34;The&#34;</span><span class="o">),</span>
+  <span class="n">filter</span> <span class="k">=</span> <span class="nc">Expression</span><span class="o">(</span>
+    <span class="n">expression</span> <span class="k">=</span> <span class="s">&#34;#pAt BETWEEN :from AND :to&#34;</span><span class="o">,</span>
+    <span class="n">attributeNames</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span>
+      <span class="s">&#34;#pAt&#34;</span> <span class="o">-&gt;</span> <span class="s">&#34;publishedAt&#34;</span>
+    <span class="o">),</span>
+    <span class="n">attributeValues</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span>
+      <span class="s">&#34;:from&#34;</span> <span class="o">-&gt;</span> <span class="mf">1870.</span><span class="n">asAttributeValue</span><span class="o">,</span>
+      <span class="s">&#34;:to&#34;</span> <span class="o">-&gt;</span> <span class="mf">1880.</span><span class="n">asAttributeValue</span>
+    <span class="o">)</span>
+  <span class="o">)</span>
+<span class="o">)</span>
+</code></pre></div><p>When <code>sortKeyQuery</code> is unknown, it can be omitted by <code>SortKeyQuery.empty[P]</code>. Or when the table has
+no <code>sortKey</code>, it can be omitted by <code>SortKeyQuery.empty</code>, in this case <code>P</code>&rsquo;s type is <code>Nothing</code>.
+<code>filter</code> can also be omitted by using <code>Expression.empty</code>. There are different <code>apply</code> methods to
+use where the <code>sortKeyQuery</code> or <code>filter</code> are not required.</p>
+<p>In the example <code>Query</code> above, please note the usage of <code>#pAt</code> and <code>:from</code>/<code>:to</code>. These are
+<a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html">Query syntax</a>, they
+are optional, but it is good practice using them to avoid crashes with DynamoDB&rsquo;s reserved words.</p>
 <h2 id="put">Put<a href="#put" class="anchor" aria-hidden="true">#</a> </h2>
 <h2 id="delete">Delete<a href="#delete" class="anchor" aria-hidden="true">#</a> </h2>
 <h2 id="update">Update<a href="#update" class="anchor" aria-hidden="true">#</a> </h2>
@@ -191,7 +274,7 @@
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.aa8cbc45f96f5bf39a92ee236432d2b0f940300843f2c713c92a00f300e76c28f138672acf83025507b37b746bc5d62ffb35d17c5169e5ef35ee4da37e245fe0.js" integrity="sha512-qoy8RflvW/Oaku4jZDLSsPlAMAhD8scTySoA8wDnbCjxOGcqz4MCVQeze3RrxdYv&#43;zXRfFFp5e817k2jfiRf4A==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.093e1d54a90e8bacccfc0642f5665d73a04c5dcd3b28e249d5f1b8b319f46bec9adf4f96ffdc0b2966154035a4bb196905a45c2b498e94f83bf168cd26b524a1.js" integrity="sha512-CT4dVKkOi6zM/AZC9WZdc6BMXc07KOJJ1fG4sxn0a&#43;ya30&#43;W/9wLKWYVQDWkuxlpBaRcK0mOlPg78WjNJrUkoQ==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>

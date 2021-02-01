@@ -57,7 +57,9 @@ import meteor._ val table = Table(&amp;#34;books-table&amp;#34;, Key(&amp;#34;id
       <pubDate>Wed, 27 Jan 2021 00:17:27 +0000</pubDate>
       
       <guid>https://d2a4u.github.io/meteor/docs/api/itemactions/</guid>
-      <description>Get Retrieve Put Delete Update </description>
+      <description>Most actions have several overloading methods for a table with composite keys, or a simple table with only partition key.
+Get Most simple action to get an item from a table by key(s). Since return type U is only on the return type, all type parameters are required to be passed in explicitly.
+def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:</description>
     </item>
     
     <item>
