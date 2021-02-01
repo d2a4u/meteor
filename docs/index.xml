@@ -42,6 +42,18 @@ docker-compose up -d # make sure that the service is ready before running tests 
     </item>
     
     <item>
+      <title>Expression</title>
+      <link>https://d2a4u.github.io/meteor/docs/api/expression/</link>
+      <pubDate>Thu, 28 Jan 2021 10:14:17 +0000</pubDate>
+      
+      <guid>https://d2a4u.github.io/meteor/docs/api/expression/</guid>
+      <description>An Expression case class represents various expressions in DynamoDB actions including:
+ FilterExpression - Scan API UpdateExpression - UpdateItem API ConditionExpression - UpdateItem API ConditionExpression - PutItem API ProjectionExpression - GetItem, Query, or Scan API  These expressions in DynamoDB share the same structure, hence, in meteor they are abstracted as:
+case class Expression( expression: String, attributeNames: Map[String, String], attributeValues: Map[String, AttributeValue] ) For example:
+Expression( expression = &amp;#34;#pAt BETWEEN :from AND :to&amp;#34;, attributeNames = Map( &amp;#34;#pAt&amp;#34; -&amp;gt; &amp;#34;publishedAt&amp;#34; ), attributeValues = Map( &amp;#34;:from&amp;#34; -&amp;gt; 1870.</description>
+    </item>
+    
+    <item>
       <title>Table Actions</title>
       <link>https://d2a4u.github.io/meteor/docs/api/tableactions/</link>
       <pubDate>Wed, 27 Jan 2021 00:17:07 +0000</pubDate>
@@ -68,7 +80,9 @@ def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sort
       <pubDate>Wed, 27 Jan 2021 00:17:46 +0000</pubDate>
       
       <guid>https://d2a4u.github.io/meteor/docs/api/batchactions/</guid>
-      <description>Batch Get Batch Put </description>
+      <description>These API are supported, but it is not being documented yet, please refer to integration tests for usage examples.
+Batch Get integration tests
+Batch Write integration tests</description>
     </item>
     
     <item>

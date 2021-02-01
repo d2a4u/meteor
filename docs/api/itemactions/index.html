@@ -122,6 +122,7 @@ def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sort
     </ul>
   <h3>API</h3>
   <ul class="list-unstyled">
+    <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/api/expression/">Expression</a></li>
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/api/tableactions/">Table Actions</a></li>
     <li><a class="docs-link active" href="https://d2a4u.github.io/meteor/docs/api/itemactions/">Item Actions</a></li>
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/api/batchactions/">Batch Actions</a></li>
@@ -179,8 +180,8 @@ return type, all type parameters are required to be passed in explicitly.</p>
 <table>
 <thead>
 <tr>
-<th>author (partition key)</th>
-<th>title (sort key)</th>
+<th>author - partition key</th>
+<th>title - sort key</th>
 <th>publishedAt</th>
 </tr>
 </thead>
@@ -229,9 +230,68 @@ use where the <code>sortKeyQuery</code> or <code>filter</code> are not required.
 <a href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html">Query syntax</a>, they
 are optional, but it is good practice using them to avoid crashes with DynamoDB&rsquo;s reserved words.</p>
 <h2 id="put">Put<a href="#put" class="anchor" aria-hidden="true">#</a> </h2>
+<p>Simple action to insert an item into a table. Currently, supported put actions:</p>
+<ul>
+<li>returns <code>F[Unit]</code> - equivalent to <code>ReturnValue.NONE</code> in Java AWS SDK.</li>
+<li>returns <code>F[Option[U]]</code> - equivalent to <code>ReturnValue.ALL_OLD</code> in Java AWS SDK, a <code>None</code> is returned
+if this is the first item of the given key(s) added to the table.</li>
+</ul>
 <h2 id="delete">Delete<a href="#delete" class="anchor" aria-hidden="true">#</a> </h2>
+<p>Action to delete a single item from a table. Overriding methods provide deletion functionality for a
+table with composite keys and table with only partition key.</p>
 <h2 id="update">Update<a href="#update" class="anchor" aria-hidden="true">#</a> </h2>
+<p>Action to update a single item on a table. Currently, supported update actions:</p>
+<ul>
+<li>returns <code>F[Unit]</code> - equivalent to <code>ReturnValue.NONE</code> in Java AWS SDK.</li>
+<li>returns <code>F[Option[U]]</code> - depends on the <code>ReturnValue</code> argument, <code>U</code> represents an item (old or
+new), or only the updated part of an item (old or new).</li>
+</ul>
+<p>Let&rsquo;s consider the most complicated <code>update</code> method:</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">update</span><span class="o">[</span><span class="kt">P:</span> <span class="kt">Encoder</span>, <span class="kt">S:</span> <span class="kt">Encoder</span>, <span class="kt">U:</span> <span class="kt">Decoder</span><span class="o">](</span>
+    <span class="n">table</span><span class="k">:</span> <span class="kt">Table</span><span class="o">,</span>
+    <span class="n">partitionKey</span><span class="k">:</span> <span class="kt">P</span><span class="o">,</span>
+    <span class="n">sortKey</span><span class="k">:</span> <span class="kt">S</span><span class="o">,</span>
+    <span class="n">update</span><span class="k">:</span> <span class="kt">Expression</span><span class="o">,</span>
+    <span class="n">condition</span><span class="k">:</span> <span class="kt">Expression</span><span class="o">,</span>
+    <span class="n">returnValue</span><span class="k">:</span> <span class="kt">ReturnValue</span>
+  <span class="o">)</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">U</span><span class="o">]]</span>
+</code></pre></div><p>This can be used to update an item of given <code>partitionKey</code> and <code>sortKey</code> but only update a specific
+attribute(s) (via <code>update: Expression</code>), if a certain condition is met (via <code>condition: Expression</code>)
+and return the old attribute(s) before being updated.</p>
+<p>Consider the same dataset in <a href="./#query">Query section</a>. To update <code>publishedAt</code> value for
+<code>The Mysterious Island</code> to <code>2021</code> but only if the current <code>publishedAt</code> value is equal to <code>1875</code>,
+return the old value before being updated:</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.effect.IO</span>
+<span class="k">import</span> <span class="nn">meteor._</span>
+<span class="k">import</span> <span class="nn">meteor.syntax._</span>
+<span class="k">import</span> <span class="nn">software.amazon.awssdk.services.dynamodb.model.ReturnValue</span>
 
+<span class="k">val</span> <span class="n">table</span> <span class="k">=</span> <span class="nc">Table</span><span class="o">(</span>
+  <span class="s">&#34;books-table&#34;</span><span class="o">,</span> 
+  <span class="nc">Key</span><span class="o">(</span><span class="s">&#34;author&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">),</span> 
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Key</span><span class="o">(</span><span class="s">&#34;title&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">))</span>
+<span class="o">)</span>
+
+<span class="k">val</span> <span class="n">client</span><span class="k">:</span> <span class="kt">Client</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span> <span class="k">=</span> <span class="o">???</span>
+
+<span class="k">val</span> <span class="n">bookPublishedAtOldValue</span> <span class="k">=</span> 
+  <span class="n">client</span><span class="o">.</span><span class="n">update</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span>, <span class="kt">Int</span><span class="o">](</span>
+    <span class="n">table</span><span class="o">,</span> 
+    <span class="s">&#34;Jules Verne&#34;</span><span class="o">,</span> 
+    <span class="s">&#34;The Mysterious Island&#34;</span><span class="o">,</span>
+    <span class="nc">Expression</span><span class="o">(</span>
+      <span class="s">&#34;SET #pAt = :newYear&#34;</span><span class="o">,</span>
+      <span class="nc">Map</span><span class="o">(</span><span class="s">&#34;#pAt&#34;</span> <span class="o">-&gt;</span> <span class="s">&#34;publishedAt&#34;</span><span class="o">),</span>
+      <span class="nc">Map</span><span class="o">(</span><span class="s">&#34;:newYear&#34;</span> <span class="o">-&gt;</span> <span class="mf">2021.</span><span class="n">asAttributeValue</span><span class="o">)</span>
+    <span class="o">),</span>
+    <span class="nc">Expression</span><span class="o">(</span>
+      <span class="s">&#34;#pAt = :oldYear&#34;</span><span class="o">,</span>
+      <span class="nc">Map</span><span class="o">(</span><span class="s">&#34;#pAt&#34;</span> <span class="o">-&gt;</span> <span class="s">&#34;publishedAt&#34;</span><span class="o">),</span>
+      <span class="nc">Map</span><span class="o">(</span><span class="s">&#34;:newYear&#34;</span> <span class="o">-&gt;</span> <span class="mf">1875.</span><span class="n">asAttributeValue</span><span class="o">)</span>
+    <span class="o">),</span>
+    <span class="nc">ReturnValue</span><span class="o">.</span><span class="nc">UPDATED_OLD</span>
+<span class="o">)</span> <span class="c1">// returns IO(Some(1875))
+</span></code></pre></div>
 			<div class="docs-navigation d-flex justify-content-between">
 	
 	<a href="https://d2a4u.github.io/meteor/docs/api/tableactions/">
@@ -274,7 +334,7 @@ are optional, but it is good practice using them to avoid crashes with DynamoDB&
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.093e1d54a90e8bacccfc0642f5665d73a04c5dcd3b28e249d5f1b8b319f46bec9adf4f96ffdc0b2966154035a4bb196905a45c2b498e94f83bf168cd26b524a1.js" integrity="sha512-CT4dVKkOi6zM/AZC9WZdc6BMXc07KOJJ1fG4sxn0a&#43;ya30&#43;W/9wLKWYVQDWkuxlpBaRcK0mOlPg78WjNJrUkoQ==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.f60021006c527eb3f9a1c5411516744285aeeba4d0c741deebea5c81834ef8fe40e3ec8d5ab8b4699a3f4ced809ebcb7b0576832ebc2ad97d4f68f1ad5e2024a.js" integrity="sha512-9gAhAGxSfrP5ocVBFRZ0QoWu66TQx0He6&#43;pcgYNO&#43;P5A4&#43;yNWri0aZo/TO2Anry3sFdoMuvCrZfU9o8a1eICSg==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>
