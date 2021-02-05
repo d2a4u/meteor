@@ -23,6 +23,15 @@ Client.BackoffStrategy.default
 
 The settings for this default is based on AWS SDK's default for `DynamoDbRetryPolicy`.
 
+## De-duplication
+
+DynamoDB batch write action has validation on performing multiple operations on the same item, such 
+as, create and delete the same item in the same batch request. `meteor` provides de-duplication 
+internally such that, within a batch, the later action is chosen over all previous actions on the 
+same item. This also helps to reduce cost by not performing the same actions multiple times. The 
+drawback is that calls to DynamoDB cannot be done in parallel. However, the library also support
+batch actions where de-duplication is done by the caller.
+
 ## Batch Get
 
 The following scenarios are supported by `batchGet` methods:
@@ -96,4 +105,41 @@ to [Get item action](../itemactions#get) except that they take multiple keys.
 
 ## Batch Write
 
-[integration tests](https://github.com/d2a4u/meteor/blob/master/awssdk/src/it/scala/BatchWriteOpsSpec.scala)
+The following scenarios are supported:
+
+- batch put items (built-in de-duplication)
+- batch put unordered items (caller needs to handle de-duplication)
+- batch delete items (built-in de-duplication)
+- batch put and delete items (built-in de-duplication)
+
+#### Batch Put or Batch Delete Items
+
+Batch put or batch delete items work on a single table. De-duplication is built in, within the same 
+batch, if there are duplicates only the last action on the duplicated key is applied.
+
+As mentioned in the [De-duplication section](#de-duplication), the nature of de-duplication requires
+batches to be sent in order to avoid malformed data. As a result, performance of these actions is 
+not as good as if actions are sent in parallel. Hence, there is `batchPutUnordered` method which can
+be used to send batches in parallel, however, the caller needs to ensure that the keys of the input
+items are not duplicated.
+
+#### Batch Put and Delete Items
+
+`batchWrite` method can be used to apply both put and delete item actions to a table in a same 
+batch. The method's signature is:
+
+```scala
+def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
+  table: Table,
+  maxBatchWait: FiniteDuration,
+  backoffStrategy: BackoffStrategy
+): Pipe[F, Either[(DP, DS), P], Unit]
+```
+
+where the type parameters are:
+
+- `DP` deleting item's partition key's type
+- `DS` deleting item's sort key's type
+- `P` putting item's type
+
+De-duplication logic is built-in and works the same way as other batch actions.

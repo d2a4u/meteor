@@ -93,22 +93,22 @@ trait BatchWriteOps extends DedupOps {
 
   private def mkRequestInOrdered[
     F[_]: Timer: Concurrent,
-    P: Encoder,
-    I: Encoder
+    DP: Encoder, // delete by partition key
+    P: Encoder // put item
   ](
     table: Table,
     maxBatchWait: FiniteDuration
-  ): Pipe[F, Either[P, I], BatchWriteItemRequest] =
+  ): Pipe[F, Either[DP, P], BatchWriteItemRequest] =
     _.groupWithin(MaxBatchWriteSize, maxBatchWait).map { chunk =>
-      def mkWriteRequest(item: Either[P, I]): WriteRequest = {
+      def mkWriteRequest(item: Either[DP, P]): WriteRequest = {
         item match {
-          case Left(p) =>
-            val key = table.keys[P, Nothing](p, None)
+          case Left(dp) =>
+            val key = table.keys[DP, Nothing](dp, None)
             val del = DeleteRequest.builder().key(key).build()
             WriteRequest.builder().deleteRequest(del).build()
 
-          case Right(i) =>
-            val put = PutRequest.builder().item(i.asAttributeValue.m()).build()
+          case Right(p) =>
+            val put = PutRequest.builder().item(p.asAttributeValue.m()).build()
             WriteRequest.builder().putRequest(put).build()
         }
       }
@@ -126,15 +126,15 @@ trait BatchWriteOps extends DedupOps {
 
   private def mkRequestInOrdered[
     F[_]: Timer: Concurrent,
-    P: Encoder,
-    S: Encoder,
-    I: Encoder
+    DP: Encoder,
+    DS: Encoder,
+    P: Encoder
   ](
     table: Table,
     maxBatchWait: FiniteDuration
-  ): Pipe[F, Either[(P, S), I], BatchWriteItemRequest] =
+  ): Pipe[F, Either[(DP, DS), P], BatchWriteItemRequest] =
     _.groupWithin(MaxBatchWriteSize, maxBatchWait).map { chunk =>
-      def mkWriteRequest(item: Either[(P, S), I]): WriteRequest = {
+      def mkWriteRequest(item: Either[(DP, DS), P]): WriteRequest = {
         item match {
           case Left((p, s)) =>
             val del =
@@ -146,12 +146,12 @@ trait BatchWriteOps extends DedupOps {
             WriteRequest.builder().putRequest(put).build()
         }
       }
-      val itemEncoder = Encoder.instance[Either[(P, S), I]] {
-        case Left((p, s)) =>
-          table.keys[P, S](p, Some(s)).asAttributeValue
+      val itemEncoder = Encoder.instance[Either[(DP, DS), P]] {
+        case Left((dp, ds)) =>
+          table.keys[DP, DS](dp, Some(ds)).asAttributeValue
 
-        case Right(i) =>
-          i.asAttributeValue
+        case Right(p) =>
+          p.asAttributeValue
       }
       val writes =
         Map(
@@ -272,13 +272,13 @@ trait BatchWriteOps extends DedupOps {
     }.map(sendHandleLeftOver(_, backoffStrategy)(jClient)).parJoin(parallelism)
   }.andThen(_.drain)
 
-  def batchWriteInorderedOp[F[_]: Timer: Concurrent, P: Encoder, I: Encoder](
+  def batchWriteInorderedOp[F[_]: Timer: Concurrent, DP: Encoder, P: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): Pipe[F, Either[P, I], Unit] = {
-    in: Stream[F, Either[P, I]] =>
-      mkRequestInOrdered[F, P, I](table, maxBatchWait).apply(
+  )(jClient: DynamoDbAsyncClient): Pipe[F, Either[DP, P], Unit] = {
+    in: Stream[F, Either[DP, P]] =>
+      mkRequestInOrdered[F, DP, P](table, maxBatchWait).apply(
         in
       ).flatMap {
         req =>

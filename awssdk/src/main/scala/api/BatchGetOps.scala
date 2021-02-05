@@ -42,7 +42,7 @@ trait BatchGetOps extends DedupOps {
       case (tableName, get) =>
         Stream.iterable(get.values).covary[F].chunkN(MaxBatchGetSize).map {
           chunk =>
-            if (chunk.forall(_.hasM)) {
+            if (chunk.forall(!_.hasM)) {
               Stream.raiseError(EncoderError.invalidTypeFailure(DynamoDbType.M))
             } else {
               // remove potential duplicated keys
