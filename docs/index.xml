@@ -80,9 +80,10 @@ def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sort
       <pubDate>Wed, 27 Jan 2021 00:17:46 +0000</pubDate>
       
       <guid>https://d2a4u.github.io/meteor/docs/api/batchactions/</guid>
-      <description>These API are supported, but it is not being documented yet, please refer to integration tests for usage examples.
-Batch Get integration tests
-Batch Write integration tests</description>
+      <description>All batch APIs require a Java BackoffStrategy. A default value is provided by:
+import meteor.Client Client.BackoffStrategy.default The settings for this default is based on AWS SDK&amp;rsquo;s default for DynamoDbRetryPolicy.
+Batch Get The following scenarios are supported by batchGet methods:
+ batch get actions across different tables batch get where the input keys can fit into memory batch get where the input is a fs2.Stream  Internally, the library takes care of unprocessed keys, remove duplicated keys within the same batch.</description>
     </item>
     
     <item>

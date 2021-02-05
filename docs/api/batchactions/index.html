@@ -16,17 +16,19 @@
 <link rel="canonical" href="https://d2a4u.github.io/meteor/docs/api/batchactions/">
 <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Batch Actions">
-<meta name="twitter:description" content="These API are supported, but it is not being documented yet, please refer to integration tests for usage examples.
-Batch Get integration tests
-Batch Write integration tests">
+<meta name="twitter:description" content="All batch APIs require a Java BackoffStrategy. A default value is provided by:
+import meteor.Client Client.BackoffStrategy.default The settings for this default is based on AWS SDK&rsquo;s default for DynamoDbRetryPolicy.
+Batch Get The following scenarios are supported by batchGet methods:
+ batch get actions across different tables batch get where the input keys can fit into memory batch get where the input is a fs2.Stream  Internally, the library takes care of unprocessed keys, remove duplicated keys within the same batch.">
 
 <meta name="twitter:site" content="@">
 <meta name="twitter:creator" content="@">
 
 <meta property="og:title" content="Batch Actions">
-<meta property="og:description" content="These API are supported, but it is not being documented yet, please refer to integration tests for usage examples.
-Batch Get integration tests
-Batch Write integration tests">
+<meta property="og:description" content="All batch APIs require a Java BackoffStrategy. A default value is provided by:
+import meteor.Client Client.BackoffStrategy.default The settings for this default is based on AWS SDK&rsquo;s default for DynamoDbRetryPolicy.
+Batch Get The following scenarios are supported by batchGet methods:
+ batch get actions across different tables batch get where the input keys can fit into memory batch get where the input is a fs2.Stream  Internally, the library takes care of unprocessed keys, remove duplicated keys within the same batch.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://d2a4u.github.io/meteor/docs/api/batchactions/">
 
@@ -135,7 +137,11 @@ Batch Write integration tests">
     <h3>On this page</h3>
     <nav id="TableOfContents">
   <ul>
-    <li><a href="#batch-get">Batch Get</a></li>
+    <li><a href="#batch-get">Batch Get</a>
+      <ul>
+        <li></li>
+      </ul>
+    </li>
     <li><a href="#batch-write">Batch Write</a></li>
   </ul>
 </nav>
@@ -145,10 +151,70 @@ Batch Write integration tests">
 		<main class="docs-content col-lg-11 col-xl-9">
 		<h1>Batch Actions</h1>
 			<p class="lead"></p>
-			<p>These API are supported, but it is not being documented yet, please refer to integration tests for usage
-examples.</p>
+			<p>All batch APIs require a Java <code>BackoffStrategy</code>. A default value is provided by:</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor.Client</span>
+
+<span class="nc">Client</span><span class="o">.</span><span class="nc">BackoffStrategy</span><span class="o">.</span><span class="n">default</span>
+</code></pre></div><p>The settings for this default is based on AWS SDK&rsquo;s default for <code>DynamoDbRetryPolicy</code>.</p>
 <h2 id="batch-get">Batch Get<a href="#batch-get" class="anchor" aria-hidden="true">#</a> </h2>
-<p><a href="https://github.com/d2a4u/meteor/blob/master/awssdk/src/it/scala/BatchGetOpsSpec.scala">integration tests</a></p>
+<p>The following scenarios are supported by <code>batchGet</code> methods:</p>
+<ul>
+<li>batch get actions across different tables</li>
+<li>batch get where the input keys can fit into memory</li>
+<li>batch get where the input is a <code>fs2.Stream</code></li>
+</ul>
+<p>Internally, the library takes care of unprocessed keys, remove duplicated keys within the same
+batch. DynamoDB allows up to 100 keys for <code>BatchGetItem</code>, hence, the library uses 100 as batch size.
+If you prefer smaller batch size, you can break down the input into smaller batches for in-memory
+input scenarios or control the <code>maxBatchWait</code> parameter for stream input.</p>
+<h4 id="batch-get-across-tables">Batch Get Across Tables<a href="#batch-get-across-tables" class="anchor" aria-hidden="true">#</a> </h4>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor.Expression</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">BatchGet</span><span class="o">(</span>
+  <span class="n">values</span><span class="k">:</span> <span class="kt">Iterable</span><span class="o">[</span><span class="kt">AttributeValue</span><span class="o">],</span>
+  <span class="n">consistentRead</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="o">,</span>
+  <span class="n">projection</span><span class="k">:</span> <span class="kt">Expression</span> <span class="o">=</span> <span class="nc">Expression</span><span class="o">.</span><span class="n">empty</span>
+<span class="o">)</span>
+
+<span class="k">def</span> <span class="n">batchGet</span><span class="o">(</span>
+  <span class="n">requests</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">BatchGet</span><span class="o">],</span>
+  <span class="n">backoffStrategy</span><span class="k">:</span> <span class="kt">BackoffStrategy</span>
+<span class="o">)</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Iterable</span><span class="o">[</span><span class="kt">AttributeValue</span><span class="o">]]]</span>
+</code></pre></div><p>This method gives you the most flexibility where multiple items can be retrieved across different
+tables. Because tables might have different key types, the <code>BatchGet</code> request cannot be tied to a
+type, hence, it takes <code>values: Interable[AttributeValue]</code> where <code>AttributeValue</code> needs to be a map
+of key name and key value. For example:</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor.api._</span>
+<span class="k">import</span> <span class="nn">meteor.codec.Encoder</span>
+<span class="k">import</span> <span class="nn">meteor.syntax._</span>
+
+<span class="k">case</span> <span class="k">class</span> <span class="nc">BookTablePartitionKey</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">ExamTableCompositeKey</span><span class="o">(</span><span class="n">code</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">year</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">bookTablePartitionKeyEncoder</span><span class="k">:</span> <span class="kt">Encoder</span><span class="o">[</span><span class="kt">BookTablePartitionKey</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Encoder</span><span class="o">.</span><span class="n">instance</span> <span class="o">{</span> <span class="n">key</span> <span class="k">=&gt;</span>
+  <span class="nc">Map</span><span class="o">(</span><span class="s">&#34;id&#34;</span> <span class="o">-&gt;</span> <span class="n">key</span><span class="o">.</span><span class="n">id</span><span class="o">).</span><span class="n">asAttributeValue</span>
+<span class="o">}</span>
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">examTableCompositeKeyEncoder</span><span class="k">:</span> <span class="kt">Encoder</span><span class="o">[</span><span class="kt">ExamTableCompositeKey</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Encoder</span><span class="o">.</span><span class="n">instance</span> <span class="o">{</span> <span class="n">key</span> <span class="k">=&gt;</span>
+  <span class="nc">Map</span><span class="o">(</span>
+    <span class="s">&#34;code&#34;</span> <span class="o">-&gt;</span> <span class="n">key</span><span class="o">.</span><span class="n">code</span><span class="o">,</span>
+    <span class="s">&#34;year&#34;</span> <span class="o">-&gt;</span> <span class="n">key</span><span class="o">.</span><span class="n">year</span>
+  <span class="o">).</span><span class="n">asAttributeValue</span>
+<span class="o">}</span>
+<span class="k">val</span> <span class="n">bookKeys</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="nc">BookTablePartitionKey</span><span class="o">(</span><span class="s">&#34;1&#34;</span><span class="o">),</span> <span class="nc">BookTablePartitionKey</span><span class="o">(</span><span class="s">&#34;2&#34;</span><span class="o">)).</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">asAttributeValue</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">examKeys</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="nc">ExamTableCompositeKey</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2020</span><span class="o">),</span> <span class="nc">ExamTableCompositeKey</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">2021</span><span class="o">)).</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">asAttributeValue</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">requests</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span>
+  <span class="s">&#34;bookTableName&#34;</span> <span class="o">-&gt;</span> <span class="nc">BatchGet</span><span class="o">(</span><span class="n">bookKeys</span><span class="o">),</span>
+  <span class="s">&#34;examTableName&#34;</span> <span class="o">-&gt;</span> <span class="nc">BatchGet</span><span class="o">(</span><span class="n">examKeys</span><span class="o">)</span>
+<span class="o">)</span>
+
+<span class="n">client</span><span class="o">.</span><span class="n">batchGet</span><span class="o">(</span>
+  <span class="n">requests</span><span class="o">,</span>
+  <span class="nc">Client</span><span class="o">.</span><span class="nc">BackoffStrategy</span><span class="o">.</span><span class="n">default</span>
+<span class="o">)</span>
+</code></pre></div><p>As a result, the returned items are represented in as a <code>Map</code> of table&rsquo;s name to the items
+associated to the input keys. The user needs to handle decoding of the returned items.</p>
+<h4 id="batch-get-from-the-same-table">Batch Get From The Same Table<a href="#batch-get-from-the-same-table" class="anchor" aria-hidden="true">#</a> </h4>
+<p>These <code>batchGet</code> methods only work on a single table but take typed input(s). They are very similar
+to <a href="../itemactions#get">Get item action</a> except that they take multiple keys.</p>
 <h2 id="batch-write">Batch Write<a href="#batch-write" class="anchor" aria-hidden="true">#</a> </h2>
 <p><a href="https://github.com/d2a4u/meteor/blob/master/awssdk/src/it/scala/BatchWriteOpsSpec.scala">integration tests</a></p>
 
@@ -194,7 +260,7 @@ examples.</p>
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.ad1b9eb06d852abfeecebc467e4880efa6bfbb979ae664d726227eb242c3bf4799cc51d0ff3f722b8e1f9dd9b767805be013108110c0b582af6faba4d111ab01.js" integrity="sha512-rRuesG2FKr/uzrxGfkiA76a/u5ea5mTXJiJ&#43;skLDv0eZzFHQ/z9yK44fndm3Z4Bb4BMQgRDAtYKvb6uk0RGrAQ==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.a2345f4418c498c89cd6b6901d005ddc09acaf726238a4028443c55b0f72a4de7ea9c4733e0766acbb7bcfdc1a084921cc4f3d0a8c20ab6fd11bbd61bea241f8.js" integrity="sha512-ojRfRBjEmMic1raQHQBd3Amsr3JiOKQChEPFWw9ypN5&#43;qcRzPgdmrLt7z9waCEkhzE89Cowgq2/RG71hvqJB&#43;A==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>
