@@ -18,8 +18,7 @@
     <meta name="twitter:title" content="Batch Actions">
 <meta name="twitter:description" content="All batch APIs require a Java BackoffStrategy. A default value is provided by:
 import meteor.Client Client.BackoffStrategy.default The settings for this default is based on AWS SDK&rsquo;s default for DynamoDbRetryPolicy.
-Batch Get The following scenarios are supported by batchGet methods:
- batch get actions across different tables batch get where the input keys can fit into memory batch get where the input is a fs2.Stream  Internally, the library takes care of unprocessed keys, remove duplicated keys within the same batch.">
+De-duplication DynamoDB batch write action has validation on performing multiple operations on the same item, such as, create and delete the same item in the same batch request. meteor provides de-duplication internally such that, within a batch, the later action is chosen over all previous actions on the same item.">
 
 <meta name="twitter:site" content="@">
 <meta name="twitter:creator" content="@">
@@ -27,8 +26,7 @@ Batch Get The following scenarios are supported by batchGet methods:
 <meta property="og:title" content="Batch Actions">
 <meta property="og:description" content="All batch APIs require a Java BackoffStrategy. A default value is provided by:
 import meteor.Client Client.BackoffStrategy.default The settings for this default is based on AWS SDK&rsquo;s default for DynamoDbRetryPolicy.
-Batch Get The following scenarios are supported by batchGet methods:
- batch get actions across different tables batch get where the input keys can fit into memory batch get where the input is a fs2.Stream  Internally, the library takes care of unprocessed keys, remove duplicated keys within the same batch.">
+De-duplication DynamoDB batch write action has validation on performing multiple operations on the same item, such as, create and delete the same item in the same batch request. meteor provides de-duplication internally such that, within a batch, the later action is chosen over all previous actions on the same item.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://d2a4u.github.io/meteor/docs/api/batchactions/">
 
@@ -137,12 +135,17 @@ Batch Get The following scenarios are supported by batchGet methods:
     <h3>On this page</h3>
     <nav id="TableOfContents">
   <ul>
+    <li><a href="#de-duplication">De-duplication</a></li>
     <li><a href="#batch-get">Batch Get</a>
       <ul>
         <li></li>
       </ul>
     </li>
-    <li><a href="#batch-write">Batch Write</a></li>
+    <li><a href="#batch-write">Batch Write</a>
+      <ul>
+        <li></li>
+      </ul>
+    </li>
   </ul>
 </nav>
   </div>
@@ -156,6 +159,13 @@ Batch Get The following scenarios are supported by batchGet methods:
 
 <span class="nc">Client</span><span class="o">.</span><span class="nc">BackoffStrategy</span><span class="o">.</span><span class="n">default</span>
 </code></pre></div><p>The settings for this default is based on AWS SDK&rsquo;s default for <code>DynamoDbRetryPolicy</code>.</p>
+<h2 id="de-duplication">De-duplication<a href="#de-duplication" class="anchor" aria-hidden="true">#</a> </h2>
+<p>DynamoDB batch write action has validation on performing multiple operations on the same item, such
+as, create and delete the same item in the same batch request. <code>meteor</code> provides de-duplication
+internally such that, within a batch, the later action is chosen over all previous actions on the
+same item. This also helps to reduce cost by not performing the same actions multiple times. The
+drawback is that calls to DynamoDB cannot be done in parallel. However, the library also support
+batch actions where de-duplication is done by the caller.</p>
 <h2 id="batch-get">Batch Get<a href="#batch-get" class="anchor" aria-hidden="true">#</a> </h2>
 <p>The following scenarios are supported by <code>batchGet</code> methods:</p>
 <ul>
@@ -216,7 +226,36 @@ associated to the input keys. The user needs to handle decoding of the returned 
 <p>These <code>batchGet</code> methods only work on a single table but take typed input(s). They are very similar
 to <a href="../itemactions#get">Get item action</a> except that they take multiple keys.</p>
 <h2 id="batch-write">Batch Write<a href="#batch-write" class="anchor" aria-hidden="true">#</a> </h2>
-<p><a href="https://github.com/d2a4u/meteor/blob/master/awssdk/src/it/scala/BatchWriteOpsSpec.scala">integration tests</a></p>
+<p>The following scenarios are supported:</p>
+<ul>
+<li>batch put items (built-in de-duplication)</li>
+<li>batch put unordered items (caller needs to handle de-duplication)</li>
+<li>batch delete items (built-in de-duplication)</li>
+<li>batch put and delete items (built-in de-duplication)</li>
+</ul>
+<h4 id="batch-put-or-batch-delete-items">Batch Put or Batch Delete Items<a href="#batch-put-or-batch-delete-items" class="anchor" aria-hidden="true">#</a> </h4>
+<p>Batch put or batch delete items work on a single table. De-duplication is built in, within the same
+batch, if there are duplicates only the last action on the duplicated key is applied.</p>
+<p>As mentioned in the <a href="#de-duplication">De-duplication section</a>, the nature of de-duplication requires
+batches to be sent in order to avoid malformed data. As a result, performance of these actions is
+not as good as if actions are sent in parallel. Hence, there is <code>batchPutUnordered</code> method which can
+be used to send batches in parallel, however, the caller needs to ensure that the keys of the input
+items are not duplicated.</p>
+<h4 id="batch-put-and-delete-items">Batch Put and Delete Items<a href="#batch-put-and-delete-items" class="anchor" aria-hidden="true">#</a> </h4>
+<p><code>batchWrite</code> method can be used to apply both put and delete item actions to a table in a same
+batch. The method&rsquo;s signature is:</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">batchWrite</span><span class="o">[</span><span class="kt">DP:</span> <span class="kt">Encoder</span>, <span class="kt">DS:</span> <span class="kt">Encoder</span>, <span class="kt">P:</span> <span class="kt">Encoder</span><span class="o">](</span>
+  <span class="n">table</span><span class="k">:</span> <span class="kt">Table</span><span class="o">,</span>
+  <span class="n">maxBatchWait</span><span class="k">:</span> <span class="kt">FiniteDuration</span><span class="o">,</span>
+  <span class="n">backoffStrategy</span><span class="k">:</span> <span class="kt">BackoffStrategy</span>
+<span class="o">)</span><span class="k">:</span> <span class="kt">Pipe</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Either</span><span class="o">[(</span><span class="kt">DP</span>, <span class="kt">DS</span><span class="o">)</span>, <span class="kt">P</span><span class="o">]</span>, <span class="kt">Unit</span><span class="o">]</span>
+</code></pre></div><p>where the type parameters are:</p>
+<ul>
+<li><code>DP</code> deleting item&rsquo;s partition key&rsquo;s type</li>
+<li><code>DS</code> deleting item&rsquo;s sort key&rsquo;s type</li>
+<li><code>P</code> putting item&rsquo;s type</li>
+</ul>
+<p>De-duplication logic is built-in and works the same way as other batch actions.</p>
 
 			<div class="docs-navigation d-flex justify-content-between">
 	
@@ -260,7 +299,7 @@ to <a href="../itemactions#get">Get item action</a> except that they take multip
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.a2345f4418c498c89cd6b6901d005ddc09acaf726238a4028443c55b0f72a4de7ea9c4733e0766acbb7bcfdc1a084921cc4f3d0a8c20ab6fd11bbd61bea241f8.js" integrity="sha512-ojRfRBjEmMic1raQHQBd3Amsr3JiOKQChEPFWw9ypN5&#43;qcRzPgdmrLt7z9waCEkhzE89Cowgq2/RG71hvqJB&#43;A==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.2872a9b3ff3c3e4f16005b9c4bc0867c97bc44fc4095ae888955ff9aa8f236d7f3e3006c82384945eb35c8ae1dbfcd8e54d78b696f7204fb14e393e58c1e2b06.js" integrity="sha512-KHKps/88Pk8WAFucS8CGfJe8RPxAla6IiVX/mqjyNtfz4wBsgjhJRes1yK4dv82OVNeLaW9yBPsU45PljB4rBg==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>
