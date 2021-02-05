@@ -6,6 +6,7 @@ import cats.effect.{Concurrent, Timer}
 import cats.implicits._
 import fs2.{Pipe, _}
 import meteor.codec.{Decoder, Encoder}
+import meteor.errors.EncoderError
 import meteor.implicits._
 import software.amazon.awssdk.core.retry.RetryPolicyContext
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
@@ -23,9 +24,9 @@ import scala.jdk.CollectionConverters._
 import scala.compat.java8.DurationConverters._
 
 case class BatchGet(
-  consistentRead: Boolean,
-  projection: Expression,
-  values: Iterable[AttributeValue]
+  values: Iterable[AttributeValue],
+  consistentRead: Boolean = false,
+  projection: Expression = Expression.empty
 )
 
 trait BatchGetOps extends DedupOps {
@@ -41,13 +42,17 @@ trait BatchGetOps extends DedupOps {
       case (tableName, get) =>
         Stream.iterable(get.values).covary[F].chunkN(MaxBatchGetSize).map {
           chunk =>
-            // remove potential duplicated keys
-            val keys =
-              dedupInOrdered(chunk)(identity)(_.m())
-            val keyAndAttrs =
-              mkRequest(keys, get.consistentRead, get.projection)
-            val req = Map(tableName -> keyAndAttrs).asJava
-            loop[F](req, backoffStrategy)(jClient)
+            if (chunk.forall(_.hasM)) {
+              Stream.raiseError(EncoderError.invalidTypeFailure(DynamoDbType.M))
+            } else {
+              // remove potential duplicated keys
+              val keys =
+                dedupInOrdered(chunk)(identity)(_.m())
+              val keyAndAttrs =
+                mkRequest(keys, get.consistentRead, get.projection)
+              val req = Map(tableName -> keyAndAttrs).asJava
+              loop[F](req, backoffStrategy)(jClient)
+            }
         }.parJoinUnbounded
     }
     Stream.iterable(responses).covary[F].flatten.compile.toList.map { resps =>

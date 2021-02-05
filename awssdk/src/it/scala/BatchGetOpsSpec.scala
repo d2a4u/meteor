@@ -52,14 +52,14 @@ class BatchGetOpsSpec extends ITSpec {
       Map.empty
     )
     val batchGet1 = BatchGet(
+      valuesToGet1,
       false,
-      exp,
-      valuesToGet1
+      exp
     )
     val batchGet2 = BatchGet(
+      valuesToGet2,
       false,
-      exp,
-      valuesToGet2
+      exp
     )
     val src = for {
       src1 <- tableWithKeys[IO]
