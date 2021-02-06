@@ -52,6 +52,7 @@ lazy val commonSettings = Seq(
   pgpPublicRing := file("/tmp/local.pubring.asc"),
   pgpSecretRing := file("/tmp/local.secring.asc"),
   releaseEarlyWith in Global := SonatypePublisher,
+  sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   releaseEarlyEnableLocalReleases := true,
   addCompilerPlugin(

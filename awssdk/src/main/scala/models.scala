@@ -104,7 +104,7 @@ case class Query[P: Encoder, S: Encoder](
 ) {
   def keyCondition(index: Index): Expression = {
     val (partitionKeySchema, optSortKeySchema) = index match {
-      case Table(_, pk, sk) => (pk, sk)
+      case Table(_, pk, sk)             => (pk, sk)
       case SecondaryIndex(_, _, pk, sk) => (pk, sk)
     }
 
