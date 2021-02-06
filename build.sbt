@@ -53,6 +53,7 @@ lazy val commonSettings = Seq(
   pgpSecretRing := file("/tmp/local.secring.asc"),
   releaseEarlyWith in Global := SonatypePublisher,
   releaseEarlyEnableSyncToMaven := true,
+  releaseEarlyEnableLocalReleases := true,
   addCompilerPlugin(
     "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
   ),
