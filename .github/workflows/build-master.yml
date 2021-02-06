@@ -66,8 +66,8 @@ jobs:
           echo $PGP_PUB_RING > /tmp/local.pubring.asc
           echo $PGP_SEC_RING > /tmp/local.secring.asc
         env:
-          $PGP_PUB_RING: ${{ secrets.$PGP_PUB_RING }}
-          $PGP_SEC_RING: ${{ secrets.$PGP_SEC_RING }}
+          $PGP_PUB_RING: ${{ secrets.PGP_PUB_RING }}
+          $PGP_SEC_RING: ${{ secrets.PGP_SEC_RING }}
       - name: Publish
         run: |
           sbt +releaseEarly
