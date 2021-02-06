@@ -168,5 +168,4 @@ website/netlify.toml
 website/theme.toml
 website/.editorconfig
 website/resources/
-website/static/
 website/public/

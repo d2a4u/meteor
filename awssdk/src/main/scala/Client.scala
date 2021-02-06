@@ -416,23 +416,45 @@ trait Client[F[_]] {
   ): Pipe[F, (P, S), Unit]
 
   /**
-    * Batch write to a table by a Stream of either D (delete) or P (put).
-    * D and P need to be able to encoded to a AttributeValue of type M (map) where D represents
-    * key(s) to be deleted and P represents the item to be put.
+    * Batch write to a table by a Stream of either DP (delete) or P (put).
+    *
+    * DP: partition key's type
+    * P: item being put's type
     *
     * Deduplication logic within a batch is:
     *
-    * Group all P and D items by key, preserve ordering from upstream.
+    * Group all DP and P items by key, preserve ordering from upstream.
     * If the last item for that key is a delete, then only perform deletion,
     * discard all other actions on that key.
     * If the last item for that key is a put, then only perform put,
     * discard all other actions on that key.
     */
-  def batchWrite[D: Encoder, P: Encoder](
+  def batchWrite[DP: Encoder, P: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  ): Pipe[F, Either[D, P], Unit]
+  ): Pipe[F, Either[DP, P], Unit]
+
+  /**
+    * Batch write to a table by a Stream of either (DP, DS) (delete) or P (put).
+    *
+    * DP: partition key's type
+    * DS: sort key's type
+    * P: item being put's type
+    *
+    * Deduplication logic within a batch is:
+    *
+    * Group all (DP, DS) and P items by key, preserve ordering from upstream.
+    * If the last item for that key is a delete, then only perform deletion,
+    * discard all other actions on that key.
+    * If the last item for that key is a put, then only perform put,
+    * discard all other actions on that key.
+    */
+  def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
+    table: Table,
+    maxBatchWait: FiniteDuration,
+    backoffStrategy: BackoffStrategy
+  ): Pipe[F, Either[(DP, DS), P], Unit]
 
   /**
     * Describe a table

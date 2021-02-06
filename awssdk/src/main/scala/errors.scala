@@ -12,12 +12,21 @@ object errors {
     override def getMessage: String = message
   }
 
+  case class EncoderError(message: String) extends DynamoError {
+    override def getMessage: String = message
+  }
+
   object DecoderError {
     def invalidTypeFailure(t: DynamoDbType): DecoderError =
       DecoderError(s"The AttributeValue must be of type ${t.show}")
 
     def missingKeyFailure(key: String): DecoderError =
       DecoderError(s"The AttributeValue is a map but $key key doesn't exists")
+  }
+
+  object EncoderError {
+    def invalidTypeFailure(t: DynamoDbType): EncoderError =
+      EncoderError(s"The AttributeValue must be of type ${t.show}")
   }
 
   case object InvalidExpression extends DynamoError {

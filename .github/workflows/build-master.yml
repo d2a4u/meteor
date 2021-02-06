@@ -59,9 +59,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
-      - name: Publish to Bintray
+      - name: Import keys
+        run: |
+          touch /tmp/local.pubring.asc
+          touch /tmp/local.secring.asc
+          echo $PGP_PUB_RING > /tmp/local.pubring.asc
+          echo $PGP_SEC_RING > /tmp/local.secring.asc
+        env:
+          $PGP_PUB_RING: ${{ secrets.$PGP_PUB_RING }}
+          $PGP_SEC_RING: ${{ secrets.$PGP_SEC_RING }}
+      - name: Publish
         run: |
           sbt +releaseEarly
         env:
-          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
-          BINTRAY_PASS: ${{ secrets.BINTRAY_PASS }}
+          SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+      - name: Clean up
+        run: |
+          rm /tmp/local.pubring.asc
+          rm /tmp/local.secring.asc

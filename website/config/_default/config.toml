@@ -1,4 +1,4 @@
-baseurl = "/"
+baseurl = "https://d2a4u.github.io/meteor/"
 disableAliases = true
 disableHugoGeneratorInject = true
 enableEmoji = true

@@ -32,6 +32,14 @@ class PutOpsSpec extends ITSpec {
       }.unsafeToFuture().futureValue shouldEqual Some(old)
   }
 
+  it should "return none if there isn't a previous record with the same keys" in forAll {
+    test: TestData =>
+      tableWithKeys[IO].use {
+        case (client, table) =>
+          client.put[TestData, TestData](table.name, test)
+      }.unsafeToFuture().futureValue shouldEqual None
+  }
+
   it should "success inserting item without sort key" in forAll {
     test: TestDataSimple =>
       val result = tableWithPartitionKey[IO].use {

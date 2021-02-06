@@ -315,21 +315,21 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       jClient
     )
 
-  def batchWrite[P: Encoder, I: Encoder](
+  def batchWrite[DP: Encoder, P: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  ): Pipe[F, Either[P, I], Unit] =
-    batchWriteInorderedOp[F, P, I](table, maxBatchWait, backoffStrategy)(
+  ): Pipe[F, Either[DP, P], Unit] =
+    batchWriteInorderedOp[F, DP, P](table, maxBatchWait, backoffStrategy)(
       jClient
     )
 
-  def batchWrite[P: Encoder, S: Encoder, I: Encoder](
+  def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
     table: Table,
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  ): Pipe[F, Either[(P, S), I], Unit] =
-    batchWriteInorderedOp[F, P, S, I](table, maxBatchWait, backoffStrategy)(
+  ): Pipe[F, Either[(DP, DS), P], Unit] =
+    batchWriteInorderedOp[F, DP, DS, P](table, maxBatchWait, backoffStrategy)(
       jClient
     )
 

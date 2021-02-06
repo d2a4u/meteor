@@ -112,6 +112,72 @@ class BatchWriteOpsSpec extends ITSpec {
       size - 1))
   }
 
+  it should "de-duplicate put, put and delete item correctly" in {
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+
+    val input = fs2.Stream(
+      testData.asRight[(Id, Range)],
+      testData.copy(str = "updated").asRight[(Id, Range)],
+      (testData.id, testData.range).asLeft[TestData]
+    ).covary[IO]
+
+    batchWritesAnItem(
+      input,
+      testData.id,
+      testData.range
+    ).unsafeToFuture().futureValue shouldEqual None
+  }
+
+  it should "de-duplicate put, delete and put item correctly" in {
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val updatedTestData = testData.copy(str = "updated")
+
+    val input = fs2.Stream(
+      testData.asRight[(Id, Range)],
+      (testData.id, testData.range).asLeft[TestData],
+      updatedTestData.asRight[(Id, Range)]
+    ).covary[IO]
+
+    batchWritesAnItem(
+      input,
+      testData.id,
+      testData.range
+    ).unsafeToFuture().futureValue shouldEqual Some(updatedTestData)
+  }
+
+  it should "de-duplicate delete put and put item correctly" in {
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val updatedTestData = testData.copy(str = "updated")
+
+    val input = fs2.Stream(
+      (testData.id, testData.range).asLeft[TestData],
+      testData.asRight[(Id, Range)],
+      updatedTestData.asRight[(Id, Range)]
+    ).covary[IO]
+
+    batchWritesAnItem(
+      input,
+      testData.id,
+      testData.range
+    ).unsafeToFuture().futureValue shouldEqual Some(updatedTestData)
+  }
+
+  it should "de-duplicate delete put and delete item correctly" in {
+    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+
+    val input = fs2.Stream(
+      (testData.id, testData.range).asLeft[TestData],
+      testData.asRight[(Id, Range)],
+      (testData.id, testData.range).asLeft[TestData]
+    ).covary[IO]
+
+    batchWritesAnItem(
+      input,
+      testData.id,
+      testData.range
+    ).unsafeToFuture().futureValue shouldEqual None
+  }
+
   it should "batch put items unordered" in {
     val size = 200
     val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
@@ -153,4 +219,25 @@ class BatchWriteOpsSpec extends ITSpec {
         ).compile.toList
     }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
+
+  private def batchWritesAnItem(
+    input: fs2.Stream[IO, Either[(Id, Range), TestData]],
+    itemPartitionKey: Id,
+    itemSortKey: Range
+  ): IO[Option[TestData]] = {
+    tableWithKeys[IO].use {
+      case (client, table) =>
+        val write =
+          client.batchWrite[Id, Range, TestData](table, 1.second, backOff)
+        val get =
+          client.get[Id, Range, TestData](
+            table,
+            itemPartitionKey,
+            itemSortKey,
+            consistentRead = true
+          )
+        write(input).compile.drain >> get
+    }
+  }
+
 }
