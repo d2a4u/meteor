@@ -25,7 +25,7 @@ lazy val ItTest = config("it").extend(Test)
 lazy val scalaVer = "2.13.3"
 
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "meteor",
+  organization in ThisBuild := "io.github.d2a4u",
   scalaVersion := scalaVer,
   crossScalaVersions ++= Seq("2.12.12"),
   parallelExecution in Test := true,
