@@ -54,7 +54,6 @@ lazy val commonSettings = Seq(
   releaseEarlyWith in Global := SonatypePublisher,
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
-  releaseEarlyEnableLocalReleases := true,
   addCompilerPlugin(
     "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
   ),
