@@ -32,13 +32,10 @@ lazy val commonSettings = Seq(
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
   publishMavenStyle := true,
-  bintrayRepository := "meteor",
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
-  bintrayReleaseOnPublish := false,
-  releaseEarlyWith := BintrayPublisher,
-  releaseEarlyEnableSyncToMaven := false,
-  releaseEarlyNoGpg := true,
+  releaseEarlyWith in Global := SonatypePublisher,
+  releaseEarlyEnableSyncToMaven := true,
   scmInfo := Some(
     ScmInfo(
       url("https://github.com/d2a4u/meteor"),
@@ -75,6 +72,10 @@ lazy val root = project
     awssdk % "compile->compile;test->test",
     scanamo % "compile->compile;test->test",
     dynosaur % "compile->compile;test->test"
+  )
+  .settings(
+    pgpPublicRing := file("/tmp/local.pubring.asc"),
+    pgpSecretRing := file("/tmp/local.secring.asc")
   )
   .aggregate(awssdk, scanamo, dynosaur)
 
