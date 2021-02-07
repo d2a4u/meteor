@@ -86,7 +86,8 @@ object Util {
     } yield (client, table)
   }
 
-  def tableWithPartitionKey[F[_]: Concurrent: Timer] =
+  def tableWithPartitionKey[F[_]: Concurrent: Timer]
+    : Resource[F, (Client[F], Table)] =
     localTableResource[F](
       Key(
         "id",
@@ -95,7 +96,7 @@ object Util {
       None
     )
 
-  def tableWithKeys[F[_]: Concurrent: Timer] =
+  def tableWithKeys[F[_]: Concurrent: Timer]: Resource[F, (Client[F], Table)] =
     localTableResource[F](
       Key(
         "id",
@@ -111,7 +112,7 @@ object Util {
 
   def tableWithKeysAndSecondaryIndex[F[_]: Concurrent: Timer](
     indexName: String
-  ) = {
+  ): Resource[F, (Client[F], Table, SecondaryIndex)] = {
     localTableWithSecondaryIndexResource[F](
       Key(
         "id",
@@ -156,7 +157,7 @@ object Util {
     }
   }
 
-  def dummyCred =
+  def dummyCred: AwsCredentialsProviderChain =
     AwsCredentialsProviderChain.of(
       () =>
         new AwsCredentials {
@@ -165,5 +166,5 @@ object Util {
         }
     )
 
-  def localDynamo = URI.create("http://localhost:8000")
+  def localDynamo: URI = URI.create("http://localhost:8000")
 }
