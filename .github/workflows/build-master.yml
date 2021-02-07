@@ -70,7 +70,7 @@ jobs:
           $PGP_SEC_RING: ${{ secrets.PGP_SEC_RING }}
       - name: Publish
         run: |
-          sbt ";+publishSigned;+releaseEarly"
+          sbt +releaseEarly
         env:
           SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
