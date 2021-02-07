@@ -17,18 +17,16 @@
 <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Get Started">
 <meta name="twitter:description" content="meteor is a wrapper around Java AWS SDK v2 library, provides higher level API over standard DynamoDB&rsquo;s operations such as batch write or scan table as fs2 Stream, auto processes left over items and many other features.
-Installation Add Bintray resolver:
-resolvers &#43;= Resolver.bintrayRepo(&#34;d2a4u&#34;, &#34;meteor&#34;) Add the following to your build.sbt, see this for latest version. Supports Scala 2.12 and 2.13.
-libraryDependencies &#43;= &#34;meteor&#34; %% &#34;meteor-awssdk&#34; % &#34;LATEST_VERSION&#34; Modules Scanamo Format Note: Only version 1.">
+Installation Add the following to your build.sbt, see the badge on homepage for latest version. Supports Scala 2.12 and 2.13.
+libraryDependencies &#43;= &#34;io.github.d2a4u&#34; %% &#34;meteor-awssdk&#34; % &#34;LATEST_VERSION&#34; Modules Scanamo Format Note: Only version 1.">
 
 <meta name="twitter:site" content="@">
 <meta name="twitter:creator" content="@">
 
 <meta property="og:title" content="Get Started">
 <meta property="og:description" content="meteor is a wrapper around Java AWS SDK v2 library, provides higher level API over standard DynamoDB&rsquo;s operations such as batch write or scan table as fs2 Stream, auto processes left over items and many other features.
-Installation Add Bintray resolver:
-resolvers &#43;= Resolver.bintrayRepo(&#34;d2a4u&#34;, &#34;meteor&#34;) Add the following to your build.sbt, see this for latest version. Supports Scala 2.12 and 2.13.
-libraryDependencies &#43;= &#34;meteor&#34; %% &#34;meteor-awssdk&#34; % &#34;LATEST_VERSION&#34; Modules Scanamo Format Note: Only version 1.">
+Installation Add the following to your build.sbt, see the badge on homepage for latest version. Supports Scala 2.12 and 2.13.
+libraryDependencies &#43;= &#34;io.github.d2a4u&#34; %% &#34;meteor-awssdk&#34; % &#34;LATEST_VERSION&#34; Modules Scanamo Format Note: Only version 1.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://d2a4u.github.io/meteor/docs/introduction/getstarted/">
 
@@ -155,27 +153,54 @@ libraryDependencies &#43;= &#34;meteor&#34; %% &#34;meteor-awssdk&#34; % &#34;LA
 API over standard DynamoDB&rsquo;s operations such as batch write or scan table
 as <code>fs2</code> Stream, auto processes left over items and many other features.</p>
 <h2 id="installation">Installation<a href="#installation" class="anchor" aria-hidden="true">#</a> </h2>
-<p>Add Bintray resolver:</p>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">resolvers</span> <span class="o">+=</span> <span class="nc">Resolver</span><span class="o">.</span><span class="n">bintrayRepo</span><span class="o">(</span><span class="s">&#34;d2a4u&#34;</span><span class="o">,</span> <span class="s">&#34;meteor&#34;</span><span class="o">)</span>
-</code></pre></div><p>Add the following to your <code>build.sbt</code>, see <a href="https://bintray.com/d2a4u/meteor/meteor-awssdk/_latestVersion">this</a> for latest version. Supports Scala 2.12 and
-2.13.</p>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">&#34;meteor&#34;</span> <span class="o">%%</span> <span class="s">&#34;meteor-awssdk&#34;</span> <span class="o">%</span> <span class="s">&#34;LATEST_VERSION&#34;</span>
+<p>Add the following to your <code>build.sbt</code>, see the badge on homepage for latest version. Supports Scala
+2.12 and 2.13.</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">&#34;io.github.d2a4u&#34;</span> <span class="o">%%</span> <span class="s">&#34;meteor-awssdk&#34;</span> <span class="o">%</span> <span class="s">&#34;LATEST_VERSION&#34;</span>
 </code></pre></div><h3 id="modules">Modules<a href="#modules" class="anchor" aria-hidden="true">#</a> </h3>
 <h4 id="scanamo-formathttpsgithubcomscanamoscanamo"><a href="https://github.com/scanamo/scanamo">Scanamo Format</a><a href="#scanamo-formathttpsgithubcomscanamoscanamo" class="anchor" aria-hidden="true">#</a> </h4>
 <p><strong>Note:</strong> Only version <code>1.0.0-M11</code> is supported because in my experience, this is the most stable version of
 <code>Scanamo</code>. However, because it is an older version when DynamoDB&rsquo;s did not support empty
 String, this version of <code>Scanamo</code> serializes these cases: <code>&quot;&quot;</code>, <code>None</code> and <code>Some(&quot;&quot;)</code> to Dynamo&rsquo;s
 <code>NULL</code>. This is problematic because once the value is written down, reading it back is difficult.</p>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">&#34;meteor&#34;</span> <span class="o">%%</span> <span class="s">&#34;meteor-scanamo&#34;</span> <span class="o">%</span> <span class="s">&#34;LATEST_VERSION&#34;</span>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">&#34;io.github.d2a4u&#34;</span> <span class="o">%%</span> <span class="s">&#34;meteor-scanamo&#34;</span> <span class="o">%</span> <span class="s">&#34;LATEST_VERSION&#34;</span>
 </code></pre></div><h4 id="dynosaur-codecshttpssystemfworgdynosaur"><a href="https://systemfw.org/dynosaur">Dynosaur Codecs</a><a href="#dynosaur-codecshttpssystemfworgdynosaur" class="anchor" aria-hidden="true">#</a> </h4>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">&#34;meteor&#34;</span> <span class="o">%%</span> <span class="s">&#34;meteor-dynosaur&#34;</span> <span class="o">%</span> <span class="s">&#34;LATEST_VERSION&#34;</span>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">&#34;io.github.d2a4u&#34;</span> <span class="o">%%</span> <span class="s">&#34;meteor-dynosaur&#34;</span> <span class="o">%</span> <span class="s">&#34;LATEST_VERSION&#34;</span>
 </code></pre></div><h2 id="fine-tuning">Fine Tuning<a href="#fine-tuning" class="anchor" aria-hidden="true">#</a> </h2>
 <p><code>meteor</code> uses AWS SDK v2 <code>DynamoDbAsyncClient</code> under the hood to make calls to the underline Java
 API. The <code>DynamoDbAsyncClient</code> internally create a <code>NettyNioAsyncHttpClient</code> with a default value
-for maximum connections of 50. This can be increased depending on the hardware/virtual resources.
-There is also an alternative <a href="https://aws.amazon.com/about-aws/whats-new/2020/09/aws-crt-http-client-in-aws-sdk-for-java-2x/">AWS CRT HTTP client</a>
-that can be used and tuned similarly.</p>
+for maximum connections of 50. This can be increased depending on the hardware/virtual machine
+configuration. There is also an alternative <a href="https://aws.amazon.com/about-aws/whats-new/2020/09/aws-crt-http-client-in-aws-sdk-for-java-2x/">AWS CRT HTTP client</a>
+that can be used and tuned similarly. The official documentation can be found <a href="https://docs.amazonaws.cn/en_us/sdk-for-java/latest/developer-guide/http-configuration-netty.html">here</a>.</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">cats.effect._</span>
+<span class="k">import</span> <span class="nn">meteor.Client</span>
+<span class="k">import</span> <span class="nn">io.netty.channel.ChannelOption</span>
+<span class="k">import</span> <span class="nn">software.amazon.awssdk.http.SdkHttpClient</span>
+<span class="k">import</span> <span class="nn">software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient</span>
+<span class="k">import</span> <span class="nn">software.amazon.awssdk.services.dynamodb.DynamoDbClient</span>
 
+<span class="k">val</span> <span class="n">httpClientSrc</span> <span class="k">=</span> <span class="nc">Resource</span><span class="o">.</span><span class="n">fromAutoCloseable</span><span class="o">(</span>
+  <span class="nc">IO</span> <span class="o">{</span>
+    <span class="nc">NettyNioAsyncHttpClient</span>
+      <span class="o">.</span><span class="n">builder</span><span class="o">()</span>
+      <span class="o">.</span><span class="n">putChannelOption</span><span class="o">(</span><span class="nc">ChannelOption</span><span class="o">.</span><span class="nc">SO_KEEPALIVE</span><span class="o">,</span> <span class="kc">true</span><span class="o">)</span>
+      <span class="o">.</span><span class="n">maxConcurrency</span><span class="o">(</span><span class="mi">100</span><span class="o">)</span>
+      <span class="o">.</span><span class="n">maxPendingConnectionAcquires</span><span class="o">(</span><span class="mi">10000</span><span class="o">).</span><span class="n">build</span><span class="o">()</span>
+  <span class="o">}</span>
+<span class="o">)</span>
+
+<span class="k">def</span> <span class="n">sdkDynamoClientSrc</span><span class="o">(</span><span class="n">http</span><span class="k">:</span> <span class="kt">SdkHttpClient</span><span class="o">)</span> <span class="k">=</span>
+  <span class="nc">Resource</span><span class="o">.</span><span class="n">fromAutoCloseable</span><span class="o">(</span>
+    <span class="nc">IO</span> <span class="o">{</span>
+      <span class="nc">DynamoDbClient</span><span class="o">.</span><span class="n">builder</span><span class="o">().</span><span class="n">httpClient</span><span class="o">(</span><span class="n">http</span><span class="o">).</span><span class="n">build</span><span class="o">()</span>
+    <span class="o">}</span>
+  <span class="o">)</span>
+
+<span class="k">val</span> <span class="n">clientSrc</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">http</span> <span class="k">&lt;-</span> <span class="n">httpClientSrc</span>
+    <span class="n">sdkClient</span> <span class="k">&lt;-</span><span class="n">sdkDynamoClientSrc</span><span class="o">(</span><span class="n">http</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="nc">Client</span><span class="o">[</span><span class="kt">IO</span><span class="o">](</span><span class="n">sdkClient</span><span class="o">)</span>
+</code></pre></div>
 			<div class="docs-navigation d-flex justify-content-between">
 	
 	<a class="ml-auto" href="https://d2a4u.github.io/meteor/docs/introduction/helloworld/">
@@ -211,7 +236,7 @@ that can be used and tuned similarly.</p>
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.2872a9b3ff3c3e4f16005b9c4bc0867c97bc44fc4095ae888955ff9aa8f236d7f3e3006c82384945eb35c8ae1dbfcd8e54d78b696f7204fb14e393e58c1e2b06.js" integrity="sha512-KHKps/88Pk8WAFucS8CGfJe8RPxAla6IiVX/mqjyNtfz4wBsgjhJRes1yK4dv82OVNeLaW9yBPsU45PljB4rBg==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.35f6c24b1a94c41be02a20d3f535213f0bbe908004f683f316907f7ef1f60664a66e96f66afdcfb1816324d14375a418783780f9f6c4fc344e4b8ceb27ee182a.js" integrity="sha512-NfbCSxqUxBvgKiDT9TUhPwu&#43;kIAE9oPzFpB/fvH2BmSmbpb2av3PsYFjJNFDdaQYeDeA&#43;fbE/DROS4zrJ&#43;4YKg==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>
