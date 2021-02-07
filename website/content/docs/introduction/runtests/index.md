@@ -45,7 +45,7 @@ All PRs and branches are built and tests using Github Actions using the same mec
 
 ## Release
 
-The project uses [sbt-release-early plugin](https://github.com/jvican/sbt-release-early) and 
-[sbt-bintray]() to release artifacts to Bintray repositories using git tags. Release process is 
-automated via Github actions. Minor version is automatically incremented on PR merge. To release 
-other version bump, add `#major` or `#patch` to commit message.
+The project uses [sbt-release-early plugin](https://github.com/jvican/sbt-release-early) to release 
+artifacts to Sonatype repositories. Versioning is via git tags. Release process is automated via 
+Github actions. Minor version is automatically incremented on PR merge. To release other version 
+bump, add `#major` or `#patch` to commit message.
