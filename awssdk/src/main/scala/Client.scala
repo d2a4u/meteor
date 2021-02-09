@@ -33,6 +33,7 @@ import java.util.concurrent.Executor
 import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 
 trait Client[F[_]] {
 
@@ -483,7 +484,7 @@ object Client {
     new DefaultClient[F](jClient)
 
   def resource[F[_]: Concurrent: Timer](
-    cred: AwsCredentialsProviderChain,
+    cred: AwsCredentialsProvider,
     endpoint: URI,
     region: Region
   ): Resource[F, Client[F]] =
@@ -497,9 +498,7 @@ object Client {
 
   def resource[F[_]: Concurrent: Timer]: Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {
-      Sync[F].delay(AwsCredentialsProviderChain.of(
-        DefaultCredentialsProvider.create()
-      ))
+      Sync[F].delay(DefaultCredentialsProvider.create())
     }.flatMap { cred =>
       Resource.fromAutoCloseable {
         Sync[F].delay(
@@ -512,15 +511,13 @@ object Client {
   def resource[F[_]: Concurrent: Timer](exec: Executor)
     : Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {
-      Sync[F].delay(AwsCredentialsProviderChain.of(
-        DefaultCredentialsProvider.create()
-      ))
+      Sync[F].delay(DefaultCredentialsProvider.create())
     }.flatMap(cred => resource[F](exec, cred))
   }
 
   def resource[F[_]: Concurrent: Timer](
     exec: Executor,
-    cred: AwsCredentialsProviderChain
+    cred: AwsCredentialsProvider
   ): Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {
       Sync[F].delay {
