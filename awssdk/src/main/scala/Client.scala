@@ -5,7 +5,7 @@ import fs2.Pipe
 import meteor.api.BatchGet
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.auth.credentials.{
-  AwsCredentialsProviderChain,
+  AwsCredentialsProvider,
   DefaultCredentialsProvider
 }
 import software.amazon.awssdk.core.client.config.{
@@ -33,7 +33,6 @@ import java.util.concurrent.Executor
 import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 
 trait Client[F[_]] {
 
