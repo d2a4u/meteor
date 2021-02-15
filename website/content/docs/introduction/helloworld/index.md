@@ -83,15 +83,20 @@ import cats.effect.{ExitCode, IO, IOApp}
 
 object Main extends IOApp {
   val dynamoClientSrc = Client.resource[IO]
-  val booksTable = Table("books-table", Key("id", DynamoDbType.N), None)
+  val booksTable = Table("books-table", KeyDef("id", DynamoDbType.N), None)
 
   val lotr = Book(1, "The Lord of the Rings")
 
   val found = dynamoClientSrc.use { client =>
     // To write
-    val put = client.put[Book](booksTable.name, lotr) // return IO[Unit]
+    val put = client.put[Book](bookstable.tableName, lotr) // return IO[Unit]
     // To read - eventually consistent
-    val get = client.get[Int, Book](booksTable, 1, consistentRead = false) // return IO[Option[Book]]
+    val get =
+      client.get[Int, Book](
+        booksTable,
+        1,
+        consistentRead = false
+      ) // return IO[Option[Book]]
 
     put.flatMap(_ => get)
   }
@@ -103,4 +108,5 @@ object Main extends IOApp {
     }.as(ExitCode.Success)
   }
 }
+
 ```

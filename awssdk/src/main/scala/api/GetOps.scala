@@ -12,51 +12,50 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.jdk.CollectionConverters._
 
-trait GetOps {
+trait GetOps extends PartitionKeyGetOps with CompositeKeysGetOps {}
+
+trait PartitionKeyGetOps extends SharedGetOps {
   def getOp[F[_]: Concurrent, P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     consistentRead: Boolean
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
-    val query = table.keys(partitionKey, None)
-    val req =
-      GetItemRequest.builder()
-        .consistentRead(consistentRead)
-        .tableName(table.name)
-        .key(query)
-        .build()
-    (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      if (resp.hasItem()) {
-        Concurrent[F].fromEither(
-          resp.item().asAttributeValue.as[U].map(_.some).leftWiden[Throwable]
-        )
-      } else {
-        none[U].pure[F]
-      }
+    table.mkKey[F](partitionKey).flatMap { key =>
+      sendGetRequest(table.tableName, key, consistentRead)(jClient)
     }
   }
 
+  def retrieveOp[
+    F[_]: Concurrent: RaiseThrowable,
+    P: Encoder,
+    T: Decoder
+  ](
+    index: PartitionKeyIndex[P],
+    partitionKey: P,
+    consistentRead: Boolean,
+    limit: Int
+  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
+    val query = Query[P](partitionKey)
+    mkQueryRequestBuilder[F](
+      index,
+      keyExpression = query.keyCondition(index),
+      filterExpression = query.filter,
+      consistentRead = consistentRead,
+      limit = limit
+    ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
+  }
+
+}
+
+trait CompositeKeysGetOps extends SharedGetOps {
   def getOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
-    val query = table.keys(partitionKey, sortKey.some)
-    val req =
-      GetItemRequest.builder()
-        .consistentRead(consistentRead)
-        .tableName(table.name)
-        .key(query)
-        .build()
-    (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
-      if (resp.hasItem()) {
-        Concurrent[F].fromEither(
-          resp.item().asAttributeValue.as[U].map(_.some).leftWiden[Throwable]
-        )
-      } else {
-        none[U].pure[F]
-      }
+    table.mkKey[F](partitionKey, sortKey).flatMap { key =>
+      sendGetRequest(table.tableName, key, consistentRead)(jClient)
     }
   }
 
@@ -65,36 +64,18 @@ trait GetOps {
     P: Encoder,
     T: Decoder
   ](
-    table: Table,
+    index: CompositeKeysIndex[P, _],
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
     val query = Query[P](partitionKey)
-    mkBuilder[F, P, Nothing](
-      table,
-      query,
-      consistentRead,
-      limit
-    ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
-  }
-
-  def retrieveOp[
-    F[_]: Concurrent: RaiseThrowable,
-    P: Encoder,
-    T: Decoder
-  ](
-    secondaryIndex: SecondaryIndex,
-    partitionKey: P,
-    consistentRead: Boolean,
-    limit: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
-    val query = Query[P](partitionKey)
-    mkBuilder[F, P, Nothing](
-      secondaryIndex,
-      query,
-      consistentRead,
-      limit
+    mkQueryRequestBuilder[F](
+      index,
+      keyExpression = query.partitionKeyOnlyCondition(index),
+      filterExpression = query.filter,
+      consistentRead = consistentRead,
+      limit = limit
     ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
   }
 
@@ -104,37 +85,22 @@ trait GetOps {
     S: Encoder,
     U: Decoder
   ](
-    table: Table,
+    index: CompositeKeysIndex[P, S],
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] =
-    mkBuilder[F, P, S](
-      table,
-      query,
-      consistentRead,
-      limit
+    mkQueryRequestBuilder[F](
+      index,
+      keyExpression = query.keyCondition(index),
+      filterExpression = query.filter,
+      consistentRead = consistentRead,
+      limit = limit
     ).flatMap(builder => sendQueryRequest[F, U](builder)(jClient))
+}
 
-  def retrieveOp[
-    F[_]: Concurrent: RaiseThrowable,
-    P: Encoder,
-    S: Encoder,
-    U: Decoder
-  ](
-    secondaryIndex: SecondaryIndex,
-    query: Query[P, S],
-    consistentRead: Boolean,
-    limit: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] =
-    mkBuilder[F, P, S](
-      secondaryIndex,
-      query,
-      consistentRead,
-      limit
-    ).flatMap(builder => sendQueryRequest[F, U](builder)(jClient))
-
-  private def sendQueryRequest[F[_]: Concurrent: RaiseThrowable, U: Decoder](
+trait SharedGetOps {
+  def sendQueryRequest[F[_]: Concurrent: RaiseThrowable, U: Decoder](
     builder: QueryRequest.Builder
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] = {
     def doQuery(
@@ -163,20 +129,45 @@ trait GetOps {
     } yield result
   }
 
-  private def mkBuilder[F[_]: Concurrent, P: Encoder, S: Encoder](
+  def sendGetRequest[F[_]: Concurrent, U: Decoder](
+    tableName: String,
+    key: java.util.Map[String, AttributeValue],
+    consistentRead: Boolean
+  )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
+    val req =
+      GetItemRequest.builder()
+        .consistentRead(consistentRead)
+        .tableName(tableName)
+        .key(key)
+        .build()
+    (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
+      if (resp.hasItem) {
+        Concurrent[F].fromEither(
+          resp.item().asAttributeValue.as[U].map(_.some).leftWiden[Throwable]
+        )
+      } else {
+        none[U].pure[F]
+      }
+    }
+  }
+
+  def mkQueryRequestBuilder[F[_]: Concurrent](
     index: Index,
-    query: Query[P, S],
+    keyExpression: Expression,
+    filterExpression: Expression,
     consistentRead: Boolean,
     limit: Int
-  ) = {
+  ): fs2.Stream[F, QueryRequest.Builder] = {
     val (tableName, optIndexName) = index match {
-      case Table(name, _, _) => (name, None)
-      case SecondaryIndex(tableName, indexName, _, _) =>
-        (tableName, Some(indexName))
+      case PartitionKeyTable(name, _) => (name, None)
+      case PartitionKeySecondaryIndex(tableName, indexName, _) =>
+        (tableName, indexName.some)
+      case CompositeKeysTable(name, _, _) => (name, None)
+      case CompositeKeysSecondaryIndex(tableName, indexName, _, _) =>
+        (tableName, indexName.some)
     }
-    val exp = query.keyCondition(index)
     fs2.Stream.fromEither[F](
-      if (exp.nonEmpty) Right(exp)
+      if (keyExpression.nonEmpty) Right(keyExpression)
       else Left(InvalidExpression)
     ).map {
       cond =>
@@ -187,17 +178,17 @@ trait GetOps {
             .keyConditionExpression(cond.expression)
             .limit(limit)
         val builder1 = optIndexName.fold(builder0)(builder0.indexName)
-        if (query.filter.isEmpty) {
+        if (filterExpression.isEmpty) {
           builder1
             .expressionAttributeNames(cond.attributeNames.asJava)
             .expressionAttributeValues(cond.attributeValues.asJava)
         } else {
           builder1.filterExpression(
-            query.filter.expression
+            filterExpression.expression
           ).expressionAttributeNames(
-            (cond.attributeNames ++ query.filter.attributeNames).asJava
+            (cond.attributeNames ++ filterExpression.attributeNames).asJava
           ).expressionAttributeValues(
-            (cond.attributeValues ++ query.filter.attributeValues).asJava
+            (cond.attributeValues ++ filterExpression.attributeValues).asJava
           )
         }
     }

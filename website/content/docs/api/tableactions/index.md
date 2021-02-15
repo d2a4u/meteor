@@ -16,12 +16,12 @@ toc: true
 ## Create
 
 Table creation returns `F[Unit]` where `F[_]` is semantically blocked (no actual JVM thread being 
-blocked) until the table has been created and its status is `available`. 
+blocked) until the table has been created and its status is `available`.
 
 ```scala
 import meteor._
 
-val table = Table("books-table", Key("id", DynamoDbType.N), None)
+val table = Table("books-table", KeyDef("id", DynamoDbType.N), None)
 val creation: F[Unit] = client.createTable(
   table = table,
   attributeDefinition = Map.empty,
@@ -73,7 +73,7 @@ Table deletion also returns `F[Unit]` but it is fire and forget. It returns `Uni
 underline `DeleteTable` request is responded successfully.
 
 ```scala
-val deletion: F[Unit] = client.deleteTable(table.name)
+val deletion: F[Unit] = client.deleteTable(table.tableName)
 ```
 
 ## Scan
@@ -83,7 +83,7 @@ Scanning a DynamoDB table returns a `fs2.Stream`. It also abstracts away the com
 
 ```scala
 val books: Stream[F, Book] = client.scan[Book](
-  tableName = table.name,
+  tableName = table.tableName,
   consistentRead = false,
   parallelism = 32
 )

@@ -53,17 +53,17 @@ class BatchGetOpsSpec extends ITSpec {
     )
     val batchGet1 = BatchGet(
       valuesToGet1,
-      false,
+      consistentRead = false,
       exp
     )
     val batchGet2 = BatchGet(
       valuesToGet2,
-      false,
+      consistentRead = false,
       exp
     )
     val src = for {
-      src1 <- tableWithKeys[IO]
-      src2 <- tableWithPartitionKey[IO]
+      src1 <- compositeKeysTable[IO]
+      src2 <- partitionKeyTable[IO]
     } yield (src1, src2)
 
     val result = src.use {
@@ -75,8 +75,8 @@ class BatchGetOpsSpec extends ITSpec {
         val get =
           client.batchGet(
             Map(
-              table1.name -> batchGet1,
-              table2.name -> batchGet2
+              table1.tableName -> batchGet1,
+              table2.tableName -> batchGet2
             ),
             backOff
           )
@@ -100,7 +100,7 @@ class BatchGetOpsSpec extends ITSpec {
       (data.id, data.range)
     }
 
-    tableWithKeys[IO].use {
+    compositeKeysTable[IO].use {
       case (client, table) =>
         val put =
           client.batchPut[TestData](
@@ -111,7 +111,7 @@ class BatchGetOpsSpec extends ITSpec {
         val get =
           client.batchGet[Id, Range, TestData](
             table,
-            false,
+            consistentRead = false,
             Expression(
               "#id, #range, #str, #int, #bool",
               Map(
@@ -136,14 +136,14 @@ class BatchGetOpsSpec extends ITSpec {
     val duplicatedKeys =
       fs2.Stream.constant((testData.id, testData.range)).take(5)
 
-    tableWithKeys[IO].use {
+    compositeKeysTable[IO].use {
       case (client, table) =>
         val put =
-          client.put[TestData](table.name, testData)
+          client.put[TestData](table.tableName, testData)
         val get =
           client.batchGet[Id, Range, TestData](
             table,
-            false,
+            consistentRead = false,
             Expression(
               "#id, #range, #str, #int, #bool",
               Map(

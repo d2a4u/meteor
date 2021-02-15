@@ -140,17 +140,17 @@ import meteor.syntax._
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
 val table = Table(
-  "books-table", 
-  Key("author", DynamoDbType.S), 
-  Some(Key("title", DynamoDbType.S))
+  "books-table",
+  KeyDef("author", DynamoDbType.S),
+  Some(KeyDef("title", DynamoDbType.S))
 )
 
 val client: Client[IO] = ???
 
-val bookPublishedAtOldValue = 
+val bookPublishedAtOldValue =
   client.update[String, String, Int](
-    table, 
-    "Jules Verne", 
+    table,
+    "Jules Verne",
     "The Mysterious Island",
     Expression(
       "SET #pAt = :newYear",
@@ -163,5 +163,5 @@ val bookPublishedAtOldValue =
       Map(":newYear" -> 1875.asAttributeValue)
     ),
     ReturnValue.UPDATED_OLD
-) // returns IO(Some(1875))
+  ) // returns IO(Some(1875))
 ```

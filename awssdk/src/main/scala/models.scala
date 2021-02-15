@@ -3,51 +3,145 @@ package meteor
 import cats._
 import cats.implicits._
 import meteor.codec.Encoder
-import meteor.syntax._
+import meteor.errors.EncoderError
+import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.model.{
   AttributeValue,
   ScalarAttributeType
 }
 
 import java.util
+import java.util.{HashMap => jHashMap}
 import scala.jdk.CollectionConverters._
 
-case class Key(
-  name: String,
+case class KeyDef[K](
+  attributeName: String,
   attributeType: DynamoDbType
-)
-
-sealed trait Index
-
-case class Table(
-  name: String,
-  partitionKey: Key,
-  sortKey: Option[Key]
-) extends Index {
-  def keys[P: Encoder, S: Encoder](
-    partitionKeyValue: P,
-    sortKeyValue: Option[S]
-  ): util.Map[String, AttributeValue] = {
-    val partitionK =
-      Map(partitionKey.name -> partitionKeyValue.asAttributeValue)
-
-    val optSortK = for {
-      key <- sortKey
-      value <- sortKeyValue
-    } yield Map(key.name -> value.asAttributeValue)
-
-    optSortK.fold(partitionK) { sortK =>
-      partitionK ++ sortK
-    }.asJava
+) {
+  def mkKey[F[_]: MonadError[*[_], Throwable]](k: K)(implicit
+  encoder: Encoder[K]): F[java.util.Map[String, AttributeValue]] = {
+    val av = k.asAttributeValue
+    val valid = Map(attributeName -> av).asJava.pure[F]
+    if (attributeType == DynamoDbType.B && av.b() != null) {
+      valid
+    } else if (attributeType == DynamoDbType.S && av.s() != null) {
+      valid
+    } else if (attributeType == DynamoDbType.N && av.n() != null) {
+      valid
+    } else {
+      EncoderError.invalidKeyTypeFailure.raiseError[F, java.util.Map[
+        String,
+        AttributeValue
+      ]]
+    }
   }
 }
 
-case class SecondaryIndex(
+sealed trait Index {
+  def tableName: String
+  def containKey(av: java.util.Map[String, AttributeValue])
+    : Option[java.util.Map[String, AttributeValue]]
+  def extractKey[F[_]: MonadError[*[_], Throwable], T: Encoder](t: T)
+    : F[java.util.Map[String, AttributeValue]] = {
+    val av = t.asAttributeValue
+    if (av.hasM) {
+      val m = av.m()
+      MonadError[F, Throwable].fromOption(
+        containKey(m),
+        EncoderError.missingKeyFailure
+      )
+    } else {
+      EncoderError.invalidTypeFailure(DynamoDbType.M).raiseError[
+        F,
+        java.util.Map[
+          String,
+          AttributeValue
+        ]
+      ]
+    }
+  }
+}
+
+sealed trait PartitionKeyIndex[P] extends Index {
+  def partitionKeyDef: KeyDef[P]
+
+  def containKey(av: util.Map[String, AttributeValue])
+    : Option[java.util.Map[String, AttributeValue]] = {
+    av.containsKey(partitionKeyDef.attributeName).guard[Option].as {
+      val m = new jHashMap[String, AttributeValue]()
+      m.put(
+        partitionKeyDef.attributeName,
+        av.get(partitionKeyDef.attributeName)
+      )
+      m
+    }
+  }
+
+  def mkKey[F[_]: MonadError[*[_], Throwable]](p: P)(implicit
+  encoder: Encoder[P]): F[java.util.Map[String, AttributeValue]] =
+    partitionKeyDef.mkKey[F](p)
+}
+
+sealed trait CompositeKeysIndex[P, S] extends Index {
+  def partitionKeyDef: KeyDef[P]
+
+  def sortKeyDef: KeyDef[S]
+
+  def containKey(av: util.Map[String, AttributeValue])
+    : Option[java.util.Map[String, AttributeValue]] = {
+    val cond = av.containsKey(partitionKeyDef.attributeName) && av.containsKey(
+      sortKeyDef.attributeName
+    )
+    cond.guard[Option].as {
+      val m = new jHashMap[String, AttributeValue]()
+      m.put(
+        partitionKeyDef.attributeName,
+        av.get(partitionKeyDef.attributeName)
+      )
+      m.put(
+        sortKeyDef.attributeName,
+        av.get(sortKeyDef.attributeName)
+      )
+      m
+    }
+  }
+
+  def mkKey[F[_]: MonadError[*[_], Throwable]](
+    p: P,
+    s: S
+  )(
+    implicit encoderP: Encoder[P],
+    encoderS: Encoder[S]
+  ): F[java.util.Map[String, AttributeValue]] =
+    for {
+      pk <- partitionKeyDef.mkKey[F](p)
+      sk <- sortKeyDef.mkKey[F](s)
+    } yield pk ++ sk
+}
+
+case class PartitionKeyTable[P](
+  tableName: String,
+  partitionKeyDef: KeyDef[P]
+) extends PartitionKeyIndex[P]
+
+case class CompositeKeysTable[P, S](
+  tableName: String,
+  partitionKeyDef: KeyDef[P],
+  sortKeyDef: KeyDef[S]
+) extends CompositeKeysIndex[P, S]
+
+case class PartitionKeySecondaryIndex[P](
   tableName: String,
   indexName: String,
-  partitionKey: Key,
-  sortKey: Option[Key]
-) extends Index
+  partitionKeyDef: KeyDef[P]
+) extends PartitionKeyIndex[P]
+
+case class CompositeKeysSecondaryIndex[P, S](
+  tableName: String,
+  indexName: String,
+  partitionKeyDef: KeyDef[P],
+  sortKeyDef: KeyDef[S]
+) extends CompositeKeysIndex[P, S]
 
 sealed trait SortKeyQuery[T]
 object SortKeyQuery {
@@ -102,93 +196,99 @@ case class Query[P: Encoder, S: Encoder](
   sortKeyQuery: SortKeyQuery[S],
   filter: Expression
 ) {
-  def keyCondition(index: Index): Expression = {
-    val (partitionKeySchema, optSortKeySchema) = index match {
-      case Table(_, pk, sk)             => (pk, sk)
-      case SecondaryIndex(_, _, pk, sk) => (pk, sk)
-    }
+  def keyCondition(index: CompositeKeysIndex[P, S]): Expression = {
+    val partitionKeyExpression =
+      mkPartitionKeyExpression(index.partitionKeyDef.attributeName)
 
-    def mkSortKeyExpression(sortKeyName: String) =
-      sortKeyQuery match {
-        case SortKeyQuery.EqualTo(value) =>
-          val placeholder = ":t1"
-          Expression(
-            s"#$sortKeyName = $placeholder",
-            Map(s"#$sortKeyName" -> sortKeyName),
-            Map(placeholder -> value.asAttributeValue)
-          ).some
-
-        case SortKeyQuery.LessThan(value) =>
-          val placeholder = ":t1"
-          Expression(
-            s"#$sortKeyName < $placeholder",
-            Map(s"#$sortKeyName" -> sortKeyName),
-            Map(placeholder -> value.asAttributeValue)
-          ).some
-
-        case SortKeyQuery.LessOrEqualTo(value) =>
-          val placeholder = ":t1"
-          Expression(
-            s"#$sortKeyName <= $placeholder",
-            Map(s"#$sortKeyName" -> sortKeyName),
-            Map(placeholder -> value.asAttributeValue)
-          ).some
-
-        case SortKeyQuery.GreaterThan(value) =>
-          val placeholder = ":t1"
-          Expression(
-            s"#$sortKeyName > $placeholder",
-            Map(s"#$sortKeyName" -> sortKeyName),
-            Map(placeholder -> value.asAttributeValue)
-          ).some
-
-        case SortKeyQuery.GreaterOrEqualTo(value) =>
-          val placeholder = ":t1"
-          Expression(
-            s"#$sortKeyName >= $placeholder",
-            Map(s"#$sortKeyName" -> sortKeyName),
-            Map(placeholder -> value.asAttributeValue)
-          ).some
-
-        case SortKeyQuery.Between(from, to) =>
-          val placeholder1 = ":t1"
-          val placeholder2 = ":t2"
-          Expression(
-            s"#$sortKeyName BETWEEN $placeholder1 AND $placeholder2",
-            Map(s"#$sortKeyName" -> sortKeyName),
-            Map(
-              placeholder1 -> from.asAttributeValue,
-              placeholder2 -> to.asAttributeValue
-            )
-          ).some
-
-        case SortKeyQuery.BeginsWith(value) =>
-          val placeholder = ":t1"
-          Expression(
-            s"begins_with(#$sortKeyName, $placeholder)",
-            Map(s"#$sortKeyName" -> sortKeyName),
-            Map(placeholder -> value.asAttributeValue)
-          ).some
-
-        case _ =>
-          None
-      }
-
-    val partitionKeyAV = Encoder[P].write(partitionKey)
-    val placeholder = ":t0"
-
-    val partitionKeyExpression = Expression(
-      s"#${partitionKeySchema.name} = $placeholder",
-      Map(s"#${partitionKeySchema.name}" -> partitionKeySchema.name),
-      Map(placeholder -> partitionKeyAV)
-    )
-
-    val optSortKeyExpression = for {
-      sortKey <- optSortKeySchema
-      sortKeyExp <- mkSortKeyExpression(sortKey.name)
-    } yield sortKeyExp
+    val optSortKeyExpression =
+      mkSortKeyExpression(index.sortKeyDef.attributeName)
 
     Monoid.maybeCombine(partitionKeyExpression, optSortKeyExpression)
+  }
+
+  def partitionKeyOnlyCondition(table: CompositeKeysIndex[P, _]): Expression =
+    mkPartitionKeyExpression(table.partitionKeyDef.attributeName)
+
+  def keyCondition(table: PartitionKeyIndex[P]): Expression =
+    mkPartitionKeyExpression(table.partitionKeyDef.attributeName)
+
+  private def mkPartitionKeyExpression(partitionKeyAttributeName: String) = {
+    val placeholder = ":t0"
+    val partitionKeyAV = partitionKey.asAttributeValue
+    Expression(
+      s"#$partitionKeyAttributeName = $placeholder",
+      Map(
+        s"#$partitionKeyAttributeName" -> partitionKeyAttributeName
+      ),
+      Map(placeholder -> partitionKeyAV)
+    )
+  }
+
+  private def mkSortKeyExpression(sortKeyName: String) = {
+    sortKeyQuery match {
+      case SortKeyQuery.EqualTo(value) =>
+        val placeholder = ":t1"
+        Expression(
+          s"#$sortKeyName = $placeholder",
+          Map(s"#$sortKeyName" -> sortKeyName),
+          Map(placeholder -> value.asAttributeValue)
+        ).some
+
+      case SortKeyQuery.LessThan(value) =>
+        val placeholder = ":t1"
+        Expression(
+          s"#$sortKeyName < $placeholder",
+          Map(s"#$sortKeyName" -> sortKeyName),
+          Map(placeholder -> value.asAttributeValue)
+        ).some
+
+      case SortKeyQuery.LessOrEqualTo(value) =>
+        val placeholder = ":t1"
+        Expression(
+          s"#$sortKeyName <= $placeholder",
+          Map(s"#$sortKeyName" -> sortKeyName),
+          Map(placeholder -> value.asAttributeValue)
+        ).some
+
+      case SortKeyQuery.GreaterThan(value) =>
+        val placeholder = ":t1"
+        Expression(
+          s"#$sortKeyName > $placeholder",
+          Map(s"#$sortKeyName" -> sortKeyName),
+          Map(placeholder -> value.asAttributeValue)
+        ).some
+
+      case SortKeyQuery.GreaterOrEqualTo(value) =>
+        val placeholder = ":t1"
+        Expression(
+          s"#$sortKeyName >= $placeholder",
+          Map(s"#$sortKeyName" -> sortKeyName),
+          Map(placeholder -> value.asAttributeValue)
+        ).some
+
+      case SortKeyQuery.Between(from, to) =>
+        val placeholder1 = ":t1"
+        val placeholder2 = ":t2"
+        Expression(
+          s"#$sortKeyName BETWEEN $placeholder1 AND $placeholder2",
+          Map(s"#$sortKeyName" -> sortKeyName),
+          Map(
+            placeholder1 -> from.asAttributeValue,
+            placeholder2 -> to.asAttributeValue
+          )
+        ).some
+
+      case SortKeyQuery.BeginsWith(value) =>
+        val placeholder = ":t1"
+        Expression(
+          s"begins_with(#$sortKeyName, $placeholder)",
+          Map(s"#$sortKeyName" -> sortKeyName),
+          Map(placeholder -> value.asAttributeValue)
+        ).some
+
+      case _ =>
+        None
+    }
   }
 }
 

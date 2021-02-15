@@ -40,7 +40,7 @@ trait Client[F[_]] {
     * Get a single value from a table by partition key P.
     */
   def get[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     consistentRead: Boolean
   ): F[Option[U]]
@@ -49,7 +49,7 @@ trait Client[F[_]] {
     * Get a single value from a table by partition key P and sort key S.
     */
   def get[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
@@ -59,17 +59,7 @@ trait Client[F[_]] {
     * Retrieve values from a table using a query.
     */
   def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
-    query: Query[P, S],
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U]
-
-  /**
-    * Retrieve values from a table using a query on a secondary index.
-    */
-  def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    secondaryIndex: SecondaryIndex,
+    index: CompositeKeysIndex[P, S],
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
@@ -82,20 +72,7 @@ trait Client[F[_]] {
     P: Encoder,
     U: Decoder
   ](
-    table: Table,
-    partitionKey: P,
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U]
-
-  /**
-    * Retrieve values from a table by partition key P on a secondary index.
-    */
-  def retrieve[
-    P: Encoder,
-    U: Decoder
-  ](
-    secondaryIndex: SecondaryIndex,
+    index: CompositeKeysIndex[P, _],
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
@@ -139,7 +116,7 @@ trait Client[F[_]] {
     * Delete an item from a table by partition key P and sort key S.
     */
   def delete[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S
   ): F[Unit]
@@ -148,7 +125,7 @@ trait Client[F[_]] {
     * Delete an item from a table by partition key P.
     */
   def delete[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P
   ): F[Unit]
 
@@ -176,7 +153,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value.
     */
   def update[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
     returnValue: ReturnValue
@@ -188,7 +165,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value.
     */
   def update[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
     condition: Expression,
@@ -200,7 +177,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value.
     */
   def update[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -213,7 +190,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value.
     */
   def update[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -226,7 +203,7 @@ trait Client[F[_]] {
     * Return Unit (ReturnValue.NONE).
     */
   def update[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression
   ): F[Unit]
@@ -237,7 +214,7 @@ trait Client[F[_]] {
     * Return Unit (ReturnValue.NONE).
     */
   def update[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
     condition: Expression
@@ -248,7 +225,7 @@ trait Client[F[_]] {
     * Return Unit (ReturnValue.NONE).
     */
   def update[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression
@@ -260,7 +237,7 @@ trait Client[F[_]] {
     * Return Unit (ReturnValue.NONE).
     */
   def update[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -276,11 +253,11 @@ trait Client[F[_]] {
   ): F[Map[String, Iterable[AttributeValue]]]
 
   /**
-    * Batch get items from a table by partition keys P.
+    * Batch get items from a table by partition key P.
     * A Codec of U is required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[P],
@@ -292,7 +269,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[(P, S)],
@@ -304,7 +281,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
@@ -317,7 +294,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
@@ -330,7 +307,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     consistentRead: Boolean,
     keys: Iterable[P],
     backoffStrategy: BackoffStrategy
@@ -341,7 +318,7 @@ trait Client[F[_]] {
     * A Codec of U is required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     keys: Iterable[(P, S)],
     backoffStrategy: BackoffStrategy
@@ -357,7 +334,7 @@ trait Client[F[_]] {
     * within a batch.
     */
   def batchPut[T: Encoder](
-    table: Table,
+    table: Index,
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, T, Unit]
@@ -372,7 +349,7 @@ trait Client[F[_]] {
     * within a batch.
     */
   def batchPut[T: Encoder](
-    table: Table,
+    table: Index,
     items: Iterable[T],
     backoffStrategy: BackoffStrategy
   ): F[Unit]
@@ -381,7 +358,7 @@ trait Client[F[_]] {
     * Batch put unique items into a table.
     */
   def batchPutUnordered[T: Encoder](
-    table: Table,
+    table: Index,
     items: Set[T],
     parallelism: Int,
     backoffStrategy: BackoffStrategy
@@ -395,7 +372,7 @@ trait Client[F[_]] {
     * within a batch, only send deletion request for one P key and discard all duplicates.
     */
   def batchDelete[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
@@ -409,7 +386,7 @@ trait Client[F[_]] {
     * within a batch, only send deletion request for one (P, S) key pair and discard all duplicates.
     */
   def batchDelete[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
@@ -430,7 +407,7 @@ trait Client[F[_]] {
     * discard all other actions on that key.
     */
   def batchWrite[DP: Encoder, P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[DP],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, Either[DP, P], Unit]
@@ -451,7 +428,7 @@ trait Client[F[_]] {
     * discard all other actions on that key.
     */
   def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
-    table: Table,
+    table: CompositeKeysTable[DP, DS],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, Either[(DP, DS), P], Unit]
@@ -464,12 +441,23 @@ trait Client[F[_]] {
   /**
     * Create a table
     */
-  def createTable(
-    table: Table,
-    attributeDefinition: Map[String, DynamoDbType],
-    globalSecondaryIndexes: Set[GlobalSecondaryIndex],
-    localSecondaryIndexes: Set[LocalSecondaryIndex],
-    billingMode: BillingMode
+  def createCompositeKeysTable[P, S](
+    tableName: String,
+    partitionKeyDef: KeyDef[P],
+    sortKeyDef: KeyDef[S],
+    billingMode: BillingMode,
+    attributeDefinition: Map[String, DynamoDbType] = Map.empty,
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex] = Set.empty,
+    localSecondaryIndexes: Set[LocalSecondaryIndex] = Set.empty
+  ): F[Unit]
+
+  def createPartitionKeyTable[P](
+    tableName: String,
+    partitionKeyDef: KeyDef[P],
+    billingMode: BillingMode,
+    attributeDefinition: Map[String, DynamoDbType] = Map.empty,
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex] = Set.empty,
+    localSecondaryIndexes: Set[LocalSecondaryIndex] = Set.empty
   ): F[Unit]
 
   /**

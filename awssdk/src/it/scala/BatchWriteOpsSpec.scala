@@ -23,7 +23,7 @@ class BatchWriteOpsSpec extends ITSpec {
       (data.id, data.range)
     }
 
-    tableWithKeys[IO].use {
+    compositeKeysTable[IO].use {
       case (client, table) =>
         val put =
           client.batchPut[TestData](table, 1.second, backOff)
@@ -62,7 +62,7 @@ class BatchWriteOpsSpec extends ITSpec {
       (data.id, data.range)
     })
 
-    tableWithKeys[IO].use {
+    compositeKeysTable[IO].use {
       case (client, table) =>
         val get =
           client.batchGet[Id, Range, TestData](
@@ -96,7 +96,7 @@ class BatchWriteOpsSpec extends ITSpec {
       testData.copy(int = i)
     }
 
-    tableWithKeys[IO].use {
+    compositeKeysTable[IO].use {
       case (client, table) =>
         val put =
           client.batchPut[TestData](table, 1.second, backOff)
@@ -188,7 +188,7 @@ class BatchWriteOpsSpec extends ITSpec {
       (data.id, data.range)
     })
 
-    tableWithKeys[IO].use {
+    compositeKeysTable[IO].use {
       case (client, table) =>
         val get =
           client.batchGet[Id, Range, TestData](
@@ -225,7 +225,7 @@ class BatchWriteOpsSpec extends ITSpec {
     itemPartitionKey: Id,
     itemSortKey: Range
   ): IO[Option[TestData]] = {
-    tableWithKeys[IO].use {
+    compositeKeysTable[IO].use {
       case (client, table) =>
         val write =
           client.batchWrite[Id, Range, TestData](table, 1.second, backOff)

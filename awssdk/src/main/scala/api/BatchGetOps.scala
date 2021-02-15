@@ -29,8 +29,11 @@ case class BatchGet(
   projection: Expression = Expression.empty
 )
 
-trait BatchGetOps extends DedupOps {
+trait BatchGetOps
+    extends PartitionKeyBatchGetOps
+    with CompositeKeysBatchGetOps {}
 
+trait SharedBatchGetOps extends DedupOps {
   // 100 is the maximum amount of items for BatchGetItem
   val MaxBatchGetSize = 100
 
@@ -40,16 +43,23 @@ trait BatchGetOps extends DedupOps {
   )(jClient: DynamoDbAsyncClient): F[Map[String, Iterable[AttributeValue]]] = {
     val responses = requests.map {
       case (tableName, get) =>
-        Stream.iterable(get.values).covary[F].chunkN(MaxBatchGetSize).map {
+        Stream.iterable(get.values).covary[F].chunkN(MaxBatchGetSize).evalMap {
           chunk =>
-            if (chunk.forall(!_.hasM)) {
-              Stream.raiseError(EncoderError.invalidTypeFailure(DynamoDbType.M))
-            } else {
-              // remove potential duplicated keys
-              val keys =
-                dedupInOrdered(chunk)(identity)(_.m())
+            val keysF =
+              dedupInOrdered[F, AttributeValue, jMap[String, AttributeValue]](
+                chunk
+              ) { av =>
+                if (!av.hasM) {
+                  Concurrent[F].raiseError(
+                    EncoderError.invalidTypeFailure(DynamoDbType.M)
+                  )
+                } else {
+                  av.m().pure[F]
+                }
+              }
+            keysF.map { keys =>
               val keyAndAttrs =
-                mkRequest(keys, get.consistentRead, get.projection)
+                mkBatchGetRequest(keys, get.consistentRead, get.projection)
               val req = Map(tableName -> keyAndAttrs).asJava
               loop[F](req, backoffStrategy)(jClient)
             }
@@ -68,101 +78,9 @@ trait BatchGetOps extends DedupOps {
     }
   }
 
-  def batchGetOp[
-    F[_]: Timer: Concurrent: RaiseThrowable,
-    P: Encoder,
-    T: Decoder
-  ](
-    table: Table,
-    consistentRead: Boolean,
-    projection: Expression,
-    maxBatchWait: FiniteDuration,
-    parallelism: Int,
-    backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): Pipe[F, P, T] =
-    batchGetOpInternal[F, P, T](
-      table.name,
-      consistentRead,
-      projection,
-      maxBatchWait,
-      parallelism,
-      jClient,
-      backoffStrategy
-    ) { key =>
-      table.keys(key, None).asAttributeValue
-    }
-
-  def batchGetOp[
-    F[_]: Timer: Concurrent: RaiseThrowable,
-    P: Encoder,
-    S: Encoder,
-    T: Decoder
-  ](
-    table: Table,
-    consistentRead: Boolean,
-    projection: Expression,
-    maxBatchWait: FiniteDuration,
-    parallelism: Int,
-    backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): Pipe[F, (P, S), T] = {
-    in =>
-      val pipe = batchGetOpInternal[F, AttributeValue, T](
-        table.name,
-        consistentRead,
-        projection,
-        maxBatchWait,
-        parallelism,
-        jClient,
-        backoffStrategy
-      )(identity)
-      in.map {
-        case (p, s) =>
-          table.keys(p, s.some).asAttributeValue
-      }.through(pipe)
-  }
-
-  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, S: Encoder, T: Decoder](
-    table: Table,
-    consistentRead: Boolean,
-    projection: Expression,
-    keys: Iterable[(P, S)],
-    backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): F[Iterable[T]] = {
-    val attrKeys = keys.map {
-      case (p, s) =>
-        table.keys(p, s.some).asAttributeValue
-    }
-    batchGetOpInternal[F, AttributeValue, T](
-      table.name,
-      consistentRead,
-      projection,
-      attrKeys,
-      jClient,
-      backoffStrategy
-    )(identity)
-  }
-
-  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, T: Decoder](
-    table: Table,
-    consistentRead: Boolean,
-    projection: Expression,
-    keys: Iterable[P],
-    backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): F[Iterable[T]] =
-    batchGetOpInternal[F, P, T](
-      table.name,
-      consistentRead,
-      projection,
-      keys,
-      jClient,
-      backoffStrategy
-    ) { key =>
-      table.keys(key, None).asAttributeValue
-    }
-
-  private def batchGetOpInternal[
+  private[api] def batchGetOpInternal[
     F[_]: Concurrent: Timer,
-    K: Encoder,
+    K,
     T: Decoder
   ](
     tableName: String,
@@ -171,22 +89,26 @@ trait BatchGetOps extends DedupOps {
     keys: Iterable[K],
     jClient: DynamoDbAsyncClient,
     backoffStrategy: BackoffStrategy
-  )(mkKey: K => AttributeValue): F[Iterable[T]] = {
-    Stream.iterable(keys).chunkN(MaxBatchGetSize).flatMap { chunk =>
-      val keys = dedupInOrdered(chunk)(mkKey)(t => mkKey(t).m())
-      val keyAndAttrs = if (projection.isEmpty) {
-        KeysAndAttributes.builder().consistentRead(
-          consistentRead
-        ).keys(keys: _*).build()
-      } else {
-        mkRequest(keys, consistentRead, projection)
+  )(mkKey: K => F[jMap[String, AttributeValue]]): F[Iterable[T]] = {
+    Stream.iterable(keys).chunkN(MaxBatchGetSize).evalMap { chunk =>
+      dedupInOrdered[F, K, jMap[String, AttributeValue]](chunk)(mkKey).map {
+        keys =>
+          val keyAndAttrs = if (projection.isEmpty) {
+            KeysAndAttributes.builder().consistentRead(
+              consistentRead
+            ).keys(keys: _*).build()
+          } else {
+            mkBatchGetRequest(keys, consistentRead, projection)
+          }
+          val req = Map(tableName -> keyAndAttrs).asJava
+          loop[F](req, backoffStrategy)(jClient)
       }
-      val req = Map(tableName -> keyAndAttrs).asJava
-      loop[F](req, backoffStrategy)(jClient)
-    }.flatMap(parseResponse[F, T](tableName)).compile.to(Iterable)
+    }.parJoinUnbounded.flatMap(parseResponse[F, T](tableName)).compile.to(
+      Iterable
+    )
   }
 
-  private def batchGetOpInternal[
+  private[api] def batchGetOpInternal[
     F[_]: Timer: Concurrent: RaiseThrowable,
     K: Encoder,
     T: Decoder
@@ -198,22 +120,24 @@ trait BatchGetOps extends DedupOps {
     parallelism: Int,
     jClient: DynamoDbAsyncClient,
     backoffStrategy: BackoffStrategy
-  )(mkKey: K => AttributeValue): Pipe[F, K, T] =
+  )(mkKey: K => F[jMap[String, AttributeValue]]): Pipe[F, K, T] =
     in => {
-      val responses = in.groupWithin(MaxBatchGetSize, maxBatchWait).map {
+      val responses = in.groupWithin(MaxBatchGetSize, maxBatchWait).evalMap {
         chunk =>
           // remove potential duplicated keys
-          val keys =
-            dedupInOrdered(chunk)(mkKey)(t => mkKey(t).m())
-          val keyAndAttrs = mkRequest(keys, consistentRead, projection)
-          val req = Map(tableName -> keyAndAttrs).asJava
+          dedupInOrdered[F, K, jMap[String, AttributeValue]](chunk)(mkKey).map {
+            keys =>
+              val keyAndAttrs =
+                mkBatchGetRequest(keys, consistentRead, projection)
+              val req = Map(tableName -> keyAndAttrs).asJava
 
-          loop[F](req, backoffStrategy)(jClient)
+              loop[F](req, backoffStrategy)(jClient)
+          }
       }
       responses.parJoin(parallelism).flatMap(parseResponse[F, T](tableName))
     }
 
-  private[api] def mkRequest(
+  private[api] def mkBatchGetRequest(
     keys: Seq[jMap[String, AttributeValue]],
     consistentRead: Boolean,
     projection: Expression
@@ -281,6 +205,99 @@ trait BatchGetOps extends DedupOps {
         }
     }
   }
+}
+
+trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
+  def batchGetOp[
+    F[_]: Timer: Concurrent: RaiseThrowable,
+    P: Encoder,
+    S: Encoder,
+    T: Decoder
+  ](
+    table: CompositeKeysTable[P, S],
+    consistentRead: Boolean,
+    projection: Expression,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
+  )(jClient: DynamoDbAsyncClient): Pipe[F, (P, S), T] = {
+    in =>
+      val pipe = batchGetOpInternal[F, (P, S), T](
+        table.tableName,
+        consistentRead,
+        projection,
+        maxBatchWait,
+        parallelism,
+        jClient,
+        backoffStrategy
+      ) {
+        case (p, s) =>
+          table.mkKey[F](p, s)
+      }
+      in.through(pipe)
+  }
+
+  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, S: Encoder, T: Decoder](
+    table: CompositeKeysTable[P, S],
+    consistentRead: Boolean,
+    projection: Expression,
+    keys: Iterable[(P, S)],
+    backoffStrategy: BackoffStrategy
+  )(jClient: DynamoDbAsyncClient): F[Iterable[T]] = {
+    batchGetOpInternal[F, (P, S), T](
+      table.tableName,
+      consistentRead,
+      projection,
+      keys,
+      jClient,
+      backoffStrategy
+    ) {
+      case (p, s) =>
+        table.mkKey[F](p, s)
+    }
+  }
+
+}
+
+trait PartitionKeyBatchGetOps extends SharedBatchGetOps {
+  def batchGetOp[
+    F[_]: Timer: Concurrent: RaiseThrowable,
+    P: Encoder,
+    T: Decoder
+  ](
+    table: PartitionKeyTable[P],
+    consistentRead: Boolean,
+    projection: Expression,
+    maxBatchWait: FiniteDuration,
+    parallelism: Int,
+    backoffStrategy: BackoffStrategy
+  )(jClient: DynamoDbAsyncClient): Pipe[F, P, T] =
+    batchGetOpInternal[F, P, T](
+      table.tableName,
+      consistentRead,
+      projection,
+      maxBatchWait,
+      parallelism,
+      jClient,
+      backoffStrategy
+    )(table.mkKey[F])
+
+  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, T: Decoder](
+    table: PartitionKeyTable[P],
+    consistentRead: Boolean,
+    projection: Expression,
+    keys: Iterable[P],
+    backoffStrategy: BackoffStrategy
+  )(jClient: DynamoDbAsyncClient): F[Iterable[T]] =
+    batchGetOpInternal[F, P, T](
+      table.tableName,
+      consistentRead,
+      projection,
+      keys,
+      jClient,
+      backoffStrategy
+    )(table.mkKey[F])
+
 }
 
 object BatchGetOps extends BatchGetOps

@@ -28,7 +28,7 @@ private[meteor] object implicits extends syntax {
       }
   }
 
-  implicit class MergeMap[K, V](m1: jMap[K, V]) {
+  implicit class JavaMap[K, V](m1: jMap[K, V]) {
     def ++(m2: jMap[K, V]): jMap[K, V] = {
       val m3 = new jHashMap[K, V](m1)
 
