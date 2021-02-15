@@ -110,7 +110,7 @@ trait SharedBatchGetOps extends DedupOps {
 
   private[api] def batchGetOpInternal[
     F[_]: Timer: Concurrent: RaiseThrowable,
-    K: Encoder,
+    K,
     T: Decoder
   ](
     tableName: String,
