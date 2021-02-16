@@ -23,7 +23,7 @@ return type, all type parameters are required to be passed in explicitly.
 
 ```scala
 def get[P: Encoder, S: Encoder, U: Decoder](
-  table: Table,
+  table: CompositeKeysTable[P, S],
   partitionKey: P,
   sortKey: S,
   consistentRead: Boolean
@@ -116,13 +116,12 @@ Let's consider the most complicated `update` method:
 
 ```scala
 def update[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
-    partitionKey: P,
-    sortKey: S,
-    update: Expression,
-    condition: Expression,
-    returnValue: ReturnValue
-  ): F[Option[U]]
+  table: CompositeKeysTable[P, S],
+  partitionKey: P,
+  sortKey: S,
+  update: Expression,
+  returnValue: ReturnValue
+): F[Option[U]]
 ```
 
 This can be used to update an item of given `partitionKey` and `sortKey` but only update a specific 
@@ -139,10 +138,10 @@ import meteor._
 import meteor.syntax._
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
-val table = Table(
+val table = CompositeKeysTable[String, String](
   "books-table",
   KeyDef("author", DynamoDbType.S),
-  Some(KeyDef("title", DynamoDbType.S))
+  KeyDef("title", DynamoDbType.S)
 )
 
 val client: Client[IO] = ???

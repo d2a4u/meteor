@@ -59,21 +59,27 @@ val clientSrc: Resource[IO, Client[IO]] = Client.resource[IO]
 Internally, a default Java `DynamoDbAsyncClient` is created. Alternatively, you can also inject a
 `DynamoDbAsyncClient` via `Client.apply` method.
 
-#### Table
+#### Table and Secondary Index
 
-Most of the methods provided by `meteor` client take a `Table` where:
+DynamoDB actions can be performed against a table or a secondary index of a table. To do so in 
+`meteor`, the table or secondary index needs to be explicitly defined such as:
 
 ```scala
-case class Table(
-  name: String,
-  partitionKey: Key,
-  sortKey: Option[Key]
-)
+import meteor._
+val table = PartitionKeyTable[Int]("books-table", KeyDef[Int]("id", DynamoDbType.N))
 ```
 
+All supported index types are:
+
+- PartitionKeyTable[P]
+- PartitionKeySecondaryIndex[P]
+- CompositeKeysTable[P, S]
+- CompositeKeysSecondaryIndex[P, S]
+
+
 The Java AWS SDK client usually just takes a `String` of table's name instead. `meteor` requires a 
-`Table` to build keys' `AttributeValue` correctly and tie it to the definition of `Table`. It is 
-also used to deduplicate items in batch actions.
+table instance to build keys' `AttributeValue` correctly and tie it to the definition of the table.
+It is also used to deduplicate items in batch actions.
 
 ## Write and Read
 
@@ -83,7 +89,7 @@ import cats.effect.{ExitCode, IO, IOApp}
 
 object Main extends IOApp {
   val dynamoClientSrc = Client.resource[IO]
-  val booksTable = Table("books-table", KeyDef("id", DynamoDbType.N), None)
+  val booksTable = PartitionKeyTable[Int]("books-table", KeyDef[Int]("id", DynamoDbType.N))
 
   val lotr = Book(1, "The Lord of the Rings")
 

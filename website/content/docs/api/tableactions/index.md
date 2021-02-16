@@ -21,13 +21,10 @@ blocked) until the table has been created and its status is `available`.
 ```scala
 import meteor._
 
-val table = Table("books-table", KeyDef("id", DynamoDbType.N), None)
-val creation: F[Unit] = client.createTable(
-  table = table,
-  attributeDefinition = Map.empty,
-  globalSecondaryIndexes = Set.empty,
-  localSecondaryIndexes = Set.empty,
-  billingMode = BillingMode.PAY_PER_REQUEST
+val creation: F[Unit] = client.createPartitionKeyTable(
+  "books-table",
+  KeyDef[Int]("id", DynamoDbType.N),
+  BillingMode.PAY_PER_REQUEST
 )
 ```
 
@@ -55,15 +52,16 @@ to be defined:
 ```scala
 import meteor.DynamoDbType
 
-val creation: F[Unit] = client.createTable(
-  table = table,
+val creation: F[Unit] = client.createPartitionKeyTable[String](
+  tableName = "books_table",
+  partitionKeyDef = KeyDef[String]("author", DynamoDbType.S),
+  billingMode = BillingMode.PAY_PER_REQUEST,
   attributeDefinition = Map(
     "author" -> DynamoDbType.S,
     "title" -> DynamoDbType.S
   ),
   globalSecondaryIndexes = Set(global2ndIndex),
-  localSecondaryIndexes = Set.empty,
-  billingMode = BillingMode.PAY_PER_REQUEST
+  localSecondaryIndexes = Set.empty
 )
 ```
 

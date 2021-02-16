@@ -424,19 +424,4 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
 
   def deleteTable(tableName: String): F[Unit] =
     deleteTableOp[F](tableName)(jClient)
-
-  /**
-    * Batch write to a table by a Stream of either DP (delete) or P (put).
-    *
-    * DP: partition key's type
-    * P: item being put's type
-    *
-    * Deduplication logic within a batch is:
-    *
-    * Group all DP and P items by key, preserve ordering from upstream.
-    * If the last item for that key is a delete, then only perform deletion,
-    * discard all other actions on that key.
-    * If the last item for that key is a put, then only perform put,
-    * discard all other actions on that key.
-    */
 }
