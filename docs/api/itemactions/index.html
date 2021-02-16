@@ -18,7 +18,7 @@
     <meta name="twitter:title" content="Item Actions">
 <meta name="twitter:description" content="Most actions have several overloading methods for a table with composite keys, or a simple table with only partition key.
 Get Most simple action to get an item from a table by key(s). Since return type U is only on the return type, all type parameters are required to be passed in explicitly.
-def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:">
+def get[P: Encoder, S: Encoder, U: Decoder]( table: CompositeKeysTable[P, S], partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:">
 
 <meta name="twitter:site" content="@">
 <meta name="twitter:creator" content="@">
@@ -26,7 +26,7 @@ def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sort
 <meta property="og:title" content="Item Actions">
 <meta property="og:description" content="Most actions have several overloading methods for a table with composite keys, or a simple table with only partition key.
 Get Most simple action to get an item from a table by key(s). Since return type U is only on the return type, all type parameters are required to be passed in explicitly.
-def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:">
+def get[P: Encoder, S: Encoder, U: Decoder]( table: CompositeKeysTable[P, S], partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://d2a4u.github.io/meteor/docs/api/itemactions/">
 
@@ -158,7 +158,7 @@ with only partition key.</p>
 <p>Most simple action to get an item from a table by key(s). Since return type <code>U</code> is only on the
 return type, all type parameters are required to be passed in explicitly.</p>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">get</span><span class="o">[</span><span class="kt">P:</span> <span class="kt">Encoder</span>, <span class="kt">S:</span> <span class="kt">Encoder</span>, <span class="kt">U:</span> <span class="kt">Decoder</span><span class="o">](</span>
-  <span class="n">table</span><span class="k">:</span> <span class="kt">Table</span><span class="o">,</span>
+  <span class="n">table</span><span class="k">:</span> <span class="kt">CompositeKeysTable</span><span class="o">[</span><span class="kt">P</span>, <span class="kt">S</span><span class="o">],</span>
   <span class="n">partitionKey</span><span class="k">:</span> <span class="kt">P</span><span class="o">,</span>
   <span class="n">sortKey</span><span class="k">:</span> <span class="kt">S</span><span class="o">,</span>
   <span class="n">consistentRead</span><span class="k">:</span> <span class="kt">Boolean</span>
@@ -227,13 +227,12 @@ new), or only the updated part of an item (old or new).</li>
 </ul>
 <p>Let&rsquo;s consider the most complicated <code>update</code> method:</p>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">update</span><span class="o">[</span><span class="kt">P:</span> <span class="kt">Encoder</span>, <span class="kt">S:</span> <span class="kt">Encoder</span>, <span class="kt">U:</span> <span class="kt">Decoder</span><span class="o">](</span>
-    <span class="n">table</span><span class="k">:</span> <span class="kt">Table</span><span class="o">,</span>
-    <span class="n">partitionKey</span><span class="k">:</span> <span class="kt">P</span><span class="o">,</span>
-    <span class="n">sortKey</span><span class="k">:</span> <span class="kt">S</span><span class="o">,</span>
-    <span class="n">update</span><span class="k">:</span> <span class="kt">Expression</span><span class="o">,</span>
-    <span class="n">condition</span><span class="k">:</span> <span class="kt">Expression</span><span class="o">,</span>
-    <span class="n">returnValue</span><span class="k">:</span> <span class="kt">ReturnValue</span>
-  <span class="o">)</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">U</span><span class="o">]]</span>
+  <span class="n">table</span><span class="k">:</span> <span class="kt">CompositeKeysTable</span><span class="o">[</span><span class="kt">P</span>, <span class="kt">S</span><span class="o">],</span>
+  <span class="n">partitionKey</span><span class="k">:</span> <span class="kt">P</span><span class="o">,</span>
+  <span class="n">sortKey</span><span class="k">:</span> <span class="kt">S</span><span class="o">,</span>
+  <span class="n">update</span><span class="k">:</span> <span class="kt">Expression</span><span class="o">,</span>
+  <span class="n">returnValue</span><span class="k">:</span> <span class="kt">ReturnValue</span>
+<span class="o">)</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">U</span><span class="o">]]</span>
 </code></pre></div><p>This can be used to update an item of given <code>partitionKey</code> and <code>sortKey</code> but only update a specific
 attribute(s) (via <code>update: Expression</code>), if a certain condition is met (via <code>condition: Expression</code>)
 and return the old attribute(s) before being updated.</p>
@@ -245,18 +244,18 @@ return the old value before being updated:</p>
 <span class="k">import</span> <span class="nn">meteor.syntax._</span>
 <span class="k">import</span> <span class="nn">software.amazon.awssdk.services.dynamodb.model.ReturnValue</span>
 
-<span class="k">val</span> <span class="n">table</span> <span class="k">=</span> <span class="nc">Table</span><span class="o">(</span>
-  <span class="s">&#34;books-table&#34;</span><span class="o">,</span> 
-  <span class="nc">Key</span><span class="o">(</span><span class="s">&#34;author&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">),</span> 
-  <span class="nc">Some</span><span class="o">(</span><span class="nc">Key</span><span class="o">(</span><span class="s">&#34;title&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">))</span>
+<span class="k">val</span> <span class="n">table</span> <span class="k">=</span> <span class="nc">CompositeKeysTable</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">](</span>
+  <span class="s">&#34;books-table&#34;</span><span class="o">,</span>
+  <span class="nc">KeyDef</span><span class="o">(</span><span class="s">&#34;author&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">),</span>
+  <span class="nc">KeyDef</span><span class="o">(</span><span class="s">&#34;title&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">)</span>
 <span class="o">)</span>
 
 <span class="k">val</span> <span class="n">client</span><span class="k">:</span> <span class="kt">Client</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span> <span class="k">=</span> <span class="o">???</span>
 
-<span class="k">val</span> <span class="n">bookPublishedAtOldValue</span> <span class="k">=</span> 
+<span class="k">val</span> <span class="n">bookPublishedAtOldValue</span> <span class="k">=</span>
   <span class="n">client</span><span class="o">.</span><span class="n">update</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span>, <span class="kt">Int</span><span class="o">](</span>
-    <span class="n">table</span><span class="o">,</span> 
-    <span class="s">&#34;Jules Verne&#34;</span><span class="o">,</span> 
+    <span class="n">table</span><span class="o">,</span>
+    <span class="s">&#34;Jules Verne&#34;</span><span class="o">,</span>
     <span class="s">&#34;The Mysterious Island&#34;</span><span class="o">,</span>
     <span class="nc">Expression</span><span class="o">(</span>
       <span class="s">&#34;SET #pAt = :newYear&#34;</span><span class="o">,</span>
@@ -269,7 +268,7 @@ return the old value before being updated:</p>
       <span class="nc">Map</span><span class="o">(</span><span class="s">&#34;:newYear&#34;</span> <span class="o">-&gt;</span> <span class="mf">1875.</span><span class="n">asAttributeValue</span><span class="o">)</span>
     <span class="o">),</span>
     <span class="nc">ReturnValue</span><span class="o">.</span><span class="nc">UPDATED_OLD</span>
-<span class="o">)</span> <span class="c1">// returns IO(Some(1875))
+  <span class="o">)</span> <span class="c1">// returns IO(Some(1875))
 </span></code></pre></div>
 			<div class="docs-navigation d-flex justify-content-between">
 	
@@ -313,7 +312,7 @@ return the old value before being updated:</p>
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.35f6c24b1a94c41be02a20d3f535213f0bbe908004f683f316907f7ef1f60664a66e96f66afdcfb1816324d14375a418783780f9f6c4fc344e4b8ceb27ee182a.js" integrity="sha512-NfbCSxqUxBvgKiDT9TUhPwu&#43;kIAE9oPzFpB/fvH2BmSmbpb2av3PsYFjJNFDdaQYeDeA&#43;fbE/DROS4zrJ&#43;4YKg==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.8c61c6e52388e455384012cb245d16da73201c60dd09e3d0b4f17a4bfdc746b75b9b644afd9ce18f4bcbf44b9cc09a92bfe482aa8605e61497f104d73d950e25.js" integrity="sha512-jGHG5SOI5FU4QBLLJF0W2nMgHGDdCePQtPF6S/3HRrdbm2RK/Zzhj0vL9EucwJqSv&#43;SCqoYF5hSX8QTXPZUOJQ==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>

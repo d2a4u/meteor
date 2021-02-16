@@ -59,7 +59,8 @@ Expression( expression = &amp;#34;#pAt BETWEEN :from AND :to&amp;#34;, attribute
       
       <guid>https://d2a4u.github.io/meteor/docs/api/tableactions/</guid>
       <description>Create Table creation returns F[Unit] where F[_] is semantically blocked (no actual JVM thread being blocked) until the table has been created and its status is available.
-import meteor._ val table = Table(&amp;#34;books-table&amp;#34;, Key(&amp;#34;id&amp;#34;, DynamoDbType.N), None) val creation: F[Unit] = client.createTable( table = table, attributeDefinition = Map.empty, globalSecondaryIndexes = Set.empty, localSecondaryIndexes = Set.empty, billingMode = BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:</description>
+import meteor._ val creation: F[Unit] = client.createPartitionKeyTable( &amp;#34;books-table&amp;#34;, KeyDef[Int](&amp;#34;id&amp;#34;, DynamoDbType.N), BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:
+import software.amazon.awssdk.services.dynamodb.model._ val global2ndIndex = GlobalSecondaryIndex .builder() .indexName(&amp;#34;books-by-author&amp;#34;) .keySchema( KeySchemaElement.builder().attributeName(&amp;#34;author&amp;#34;).keyType(KeyType.HASH).build(), KeySchemaElement.builder().attributeName(&amp;#34;title&amp;#34;).keyType(KeyType.RANGE).build() ) .</description>
     </item>
     
     <item>
@@ -70,7 +71,7 @@ import meteor._ val table = Table(&amp;#34;books-table&amp;#34;, Key(&amp;#34;id
       <guid>https://d2a4u.github.io/meteor/docs/api/itemactions/</guid>
       <description>Most actions have several overloading methods for a table with composite keys, or a simple table with only partition key.
 Get Most simple action to get an item from a table by key(s). Since return type U is only on the return type, all type parameters are required to be passed in explicitly.
-def get[P: Encoder, S: Encoder, U: Decoder]( table: Table, partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:</description>
+def get[P: Encoder, S: Encoder, U: Decoder]( table: CompositeKeysTable[P, S], partitionKey: P, sortKey: S, consistentRead: Boolean ): F[Option[U]] Retrieve Similar to Get but can return multiple items by:</description>
     </item>
     
     <item>

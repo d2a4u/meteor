@@ -183,31 +183,41 @@ from Java&rsquo;s <code>AttributeValue</code>.</p>
 <span class="k">val</span> <span class="n">clientSrc</span><span class="k">:</span> <span class="kt">Resource</span><span class="o">[</span><span class="kt">IO</span>, <span class="kt">Client</span><span class="o">[</span><span class="kt">IO</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Client</span><span class="o">.</span><span class="n">resource</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span>
 </code></pre></div><p>Internally, a default Java <code>DynamoDbAsyncClient</code> is created. Alternatively, you can also inject a
 <code>DynamoDbAsyncClient</code> via <code>Client.apply</code> method.</p>
-<h4 id="table">Table<a href="#table" class="anchor" aria-hidden="true">#</a> </h4>
-<p>Most of the methods provided by <code>meteor</code> client take a <code>Table</code> where:</p>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">case</span> <span class="k">class</span> <span class="nc">Table</span><span class="o">(</span>
-  <span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
-  <span class="n">partitionKey</span><span class="k">:</span> <span class="kt">Key</span><span class="o">,</span>
-  <span class="n">sortKey</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Key</span><span class="o">]</span>
-<span class="o">)</span>
-</code></pre></div><p>The Java AWS SDK client usually just takes a <code>String</code> of table&rsquo;s name instead. <code>meteor</code> requires a
-<code>Table</code> to build keys' <code>AttributeValue</code> correctly and tie it to the definition of <code>Table</code>. It is
-also used to deduplicate items in batch actions.</p>
+<h4 id="table-and-secondary-index">Table and Secondary Index<a href="#table-and-secondary-index" class="anchor" aria-hidden="true">#</a> </h4>
+<p>DynamoDB actions can be performed against a table or a secondary index of a table. To do so in
+<code>meteor</code>, the table or secondary index needs to be explicitly defined such as:</p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
+<span class="k">val</span> <span class="n">table</span> <span class="k">=</span> <span class="nc">PartitionKeyTable</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">))</span>
+</code></pre></div><p>All supported index types are:</p>
+<ul>
+<li>PartitionKeyTable[P]</li>
+<li>PartitionKeySecondaryIndex[P]</li>
+<li>CompositeKeysTable[P, S]</li>
+<li>CompositeKeysSecondaryIndex[P, S]</li>
+</ul>
+<p>The Java AWS SDK client usually just takes a <code>String</code> of table&rsquo;s name instead. <code>meteor</code> requires a
+table instance to build keys' <code>AttributeValue</code> correctly and tie it to the definition of the table.
+It is also used to deduplicate items in batch actions.</p>
 <h2 id="write-and-read">Write and Read<a href="#write-and-read" class="anchor" aria-hidden="true">#</a> </h2>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
 <span class="k">import</span> <span class="nn">cats.effect.</span><span class="o">{</span><span class="nc">ExitCode</span><span class="o">,</span> <span class="nc">IO</span><span class="o">,</span> <span class="nc">IOApp</span><span class="o">}</span>
 
 <span class="k">object</span> <span class="nc">Main</span> <span class="k">extends</span> <span class="nc">IOApp</span> <span class="o">{</span>
   <span class="k">val</span> <span class="n">dynamoClientSrc</span> <span class="k">=</span> <span class="nc">Client</span><span class="o">.</span><span class="n">resource</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span>
-  <span class="k">val</span> <span class="n">booksTable</span> <span class="k">=</span> <span class="nc">Table</span><span class="o">(</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">Key</span><span class="o">(</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">),</span> <span class="nc">None</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">booksTable</span> <span class="k">=</span> <span class="nc">PartitionKeyTable</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">))</span>
 
   <span class="k">val</span> <span class="n">lotr</span> <span class="k">=</span> <span class="nc">Book</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">&#34;The Lord of the Rings&#34;</span><span class="o">)</span>
 
   <span class="k">val</span> <span class="n">found</span> <span class="k">=</span> <span class="n">dynamoClientSrc</span><span class="o">.</span><span class="n">use</span> <span class="o">{</span> <span class="n">client</span> <span class="k">=&gt;</span>
     <span class="c1">// To write
-</span><span class="c1"></span>    <span class="k">val</span> <span class="n">put</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="o">[</span><span class="kt">Book</span><span class="o">](</span><span class="n">booksTable</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">lotr</span><span class="o">)</span> <span class="c1">// return IO[Unit]
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">put</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">put</span><span class="o">[</span><span class="kt">Book</span><span class="o">](</span><span class="n">bookstable</span><span class="o">.</span><span class="n">tableName</span><span class="o">,</span> <span class="n">lotr</span><span class="o">)</span> <span class="c1">// return IO[Unit]
 </span><span class="c1"></span>    <span class="c1">// To read - eventually consistent
-</span><span class="c1"></span>    <span class="k">val</span> <span class="n">get</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Book</span><span class="o">](</span><span class="n">booksTable</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="n">consistentRead</span> <span class="k">=</span> <span class="kc">false</span><span class="o">)</span> <span class="c1">// return IO[Option[Book]]
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">get</span> <span class="k">=</span>
+      <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Book</span><span class="o">](</span>
+        <span class="n">booksTable</span><span class="o">,</span>
+        <span class="mi">1</span><span class="o">,</span>
+        <span class="n">consistentRead</span> <span class="k">=</span> <span class="kc">false</span>
+      <span class="o">)</span> <span class="c1">// return IO[Option[Book]]
 </span><span class="c1"></span>
     <span class="n">put</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="k">_</span> <span class="k">=&gt;</span> <span class="n">get</span><span class="o">)</span>
   <span class="o">}</span>
@@ -219,6 +229,7 @@ also used to deduplicate items in batch actions.</p>
     <span class="o">}.</span><span class="n">as</span><span class="o">(</span><span class="nc">ExitCode</span><span class="o">.</span><span class="nc">Success</span><span class="o">)</span>
   <span class="o">}</span>
 <span class="o">}</span>
+
 </code></pre></div>
 			<div class="docs-navigation d-flex justify-content-between">
 	
@@ -262,7 +273,7 @@ also used to deduplicate items in batch actions.</p>
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.35f6c24b1a94c41be02a20d3f535213f0bbe908004f683f316907f7ef1f60664a66e96f66afdcfb1816324d14375a418783780f9f6c4fc344e4b8ceb27ee182a.js" integrity="sha512-NfbCSxqUxBvgKiDT9TUhPwu&#43;kIAE9oPzFpB/fvH2BmSmbpb2av3PsYFjJNFDdaQYeDeA&#43;fbE/DROS4zrJ&#43;4YKg==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.8c61c6e52388e455384012cb245d16da73201c60dd09e3d0b4f17a4bfdc746b75b9b644afd9ce18f4bcbf44b9cc09a92bfe482aa8605e61497f104d73d950e25.js" integrity="sha512-jGHG5SOI5FU4QBLLJF0W2nMgHGDdCePQtPF6S/3HRrdbm2RK/Zzhj0vL9EucwJqSv&#43;SCqoYF5hSX8QTXPZUOJQ==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>

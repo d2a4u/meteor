@@ -245,7 +245,7 @@ items are not duplicated.</p>
 <p><code>batchWrite</code> method can be used to apply both put and delete item actions to a table in a same
 batch. The method&rsquo;s signature is:</p>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">def</span> <span class="n">batchWrite</span><span class="o">[</span><span class="kt">DP:</span> <span class="kt">Encoder</span>, <span class="kt">DS:</span> <span class="kt">Encoder</span>, <span class="kt">P:</span> <span class="kt">Encoder</span><span class="o">](</span>
-  <span class="n">table</span><span class="k">:</span> <span class="kt">Table</span><span class="o">,</span>
+  <span class="n">table</span><span class="k">:</span> <span class="kt">CompositeKeysTable</span><span class="o">[</span><span class="kt">DP</span>, <span class="kt">DS</span><span class="o">],</span>
   <span class="n">maxBatchWait</span><span class="k">:</span> <span class="kt">FiniteDuration</span><span class="o">,</span>
   <span class="n">backoffStrategy</span><span class="k">:</span> <span class="kt">BackoffStrategy</span>
 <span class="o">)</span><span class="k">:</span> <span class="kt">Pipe</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Either</span><span class="o">[(</span><span class="kt">DP</span>, <span class="kt">DS</span><span class="o">)</span>, <span class="kt">P</span><span class="o">]</span>, <span class="kt">Unit</span><span class="o">]</span>
@@ -299,7 +299,7 @@ batch. The method&rsquo;s signature is:</p>
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.35f6c24b1a94c41be02a20d3f535213f0bbe908004f683f316907f7ef1f60664a66e96f66afdcfb1816324d14375a418783780f9f6c4fc344e4b8ceb27ee182a.js" integrity="sha512-NfbCSxqUxBvgKiDT9TUhPwu&#43;kIAE9oPzFpB/fvH2BmSmbpb2av3PsYFjJNFDdaQYeDeA&#43;fbE/DROS4zrJ&#43;4YKg==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.8c61c6e52388e455384012cb245d16da73201c60dd09e3d0b4f17a4bfdc746b75b9b644afd9ce18f4bcbf44b9cc09a92bfe482aa8605e61497f104d73d950e25.js" integrity="sha512-jGHG5SOI5FU4QBLLJF0W2nMgHGDdCePQtPF6S/3HRrdbm2RK/Zzhj0vL9EucwJqSv&#43;SCqoYF5hSX8QTXPZUOJQ==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>

@@ -17,14 +17,16 @@
 <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Table Actions">
 <meta name="twitter:description" content="Create Table creation returns F[Unit] where F[_] is semantically blocked (no actual JVM thread being blocked) until the table has been created and its status is available.
-import meteor._ val table = Table(&#34;books-table&#34;, Key(&#34;id&#34;, DynamoDbType.N), None) val creation: F[Unit] = client.createTable( table = table, attributeDefinition = Map.empty, globalSecondaryIndexes = Set.empty, localSecondaryIndexes = Set.empty, billingMode = BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:">
+import meteor._ val creation: F[Unit] = client.createPartitionKeyTable( &#34;books-table&#34;, KeyDef[Int](&#34;id&#34;, DynamoDbType.N), BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:
+import software.amazon.awssdk.services.dynamodb.model._ val global2ndIndex = GlobalSecondaryIndex .builder() .indexName(&#34;books-by-author&#34;) .keySchema( KeySchemaElement.builder().attributeName(&#34;author&#34;).keyType(KeyType.HASH).build(), KeySchemaElement.builder().attributeName(&#34;title&#34;).keyType(KeyType.RANGE).build() ) .">
 
 <meta name="twitter:site" content="@">
 <meta name="twitter:creator" content="@">
 
 <meta property="og:title" content="Table Actions">
 <meta property="og:description" content="Create Table creation returns F[Unit] where F[_] is semantically blocked (no actual JVM thread being blocked) until the table has been created and its status is available.
-import meteor._ val table = Table(&#34;books-table&#34;, Key(&#34;id&#34;, DynamoDbType.N), None) val creation: F[Unit] = client.createTable( table = table, attributeDefinition = Map.empty, globalSecondaryIndexes = Set.empty, localSecondaryIndexes = Set.empty, billingMode = BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:">
+import meteor._ val creation: F[Unit] = client.createPartitionKeyTable( &#34;books-table&#34;, KeyDef[Int](&#34;id&#34;, DynamoDbType.N), BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:
+import software.amazon.awssdk.services.dynamodb.model._ val global2ndIndex = GlobalSecondaryIndex .builder() .indexName(&#34;books-by-author&#34;) .keySchema( KeySchemaElement.builder().attributeName(&#34;author&#34;).keyType(KeyType.HASH).build(), KeySchemaElement.builder().attributeName(&#34;title&#34;).keyType(KeyType.RANGE).build() ) .">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://d2a4u.github.io/meteor/docs/api/tableactions/">
 
@@ -149,13 +151,10 @@ import meteor._ val table = Table(&#34;books-table&#34;, Key(&#34;id&#34;, Dynam
 blocked) until the table has been created and its status is <code>available</code>.</p>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
 
-<span class="k">val</span> <span class="n">table</span> <span class="k">=</span> <span class="nc">Table</span><span class="o">(</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">Key</span><span class="o">(</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">),</span> <span class="nc">None</span><span class="o">)</span>
-<span class="k">val</span> <span class="n">creation</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">createTable</span><span class="o">(</span>
-  <span class="n">table</span> <span class="k">=</span> <span class="n">table</span><span class="o">,</span>
-  <span class="n">attributeDefinition</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">.</span><span class="n">empty</span><span class="o">,</span>
-  <span class="n">globalSecondaryIndexes</span> <span class="k">=</span> <span class="nc">Set</span><span class="o">.</span><span class="n">empty</span><span class="o">,</span>
-  <span class="n">localSecondaryIndexes</span> <span class="k">=</span> <span class="nc">Set</span><span class="o">.</span><span class="n">empty</span><span class="o">,</span>
-  <span class="n">billingMode</span> <span class="k">=</span> <span class="nc">BillingMode</span><span class="o">.</span><span class="nc">PAY_PER_REQUEST</span>
+<span class="k">val</span> <span class="n">creation</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">createPartitionKeyTable</span><span class="o">(</span>
+  <span class="s">&#34;books-table&#34;</span><span class="o">,</span>
+  <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">),</span>
+  <span class="nc">BillingMode</span><span class="o">.</span><span class="nc">PAY_PER_REQUEST</span>
 <span class="o">)</span>
 </code></pre></div><p><code>attributeDefinition</code> is required only when there are secondary indexes on those attributes. For
 example, given the following secondary index:</p>
@@ -175,25 +174,26 @@ example, given the following secondary index:</p>
 to be defined:</p>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor.DynamoDbType</span>
 
-<span class="k">val</span> <span class="n">creation</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">createTable</span><span class="o">(</span>
-  <span class="n">table</span> <span class="k">=</span> <span class="n">table</span><span class="o">,</span>
+<span class="k">val</span> <span class="n">creation</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">createPartitionKeyTable</span><span class="o">[</span><span class="kt">String</span><span class="o">](</span>
+  <span class="n">tableName</span> <span class="k">=</span> <span class="s">&#34;books_table&#34;</span><span class="o">,</span>
+  <span class="n">partitionKeyDef</span> <span class="k">=</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">String</span><span class="o">](</span><span class="s">&#34;author&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">),</span>
+  <span class="n">billingMode</span> <span class="k">=</span> <span class="nc">BillingMode</span><span class="o">.</span><span class="nc">PAY_PER_REQUEST</span><span class="o">,</span>
   <span class="n">attributeDefinition</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">(</span>
     <span class="s">&#34;author&#34;</span> <span class="o">-&gt;</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span><span class="o">,</span>
     <span class="s">&#34;title&#34;</span> <span class="o">-&gt;</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">S</span>
   <span class="o">),</span>
   <span class="n">globalSecondaryIndexes</span> <span class="k">=</span> <span class="nc">Set</span><span class="o">(</span><span class="n">global2ndIndex</span><span class="o">),</span>
-  <span class="n">localSecondaryIndexes</span> <span class="k">=</span> <span class="nc">Set</span><span class="o">.</span><span class="n">empty</span><span class="o">,</span>
-  <span class="n">billingMode</span> <span class="k">=</span> <span class="nc">BillingMode</span><span class="o">.</span><span class="nc">PAY_PER_REQUEST</span>
+  <span class="n">localSecondaryIndexes</span> <span class="k">=</span> <span class="nc">Set</span><span class="o">.</span><span class="n">empty</span>
 <span class="o">)</span>
 </code></pre></div><h2 id="delete">Delete<a href="#delete" class="anchor" aria-hidden="true">#</a> </h2>
 <p>Table deletion also returns <code>F[Unit]</code> but it is fire and forget. It returns <code>Unit</code> once the
 underline <code>DeleteTable</code> request is responded successfully.</p>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">deletion</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">deleteTable</span><span class="o">(</span><span class="n">table</span><span class="o">.</span><span class="n">name</span><span class="o">)</span>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">deletion</span><span class="k">:</span> <span class="kt">F</span><span class="o">[</span><span class="kt">Unit</span><span class="o">]</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">deleteTable</span><span class="o">(</span><span class="n">table</span><span class="o">.</span><span class="n">tableName</span><span class="o">)</span>
 </code></pre></div><h2 id="scan">Scan<a href="#scan" class="anchor" aria-hidden="true">#</a> </h2>
 <p>Scanning a DynamoDB table returns a <code>fs2.Stream</code>. It also abstracts away the complexity around
 <code>LastEvaluatedKey</code> and <code>Segment</code>. A filter expression can also be provided.</p>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">val</span> <span class="n">books</span><span class="k">:</span> <span class="kt">Stream</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Book</span><span class="o">]</span> <span class="k">=</span> <span class="n">client</span><span class="o">.</span><span class="n">scan</span><span class="o">[</span><span class="kt">Book</span><span class="o">](</span>
-  <span class="n">tableName</span> <span class="k">=</span> <span class="n">table</span><span class="o">.</span><span class="n">name</span><span class="o">,</span>
+  <span class="n">tableName</span> <span class="k">=</span> <span class="n">table</span><span class="o">.</span><span class="n">tableName</span><span class="o">,</span>
   <span class="n">consistentRead</span> <span class="k">=</span> <span class="kc">false</span><span class="o">,</span>
   <span class="n">parallelism</span> <span class="k">=</span> <span class="mi">32</span>
 <span class="o">)</span>
@@ -240,7 +240,7 @@ underline <code>DeleteTable</code> request is responded successfully.</p>
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.35f6c24b1a94c41be02a20d3f535213f0bbe908004f683f316907f7ef1f60664a66e96f66afdcfb1816324d14375a418783780f9f6c4fc344e4b8ceb27ee182a.js" integrity="sha512-NfbCSxqUxBvgKiDT9TUhPwu&#43;kIAE9oPzFpB/fvH2BmSmbpb2av3PsYFjJNFDdaQYeDeA&#43;fbE/DROS4zrJ&#43;4YKg==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.8c61c6e52388e455384012cb245d16da73201c60dd09e3d0b4f17a4bfdc746b75b9b644afd9ce18f4bcbf44b9cc09a92bfe482aa8605e61497f104d73d950e25.js" integrity="sha512-jGHG5SOI5FU4QBLLJF0W2nMgHGDdCePQtPF6S/3HRrdbm2RK/Zzhj0vL9EucwJqSv&#43;SCqoYF5hSX8QTXPZUOJQ==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>
