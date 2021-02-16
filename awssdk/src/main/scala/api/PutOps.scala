@@ -87,7 +87,7 @@ trait PutOps {
     }
     val req = builder.build()
     (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
-      if (resp.hasAttributes()) {
+      if (resp.hasAttributes) {
         Concurrent[F].fromEither(resp.attributes().asAttributeValue.as[U]).map(
           _.some
         )

@@ -8,30 +8,37 @@ import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
-trait DeleteOps {
+trait DeleteOps extends PartitionKeyDeleteOps with CompositeKeysDeleteOps {}
+
+trait PartitionKeyDeleteOps {
   def deleteOp[F[_]: Concurrent, P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
-    val keys = table.keys(partitionKey, sortKey.some)
-    val req =
-      DeleteItemRequest.builder()
-        .tableName(table.name)
-        .key(keys)
-        .build()
-    (() => jClient.deleteItem(req)).liftF[F].void
+    table.mkKey[F](partitionKey, sortKey).flatMap { key =>
+      val req =
+        DeleteItemRequest.builder()
+          .tableName(table.tableName)
+          .key(key)
+          .build()
+      (() => jClient.deleteItem(req)).liftF[F].void
+    }
   }
+}
 
+trait CompositeKeysDeleteOps {
   def deleteOp[F[_]: Concurrent, P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
-    val req =
-      DeleteItemRequest.builder()
-        .tableName(table.name)
-        .key(table.keys(partitionKey, None))
-        .build()
-    (() => jClient.deleteItem(req)).liftF[F].void
+    table.mkKey[F](partitionKey).flatMap { key =>
+      val req =
+        DeleteItemRequest.builder()
+          .tableName(table.tableName)
+          .key(key)
+          .build()
+      (() => jClient.deleteItem(req)).liftF[F].void
+    }
   }
 }

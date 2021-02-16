@@ -27,6 +27,14 @@ object errors {
   object EncoderError {
     def invalidTypeFailure(t: DynamoDbType): EncoderError =
       EncoderError(s"The AttributeValue must be of type ${t.show}")
+
+    val invalidKeyTypeFailure: EncoderError =
+      EncoderError(s"The AttributeValue for key must be of type B, S or N")
+
+    def missingKeyFailure: EncoderError =
+      EncoderError(
+        s"The AttributeValue is a map but does not contain index key attribute(s)"
+      )
   }
 
   case object InvalidExpression extends DynamoError {

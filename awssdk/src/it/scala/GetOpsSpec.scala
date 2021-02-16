@@ -10,9 +10,9 @@ class GetOpsSpec extends ITSpec {
 
   it should "return inserted item using partition key and range key" in forAll {
     test: TestData =>
-      tableWithKeys[IO].use[IO, Option[TestData]] {
+      compositeKeysTable[IO].use[IO, Option[TestData]] {
         case (client, table) =>
-          client.put[TestData](table.name, test) >>
+          client.put[TestData](table.tableName, test) >>
             client.get[Id, Range, TestData](
               table,
               test.id,
@@ -24,12 +24,12 @@ class GetOpsSpec extends ITSpec {
 
   it should "return inserted item using partition key only (table doesn't have range key)" in forAll {
     test: TestDataSimple =>
-      tableWithPartitionKey[IO].use[
+      partitionKeyTable[IO].use[
         IO,
         Option[TestDataSimple]
       ] {
         case (client, table) =>
-          client.put[TestDataSimple](table.name, test) >>
+          client.put[TestDataSimple](table.tableName, test) >>
             client.get[Id, TestDataSimple](
               table,
               test.id,
@@ -39,7 +39,7 @@ class GetOpsSpec extends ITSpec {
   }
 
   it should "return None if both keys does not exist" in {
-    val result = tableWithKeys[IO].use {
+    val result = compositeKeysTable[IO].use {
       case (client, table) =>
         client.get[Id, Range, TestData](
           table,
@@ -52,7 +52,7 @@ class GetOpsSpec extends ITSpec {
   }
 
   it should "return None if partition key does not exist, range key is not used" in {
-    val result = tableWithPartitionKey[IO].use {
+    val result = partitionKeyTable[IO].use {
       case (client, table) =>
         client.get[Id, TestData](
           table,

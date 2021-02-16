@@ -10,9 +10,9 @@ class DeleteOpsSpec extends ITSpec {
 
   it should "delete an item when using both keys" in forAll {
     test: TestData =>
-      tableWithKeys[IO].use {
+      compositeKeysTable[IO].use {
         case (client, table) =>
-          val put = client.put[TestData](table.name, test)
+          val put = client.put[TestData](table.tableName, test)
           val delete = client.delete(table, test.id, test.range)
           val get = client.get[Id, Range, TestData](
             table,
@@ -27,9 +27,9 @@ class DeleteOpsSpec extends ITSpec {
 
   it should "delete an item when using partition key only (table doesn't have range key)" in forAll {
     test: TestDataSimple =>
-      tableWithPartitionKey[IO].use {
+      partitionKeyTable[IO].use {
         case (client, table) =>
-          val put = client.put[TestDataSimple](table.name, test)
+          val put = client.put[TestDataSimple](table.tableName, test)
           val delete = client.delete(table, test.id)
           val get = client.get[Id, TestDataSimple](
             table,

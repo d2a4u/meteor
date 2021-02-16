@@ -130,7 +130,7 @@ batch. The method's signature is:
 
 ```scala
 def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
-  table: Table,
+  table: CompositeKeysTable[DP, DS],
   maxBatchWait: FiniteDuration,
   backoffStrategy: BackoffStrategy
 ): Pipe[F, Either[(DP, DS), P], Unit]

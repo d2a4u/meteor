@@ -22,7 +22,7 @@ class ScanOpsSpec extends ITSpec {
     }.covary[IO]
 
     def updated(ref: Ref[IO, Int]) =
-      tableWithKeys[IO].use {
+      compositeKeysTable[IO].use {
         case (client, table) =>
           client.batchPut[TestData](
             table,
@@ -32,7 +32,7 @@ class ScanOpsSpec extends ITSpec {
             input
           ).compile.drain >>
             client.scan[TestData](
-              table.name,
+              table.tableName,
               consistentRead = false,
               1
             ).evalMap { _ =>

@@ -19,7 +19,7 @@ class RetrieveOpsSpec extends ITSpec {
           test.copy(id = partitionKey, range = Range("a")),
           test.copy(id = partitionKey, range = Range("b"))
         )
-      tableWithKeys[IO].use[IO, List[TestData]] {
+      compositeKeysTable[IO].use[IO, List[TestData]] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, TestData](
             table,
@@ -28,7 +28,7 @@ class RetrieveOpsSpec extends ITSpec {
             Int.MaxValue
           ).compile.toList
           input.traverse(
-            i => client.put[TestData](table.name, i)
+            i => client.put[TestData](table.tableName, i)
           ).void >> Util.retryOf(retrieval)(
             _.size == input.length
           )
@@ -37,7 +37,7 @@ class RetrieveOpsSpec extends ITSpec {
 
   it should "exact item by EqualTo key expression" in forAll {
     test: TestData =>
-      val result = tableWithKeys[IO].use[IO, TestData] {
+      val result = compositeKeysTable[IO].use[IO, TestData] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
             table,
@@ -48,7 +48,7 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             Int.MaxValue
           ).compile.lastOrError
-          client.put[TestData](table.name, test) >> retrieval
+          client.put[TestData](table.tableName, test) >> retrieval
       }.unsafeToFuture().futureValue
       result shouldEqual test
   }
@@ -56,19 +56,20 @@ class RetrieveOpsSpec extends ITSpec {
   it should "query secondary index" in forAll {
     test: TestData =>
       val input = test.copy(str = "test", int = 0)
-      val result = tableWithKeysAndSecondaryIndex[IO]("second-index").use {
-        case (client, table, secondaryIndex) =>
-          val retrieval = client.retrieve[String, Int, TestData](
-            secondaryIndex,
-            Query[String, Int](
-              input.str,
-              SortKeyQuery.EqualTo(input.int)
-            ),
-            consistentRead = false,
-            Int.MaxValue
-          ).compile.lastOrError
-          client.put[TestData](table.name, input) >> retrieval
-      }.unsafeToFuture().futureValue
+      val result =
+        compositeKeysWithSecondaryIndexTable[IO]("second-index").use {
+          case (client, table, secondaryIndex) =>
+            val retrieval = client.retrieve[String, Int, TestData](
+              secondaryIndex,
+              Query[String, Int](
+                input.str,
+                SortKeyQuery.EqualTo(input.int)
+              ),
+              consistentRead = false,
+              Int.MaxValue
+            ).compile.lastOrError
+            client.put[TestData](table.tableName, input) >> retrieval
+        }.unsafeToFuture().futureValue
       result shouldEqual input
   }
 
@@ -79,7 +80,7 @@ class RetrieveOpsSpec extends ITSpec {
       val testUpdated = unique.map(t => t.copy(id = partitionKey))
       val input = testUpdated.filter(t => t.bool && t.int > 0)
 
-      tableWithKeys[IO].use[IO, List[TestData]] {
+      compositeKeysTable[IO].use[IO, List[TestData]] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
             table,
@@ -99,7 +100,7 @@ class RetrieveOpsSpec extends ITSpec {
             Int.MaxValue
           ).compile.toList
           testUpdated.traverse(
-            i => client.put[TestData](table.name, i)
+            i => client.put[TestData](table.tableName, i)
           ) >> Util.retryOf(retrieval)(_.size == input.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
@@ -109,7 +110,7 @@ class RetrieveOpsSpec extends ITSpec {
       val partitionKey = Id("def")
       val input =
         List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val result = tableWithKeys[IO].use[
+      val result = compositeKeysTable[IO].use[
         IO,
         List[fs2.Chunk[TestData]]
       ] {
@@ -121,7 +122,7 @@ class RetrieveOpsSpec extends ITSpec {
             1
           ).chunks.compile.toList
           input.traverse(
-            i => client.put[TestData](table.name, i)
+            i => client.put[TestData](table.tableName, i)
           ) >> Util.retryOf(retrieval)(
             _.size == input.length
           )

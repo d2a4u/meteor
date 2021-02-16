@@ -28,33 +28,92 @@ trait TableOps {
     (() => jClient.deleteTable(deleteTableRequest)).liftF[F].void
   }
 
-  def createTableOp[F[_]: Concurrent: Timer](
-    table: Table,
+  def createCompositeKeysTableOp[
+    F[_]: Concurrent: Timer,
+    P,
+    S
+  ](
+    tableName: String,
+    partitionKeyDef: KeyDef[P],
+    sortKeyDef: KeyDef[S],
     attributeDefinition: Map[String, DynamoDbType],
     globalSecondaryIndexes: Set[GlobalSecondaryIndex],
     localSecondaryIndexes: Set[LocalSecondaryIndex],
     billingMode: BillingMode,
     waitTillReady: Boolean
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
-    val hashKeySchema = List(dynamoKey(table.partitionKey.name, KeyType.HASH))
-    val rangeKeySchema =
-      table.sortKey.fold(List.empty[KeySchemaElement])(key =>
-        List(dynamoKey(key.name, KeyType.RANGE)))
+    val keySchema =
+      List(
+        dynamoKey(partitionKeyDef.attributeName, KeyType.HASH),
+        dynamoKey(sortKeyDef.attributeName, KeyType.RANGE)
+      )
     val attrDef = (attributeDefinition ++ Map(
-      table.partitionKey.name -> table.partitionKey.attributeType
-    ) ++ table.sortKey.fold(Map.empty[String, DynamoDbType]) { key =>
-      Map(key.name -> key.attributeType)
-    }).map(kv => dynamoAttribute(kv._1, kv._2)).toList
+      partitionKeyDef.attributeName -> partitionKeyDef.attributeType,
+      sortKeyDef.attributeName -> sortKeyDef.attributeType
+    )).map(kv => dynamoAttribute(kv._1, kv._2)).toList
 
+    sendCreateTableRequest(
+      tableName,
+      keySchema,
+      attrDef,
+      globalSecondaryIndexes,
+      localSecondaryIndexes,
+      billingMode,
+      waitTillReady
+    )(jClient)
+  }
+
+  def createPartitionKeyTableOp[
+    F[_]: Concurrent: Timer,
+    P
+  ](
+    tableName: String,
+    partitionKeyDef: KeyDef[P],
+    attributeDefinition: Map[String, DynamoDbType],
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex],
+    localSecondaryIndexes: Set[LocalSecondaryIndex],
+    billingMode: BillingMode,
+    waitTillReady: Boolean
+  )(jClient: DynamoDbAsyncClient): F[Unit] = {
+    val keySchema =
+      List(
+        dynamoKey(partitionKeyDef.attributeName, KeyType.HASH)
+      )
+    val attrDef = (attributeDefinition ++ Map(
+      partitionKeyDef.attributeName -> partitionKeyDef.attributeType
+    )).map(kv => dynamoAttribute(kv._1, kv._2)).toList
+
+    sendCreateTableRequest(
+      tableName,
+      keySchema,
+      attrDef,
+      globalSecondaryIndexes,
+      localSecondaryIndexes,
+      billingMode,
+      waitTillReady
+    )(jClient)
+  }
+
+  private def sendCreateTableRequest[
+    F[_]: Concurrent: Timer
+  ](
+    tableName: String,
+    keySchema: List[KeySchemaElement],
+    attributeDefinitions: List[AttributeDefinition],
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex],
+    localSecondaryIndexes: Set[LocalSecondaryIndex],
+    billingMode: BillingMode,
+    waitTillReady: Boolean
+  )(jClient: DynamoDbAsyncClient) = {
     val builder0 =
       CreateTableRequest
         .builder()
-        .tableName(table.name)
+        .tableName(tableName)
         .billingMode(billingMode)
 
     val builder1 = builder0
-      .keySchema(hashKeySchema ++ rangeKeySchema: _*)
-      .attributeDefinitions(attrDef: _*)
+      .keySchema(keySchema: _*)
+      .attributeDefinitions(attributeDefinitions: _*)
     val builder2 = {
       if (globalSecondaryIndexes.isEmpty) builder1
       else builder1.globalSecondaryIndexes(globalSecondaryIndexes.toSeq: _*)

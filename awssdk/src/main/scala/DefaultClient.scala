@@ -24,14 +24,14 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     with BatchGetOps {
 
   def get[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     consistentRead: Boolean
   ): F[Option[U]] =
     getOp[F, P, U](table, partitionKey, consistentRead)(jClient)
 
   def get[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
@@ -39,46 +39,23 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     getOp[F, P, S, U](table, partitionKey, sortKey, consistentRead)(jClient)
 
   def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    index: CompositeKeysIndex[P, S],
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, P, S, U](table, query, consistentRead, limit)(jClient)
-
-  def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    secondaryIndex: SecondaryIndex,
-    query: Query[P, S],
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U] =
-    retrieveOp[F, P, S, U](secondaryIndex, query, consistentRead, limit)(
-      jClient
-    )
+    retrieveOp[F, P, S, U](index, query, consistentRead, limit)(jClient)
 
   def retrieve[
     P: Encoder,
     U: Decoder
   ](
-    table: Table,
+    index: CompositeKeysIndex[P, _],
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
   ): fs2.Stream[F, U] =
-    retrieveOp[F, P, U](table, partitionKey, consistentRead, limit)(jClient)
-
-  def retrieve[
-    P: Encoder,
-    U: Decoder
-  ](
-    secondaryIndex: SecondaryIndex,
-    partitionKey: P,
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U] =
-    retrieveOp[F, P, U](secondaryIndex, partitionKey, consistentRead, limit)(
-      jClient
-    )
+    retrieveOp[F, P, U](index, partitionKey, consistentRead, limit)(jClient)
 
   def put[T: Encoder](
     tableName: String,
@@ -103,13 +80,13 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   ): F[Option[U]] = putOp[F, T, U](tableName, t, condition)(jClient)
 
   def delete[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S
   ): F[Unit] = deleteOp[F, P, S](table, partitionKey, sortKey)(jClient)
 
   def delete[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P
   ): F[Unit] = deleteOp[F, P](table, partitionKey)(jClient)
 
@@ -129,7 +106,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     scanOp[F, T](tableName, consistentRead, parallelism)(jClient)
 
   def update[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
     returnValue: ReturnValue
@@ -137,7 +114,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     updateOp[F, P, U](table, partitionKey, update, returnValue)(jClient)
 
   def update[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
     condition: Expression,
@@ -148,7 +125,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def update[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -159,7 +136,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def update[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -178,14 +155,14 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def update[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression
   ): F[Unit] =
     updateOp[F, P](table, partitionKey, update)(jClient)
 
   def update[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
     condition: Expression
@@ -193,7 +170,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     updateOp[F, P](table, partitionKey, update, condition)(jClient)
 
   def update[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression
@@ -203,7 +180,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def update[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
     update: Expression,
@@ -220,7 +197,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     batchGetOp[F](requests, backoffStrategy)(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[P],
@@ -235,7 +212,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )(jClient)
 
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[(P, S)],
@@ -250,7 +227,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
@@ -267,7 +244,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )(jClient)
 
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     projection: Expression,
     maxBatchWait: FiniteDuration,
@@ -284,7 +261,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     consistentRead: Boolean,
     keys: Iterable[P],
     backoffStrategy: BackoffStrategy
@@ -300,7 +277,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     keys: Iterable[(P, S)],
     backoffStrategy: BackoffStrategy
@@ -316,7 +293,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def batchWrite[DP: Encoder, P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[DP],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, Either[DP, P], Unit] =
@@ -325,7 +302,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
-    table: Table,
+    table: CompositeKeysTable[DP, DS],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, Either[(DP, DS), P], Unit] =
@@ -334,14 +311,14 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def batchPut[T: Encoder](
-    table: Table,
+    table: Index,
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
   def batchPut[T: Encoder](
-    table: Table,
+    table: Index,
     items: Iterable[T],
     backoffStrategy: BackoffStrategy
   ): F[Unit] = {
@@ -354,7 +331,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   }
 
   def batchPutUnordered[T: Encoder](
-    table: Table,
+    table: Index,
     items: Set[T],
     parallelism: Int,
     backoffStrategy: BackoffStrategy
@@ -362,7 +339,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     val itemsStream = Stream.iterable(items).covary[F]
     val pipe =
       batchPutUnorderedOp[F, T](
-        table.name,
+        table.tableName,
         Int.MaxValue.seconds,
         parallelism,
         backoffStrategy
@@ -371,7 +348,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   }
 
   def batchDelete[P: Encoder](
-    table: Table,
+    table: PartitionKeyTable[P],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
@@ -388,7 +365,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     )
 
   def batchDelete[P: Encoder, S: Encoder](
-    table: Table,
+    table: CompositeKeysTable[P, S],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
@@ -407,15 +384,37 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   def describe(tableName: String): F[TableDescription] =
     describeOp[F](tableName)(jClient)
 
-  def createTable(
-    table: Table,
-    attributeDefinition: Map[String, DynamoDbType],
-    globalSecondaryIndexes: Set[GlobalSecondaryIndex],
-    localSecondaryIndexes: Set[LocalSecondaryIndex],
-    billingMode: BillingMode
+  def createCompositeKeysTable[P, S](
+    tableName: String,
+    partitionKeyDef: KeyDef[P],
+    sortKeyDef: KeyDef[S],
+    billingMode: BillingMode,
+    attributeDefinition: Map[String, DynamoDbType] = Map.empty,
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex] = Set.empty,
+    localSecondaryIndexes: Set[LocalSecondaryIndex] = Set.empty
   ): F[Unit] =
-    createTableOp[F](
-      table,
+    createCompositeKeysTableOp[F, P, S](
+      tableName,
+      partitionKeyDef,
+      sortKeyDef,
+      attributeDefinition,
+      globalSecondaryIndexes,
+      localSecondaryIndexes,
+      billingMode,
+      waitTillReady = true
+    )(jClient)
+
+  def createPartitionKeyTable[P](
+    tableName: String,
+    partitionKeyDef: KeyDef[P],
+    billingMode: BillingMode,
+    attributeDefinition: Map[String, DynamoDbType] = Map.empty,
+    globalSecondaryIndexes: Set[GlobalSecondaryIndex] = Set.empty,
+    localSecondaryIndexes: Set[LocalSecondaryIndex] = Set.empty
+  ): F[Unit] =
+    createPartitionKeyTableOp[F, P](
+      tableName,
+      partitionKeyDef,
       attributeDefinition,
       globalSecondaryIndexes,
       localSecondaryIndexes,
