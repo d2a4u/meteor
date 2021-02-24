@@ -78,6 +78,7 @@ class BatchGetOpsSpec extends ITSpec {
               table1.tableName -> batchGet1,
               table2.tableName -> batchGet2
             ),
+            50,
             backOff
           )
         put1(input1).compile.drain >> put2(
