@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 trait DeleteOps extends PartitionKeyDeleteOps with CompositeKeysDeleteOps {}
 
-trait PartitionKeyDeleteOps {
+trait CompositeKeysDeleteOps {
   def deleteOp[F[_]: Concurrent, P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
@@ -27,7 +27,7 @@ trait PartitionKeyDeleteOps {
   }
 }
 
-trait CompositeKeysDeleteOps {
+trait PartitionKeyDeleteOps {
   def deleteOp[F[_]: Concurrent, P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P

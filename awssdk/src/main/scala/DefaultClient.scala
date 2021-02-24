@@ -192,15 +192,17 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
 
   def batchGet(
     requests: Map[String, BatchGet],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Map[String, Iterable[AttributeValue]]] =
-    batchGetOp[F](requests, backoffStrategy)(jClient)
+    batchGetOp[F](requests, parallelism, backoffStrategy)(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[P],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, U](
@@ -208,6 +210,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       projection,
       keys,
+      parallelism,
       backoffStrategy
     )(jClient)
 
@@ -216,6 +219,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[(P, S)],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, S, U](
@@ -223,6 +227,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       projection,
       keys,
+      parallelism,
       backoffStrategy
     )(jClient)
 
@@ -264,6 +269,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
     keys: Iterable[P],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, U](
@@ -271,6 +277,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       Expression.empty,
       keys,
+      parallelism,
       backoffStrategy
     )(
       jClient
@@ -280,6 +287,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     keys: Iterable[(P, S)],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, S, U](
@@ -287,6 +295,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       Expression.empty,
       keys,
+      parallelism,
       backoffStrategy
     )(
       jClient
