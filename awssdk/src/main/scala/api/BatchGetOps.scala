@@ -2,7 +2,7 @@ package meteor
 package api
 
 import java.util.{Map => jMap}
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Async
 import cats.implicits._
 import fs2.{Pipe, _}
 import meteor.codec.{Decoder, Encoder}
@@ -37,7 +37,7 @@ trait SharedBatchGetOps extends DedupOps {
   // 100 is the maximum amount of items for BatchGetItem
   val MaxBatchGetSize = 100
 
-  def batchGetOp[F[_]: Timer: Concurrent: RaiseThrowable](
+  def batchGetOp[F[_]: Async: RaiseThrowable](
     requests: Map[String, BatchGet],
     backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): F[Map[String, Iterable[AttributeValue]]] = {
@@ -50,9 +50,8 @@ trait SharedBatchGetOps extends DedupOps {
                 chunk
               ) { av =>
                 if (!av.hasM) {
-                  Concurrent[F].raiseError(
-                    EncoderError.invalidTypeFailure(DynamoDbType.M)
-                  )
+                  EncoderError.invalidTypeFailure(DynamoDbType.M)
+                    .raiseError[F, jMap[String, AttributeValue]]
                 } else {
                   av.m().pure[F]
                 }
@@ -79,7 +78,7 @@ trait SharedBatchGetOps extends DedupOps {
   }
 
   private[api] def batchGetOpInternal[
-    F[_]: Concurrent: Timer,
+    F[_]: Async,
     K,
     T: Decoder
   ](
@@ -109,7 +108,7 @@ trait SharedBatchGetOps extends DedupOps {
   }
 
   private[api] def batchGetOpInternal[
-    F[_]: Timer: Concurrent: RaiseThrowable,
+    F[_]: Async: RaiseThrowable,
     K,
     T: Decoder
   ](
@@ -172,7 +171,7 @@ trait SharedBatchGetOps extends DedupOps {
     }
   }
 
-  private[api] def loop[F[_]: Concurrent: Timer](
+  private[api] def loop[F[_]: Async](
     items: jMap[
       String,
       KeysAndAttributes
@@ -183,7 +182,7 @@ trait SharedBatchGetOps extends DedupOps {
     jClient: DynamoDbAsyncClient
   ): Stream[F, BatchGetItemResponse] = {
     val req = BatchGetItemRequest.builder().requestItems(items).build()
-    Stream.eval((() => jClient.batchGetItem(req)).liftF[F]).flatMap {
+    Stream.eval(liftFuture(jClient.batchGetItem(req))).flatMap {
       resp =>
         Stream.emit(resp) ++ {
           val hasNext =
@@ -209,7 +208,7 @@ trait SharedBatchGetOps extends DedupOps {
 
 trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
   def batchGetOp[
-    F[_]: Timer: Concurrent: RaiseThrowable,
+    F[_]: Async: RaiseThrowable,
     P: Encoder,
     S: Encoder,
     T: Decoder
@@ -237,7 +236,7 @@ trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
       in.through(pipe)
   }
 
-  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, S: Encoder, T: Decoder](
+  def batchGetOp[F[_]: Async, P: Encoder, S: Encoder, T: Decoder](
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     projection: Expression,
@@ -261,7 +260,7 @@ trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
 
 trait PartitionKeyBatchGetOps extends SharedBatchGetOps {
   def batchGetOp[
-    F[_]: Timer: Concurrent: RaiseThrowable,
+    F[_]: Async: RaiseThrowable,
     P: Encoder,
     T: Decoder
   ](
@@ -282,7 +281,7 @@ trait PartitionKeyBatchGetOps extends SharedBatchGetOps {
       backoffStrategy
     )(table.mkKey[F])
 
-  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, T: Decoder](
+  def batchGetOp[F[_]: Async, P: Encoder, T: Decoder](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,

@@ -1,8 +1,9 @@
 package meteor
 package api
 
-import cats.effect.Concurrent
+import cats.effect.Async
 import cats.implicits._
+import cats.ApplicativeThrow
 import fs2.RaiseThrowable
 import meteor.codec.{Decoder, Encoder}
 import meteor.errors._
@@ -15,7 +16,7 @@ import scala.jdk.CollectionConverters._
 trait GetOps extends PartitionKeyGetOps with CompositeKeysGetOps {}
 
 trait PartitionKeyGetOps extends SharedGetOps {
-  def getOp[F[_]: Concurrent, P: Encoder, U: Decoder](
+  def getOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     consistentRead: Boolean
@@ -26,7 +27,7 @@ trait PartitionKeyGetOps extends SharedGetOps {
   }
 
   def retrieveOp[
-    F[_]: Concurrent: RaiseThrowable,
+    F[_]: Async: RaiseThrowable,
     P: Encoder,
     T: Decoder
   ](
@@ -48,7 +49,7 @@ trait PartitionKeyGetOps extends SharedGetOps {
 }
 
 trait CompositeKeysGetOps extends SharedGetOps {
-  def getOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
+  def getOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -60,7 +61,7 @@ trait CompositeKeysGetOps extends SharedGetOps {
   }
 
   def retrieveOp[
-    F[_]: Concurrent: RaiseThrowable,
+    F[_]: Async: RaiseThrowable,
     P: Encoder,
     T: Decoder
   ](
@@ -80,7 +81,7 @@ trait CompositeKeysGetOps extends SharedGetOps {
   }
 
   def retrieveOp[
-    F[_]: Concurrent: RaiseThrowable,
+    F[_]: Async: RaiseThrowable,
     P: Encoder,
     S: Encoder,
     U: Decoder
@@ -100,13 +101,13 @@ trait CompositeKeysGetOps extends SharedGetOps {
 }
 
 trait SharedGetOps {
-  def sendQueryRequest[F[_]: Concurrent: RaiseThrowable, U: Decoder](
+  def sendQueryRequest[F[_]: Async: RaiseThrowable, U: Decoder](
     builder: QueryRequest.Builder
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] = {
     def doQuery(
       req: QueryRequest
     ): fs2.Stream[F, QueryResponse] =
-      fs2.Stream.eval((() => jClient.query(req)).liftF[F]).flatMap { resp =>
+      fs2.Stream.eval(liftFuture(jClient.query(req))).flatMap { resp =>
         if (resp.hasLastEvaluatedKey) {
           val nextReq =
             builder.exclusiveStartKey(resp.lastEvaluatedKey()).build()
@@ -129,7 +130,7 @@ trait SharedGetOps {
     } yield result
   }
 
-  def sendGetRequest[F[_]: Concurrent, U: Decoder](
+  def sendGetRequest[F[_]: Async, U: Decoder](
     tableName: String,
     key: java.util.Map[String, AttributeValue],
     consistentRead: Boolean
@@ -140,18 +141,16 @@ trait SharedGetOps {
         .tableName(tableName)
         .key(key)
         .build()
-    (() => jClient.getItem(req)).liftF[F].flatMap { resp =>
+    liftFuture(jClient.getItem(req)).flatMap { resp =>
       if (resp.hasItem) {
-        Concurrent[F].fromEither(
-          resp.item().asAttributeValue.as[U].map(_.some).leftWiden[Throwable]
-        )
+        resp.item().asAttributeValue.as[U].map(_.some).liftTo[F]
       } else {
         none[U].pure[F]
       }
     }
   }
 
-  def mkQueryRequestBuilder[F[_]: Concurrent](
+  def mkQueryRequestBuilder[F[_]: ApplicativeThrow](
     index: Index,
     keyExpression: Expression,
     filterExpression: Expression,

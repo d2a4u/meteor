@@ -1,7 +1,7 @@
 package meteor
 package api
 
-import cats.effect.{Concurrent, Timer}
+import cats.effect.{Async, Temporal}
 import cats.implicits._
 import meteor.errors.UnexpectedTableStatus
 import meteor.implicits._
@@ -11,25 +11,25 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 trait TableOps {
-  def describeOp[F[_]: Concurrent](tableName: String)(
+  def describeOp[F[_]: Async](tableName: String)(
     jClient: DynamoDbAsyncClient
   ): F[TableDescription] = {
     val req = DescribeTableRequest.builder().tableName(tableName).build()
-    (() => jClient.describeTable(req)).liftF[F].map { resp =>
+    liftFuture(jClient.describeTable(req)).map { resp =>
       resp.table()
     }
   }
 
-  def deleteTableOp[F[_]: Concurrent](
+  def deleteTableOp[F[_]: Async](
     tableName: String
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val deleteTableRequest =
       DeleteTableRequest.builder().tableName(tableName).build()
-    (() => jClient.deleteTable(deleteTableRequest)).liftF[F].void
+    liftFuture(jClient.deleteTable(deleteTableRequest)).void
   }
 
   def createCompositeKeysTableOp[
-    F[_]: Concurrent: Timer,
+    F[_]: Async,
     P,
     S
   ](
@@ -64,7 +64,7 @@ trait TableOps {
   }
 
   def createPartitionKeyTableOp[
-    F[_]: Concurrent: Timer,
+    F[_]: Async,
     P
   ](
     tableName: String,
@@ -95,7 +95,7 @@ trait TableOps {
   }
 
   private def sendCreateTableRequest[
-    F[_]: Concurrent: Timer
+    F[_]: Async
   ](
     tableName: String,
     keySchema: List[KeySchemaElement],
@@ -125,11 +125,11 @@ trait TableOps {
     createTable[F](builder3.build(), waitTillReady)(jClient)
   }
 
-  private def createTable[F[_]: Concurrent: Timer](
+  private def createTable[F[_]: Async](
     createTableRequest: CreateTableRequest,
     waitTillReady: Boolean
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
-    val created = (() => jClient.createTable(createTableRequest)).liftF[F]
+    val created = liftFuture(jClient.createTable(createTableRequest))
       .map(_.tableDescription().tableName())
     if (waitTillReady) {
       created.flatTap(name => waitTillActive(name)(jClient)).void
@@ -138,7 +138,7 @@ trait TableOps {
     }
   }
 
-  private def waitTillActive[F[_]: Concurrent: Timer](
+  private def waitTillActive[F[_]: Async](
     tableName: String,
     pollMs: FiniteDuration = 100.milliseconds
   )(jClient: DynamoDbAsyncClient): F[Unit] =
@@ -146,7 +146,7 @@ trait TableOps {
       resp.tableStatus() match {
         case TableStatus.ACTIVE => ().pure[F]
         case TableStatus.CREATING | TableStatus.UPDATING =>
-          Timer[F].sleep(pollMs) >> waitTillActive(
+          Temporal[F].sleep(pollMs) >> waitTillActive(
             tableName,
             pollMs
           )(jClient)

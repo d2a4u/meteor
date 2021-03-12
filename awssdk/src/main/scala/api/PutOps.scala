@@ -1,7 +1,7 @@
 package meteor
 package api
 
-import cats.effect.Concurrent
+import cats.effect.Async
 import cats.implicits._
 import meteor.codec.{Decoder, Encoder}
 import meteor.errors.ConditionalCheckFailed
@@ -12,13 +12,13 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.jdk.CollectionConverters._
 
 trait PutOps {
-  def putOp[F[_]: Concurrent, T: Encoder](
+  def putOp[F[_]: Async, T: Encoder](
     tableName: String,
     t: T
   )(jClient: DynamoDbAsyncClient): F[Unit] =
     putOp[F, T](tableName, t, Expression.empty)(jClient)
 
-  def putOp[F[_]: Concurrent, T: Encoder](
+  def putOp[F[_]: Async, T: Encoder](
     tableName: String,
     t: T,
     condition: Expression
@@ -46,19 +46,19 @@ trait PutOps {
       }
     }
     val req = builder.build()
-    (() => jClient.putItem(req)).liftF[F].void.adaptError {
+    liftFuture(jClient.putItem(req)).void.adaptError {
       case err: ConditionalCheckFailedException =>
         ConditionalCheckFailed(err.getMessage)
     }
   }
 
-  def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
+  def putOp[F[_]: Async, T: Encoder, U: Decoder](
     tableName: String,
     t: T
   )(jClient: DynamoDbAsyncClient): F[Option[U]] =
     putOp[F, T, U](tableName, t, Expression.empty)(jClient)
 
-  def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
+  def putOp[F[_]: Async, T: Encoder, U: Decoder](
     tableName: String,
     t: T,
     condition: Expression
@@ -86,11 +86,9 @@ trait PutOps {
       }
     }
     val req = builder.build()
-    (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
+    liftFuture(jClient.putItem(req)).flatMap { resp =>
       if (resp.hasAttributes) {
-        Concurrent[F].fromEither(resp.attributes().asAttributeValue.as[U]).map(
-          _.some
-        )
+        resp.attributes().asAttributeValue.as[U].map(_.some).liftTo[F]
       } else {
         none[U].pure[F]
       }
