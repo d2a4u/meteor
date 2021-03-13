@@ -19,7 +19,7 @@ class RetrieveOpsSpec extends ITSpec {
           test.copy(id = partitionKey, range = Range("a")),
           test.copy(id = partitionKey, range = Range("b"))
         )
-      compositeKeysTable[IO].use[IO, List[TestData]] {
+      compositeKeysTable[IO].use[List[TestData]] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, TestData](
             table,
@@ -37,7 +37,7 @@ class RetrieveOpsSpec extends ITSpec {
 
   it should "exact item by EqualTo key expression" in forAll {
     test: TestData =>
-      val result = compositeKeysTable[IO].use[IO, TestData] {
+      val result = compositeKeysTable[IO].use[TestData] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
             table,
@@ -80,7 +80,7 @@ class RetrieveOpsSpec extends ITSpec {
       val testUpdated = unique.map(t => t.copy(id = partitionKey))
       val input = testUpdated.filter(t => t.bool && t.int > 0)
 
-      compositeKeysTable[IO].use[IO, List[TestData]] {
+      compositeKeysTable[IO].use[List[TestData]] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
             table,
@@ -110,10 +110,7 @@ class RetrieveOpsSpec extends ITSpec {
       val partitionKey = Id("def")
       val input =
         List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val result = compositeKeysTable[IO].use[
-        IO,
-        List[fs2.Chunk[TestData]]
-      ] {
+      val result = compositeKeysTable[IO].use[List[fs2.Chunk[TestData]]] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
             table,
