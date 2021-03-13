@@ -11,23 +11,13 @@ import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
 import scala.concurrent.duration.FiniteDuration
 
-case class SimpleTable[F[_], P: Encoder](
-  tableName: String,
-  partitionKeyDef: KeyDef[P],
-  jClient: DynamoDbAsyncClient
-) extends PartitionKeyGetOps
-    with PutOps
-    with PartitionKeyDeleteOps
-    with PartitionKeyUpdateOps
-    with PartitionKeyBatchGetOps
-    with PartitionKeyBatchWriteOps {
-  private val table = PartitionKeyTable[P](tableName, partitionKeyDef)
+abstract class CompositeIndex[F[_], P: Encoder, S: Encoder]
+    extends CompositeKeysGetOps {
+  def partitionKeyDef: KeyDef[P]
+  def sortKeyDef: KeyDef[S]
+  def jClient: DynamoDbAsyncClient
 
-  def get[T: Decoder](
-    partitionKey: P,
-    consistentRead: Boolean
-  )(implicit F: Concurrent[F]): F[Option[T]] =
-    getOp[F, P, T](table, partitionKey, consistentRead)(jClient)
+  def index: CompositeKeysIndex[P, S]
 
   def retrieveOp[T: Decoder](
     partitionKey: P,
@@ -35,11 +25,49 @@ case class SimpleTable[F[_], P: Encoder](
     limit: Int
   )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     retrieveOp[F, P, T](
-      table,
+      index,
       partitionKey,
       consistentRead,
       limit
     )(jClient)
+}
+
+case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
+  tableName: String,
+  indexName: String,
+  partitionKeyDef: KeyDef[P],
+  sortKeyDef: KeyDef[S],
+  jClient: DynamoDbAsyncClient
+) extends CompositeIndex[F, P, S] {
+  val index: CompositeKeysIndex[P, S] =
+    CompositeKeysSecondaryIndex[P, S](
+      tableName,
+      indexName,
+      partitionKeyDef,
+      sortKeyDef
+    )
+}
+
+case class CompositeTable[F[_], P: Encoder, S: Encoder](
+  tableName: String,
+  partitionKeyDef: KeyDef[P],
+  sortKeyDef: KeyDef[S],
+  jClient: DynamoDbAsyncClient
+) extends CompositeIndex[F, P, S]
+    with PutOps
+    with CompositeKeysDeleteOps
+    with CompositeKeysUpdateOps
+    with CompositeKeysBatchGetOps
+    with CompositeKeysBatchWriteOps {
+  protected val index =
+    CompositeKeysTable[P, S](tableName, partitionKeyDef, sortKeyDef)
+
+  def get[T: Decoder](
+    partitionKey: P,
+    sortKey: S,
+    consistentRead: Boolean
+  )(implicit F: Concurrent[F]): F[Option[T]] =
+    getOp[F, P, S, T](index, partitionKey, sortKey, consistentRead)(jClient)
 
   /**
     * Put an item into a table, return ReturnValue.NONE.
@@ -48,7 +76,7 @@ case class SimpleTable[F[_], P: Encoder](
     t: T,
     condition: Expression = Expression.empty
   )(implicit F: Concurrent[F]): F[Unit] =
-    putOp[F, T](table.tableName, t, condition)(jClient)
+    putOp[F, T](index.tableName, t, condition)(jClient)
 
   /**
     * Put an item into a table, return ReturnValue.ALL_OLD.
@@ -57,10 +85,10 @@ case class SimpleTable[F[_], P: Encoder](
     t: T,
     condition: Expression
   )(implicit F: Concurrent[F]): F[Option[U]] =
-    putOp[F, T, U](table.tableName, t, condition)(jClient)
+    putOp[F, T, U](index.tableName, t, condition)(jClient)
 
-  def delete(partitionKey: P)(implicit F: Concurrent[F]): F[Unit] =
-    deleteOp[F, P](table, partitionKey)(jClient)
+  def delete(partitionKey: P, sortKey: S)(implicit F: Concurrent[F]): F[Unit] =
+    deleteOp[F, P, S](index, partitionKey, sortKey)(jClient)
 
   /**
     * Update an item by partition key P given an update expression
@@ -69,10 +97,11 @@ case class SimpleTable[F[_], P: Encoder](
     */
   def update(
     partitionKey: P,
+    sortKey: S,
     update: Expression,
     condition: Expression = Expression.empty
   )(implicit F: Concurrent[F]): F[Unit] =
-    updateOp[F, P](table, partitionKey, update, condition)(
+    updateOp[F, P, S](index, partitionKey, sortKey, update, condition)(
       jClient
     )
 
@@ -83,11 +112,19 @@ case class SimpleTable[F[_], P: Encoder](
     */
   def update[T: Decoder](
     partitionKey: P,
+    sortKey: S,
     returnValue: ReturnValue,
     update: Expression,
     condition: Expression
   )(implicit F: Concurrent[F]): F[Option[T]] =
-    updateOp[F, P, T](table, partitionKey, update, condition, returnValue)(
+    updateOp[F, P, S, T](
+      index,
+      partitionKey,
+      sortKey,
+      update,
+      condition,
+      returnValue
+    )(
       jClient
     )
 
@@ -97,9 +134,9 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, P, T] =
-    batchGetOp[F, P, T](
-      table,
+  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, (P, S), T] =
+    batchGetOp[F, P, S, T](
+      index,
       consistentRead,
       projection,
       maxBatchWait,
@@ -111,7 +148,7 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
-    batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
+    batchPutInorderedOp[F, T](index, maxBatchWait, backoffStrategy)(jClient)
 
   /**
     * Batch put items into a table where ordering of input items does not matter
@@ -122,7 +159,7 @@ case class SimpleTable[F[_], P: Encoder](
     backoffStrategy: BackoffStrategy
   )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
     batchPutUnorderedOp[F, T](
-      table.tableName,
+      index.tableName,
       maxBatchWait,
       parallelism,
       backoffStrategy
@@ -132,9 +169,9 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, P, Unit] =
-    batchDeleteUnorderedOp[F, P](
-      table,
+  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, (P, S), Unit] =
+    batchDeleteUnorderedOp[F, P, S](
+      index,
       maxBatchWait,
       parallelism,
       backoffStrategy
@@ -143,8 +180,8 @@ case class SimpleTable[F[_], P: Encoder](
   def batchWrite[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, Either[P, T], Unit] =
-    batchWriteInorderedOp[F, P, T](table, maxBatchWait, backoffStrategy)(
+  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, Either[(P, S), T], Unit] =
+    batchWriteInorderedOp[F, P, S, T](index, maxBatchWait, backoffStrategy)(
       jClient
     )
 }

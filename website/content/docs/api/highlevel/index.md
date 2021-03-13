@@ -60,11 +60,7 @@ the number of type parameters required. Context bound of `F[_]` is now also on t
 
 ## Supports
 
-- `SimpleTable` represent a DynamoDB table which only has partition key index, equivalent to 
-  `PartitionKeyTable` in low level API
-- `CompositeTable` represent a DynamoDB table which has both partition key and sort key indexes, 
-  equivalent to `CompositeKeysTable` in low level API
-  
-## Limitations
-
-Currently, there is no support for secondary index yet but it is coming soon. PRs are welcomed.
+- `SimpleTable` represent a DynamoDB table which only has partition key index.
+- `CompositeTable` represent a DynamoDB table which has both partition key and sort key indexes.
+- `SimpleIndex` represent a secondary index on a partition key.
+- `SecondaryCompositeIndex` represent a secondary index on composite keys.
