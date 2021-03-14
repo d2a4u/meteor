@@ -64,3 +64,7 @@ the number of type parameters required. Context bound of `F[_]` is now also on t
 - `CompositeTable` represent a DynamoDB table which has both partition key and sort key indexes.
 - `SimpleIndex` represent a secondary index on a partition key.
 - `SecondaryCompositeIndex` represent a secondary index on composite keys.
+
+## Limitations
+
+Table actions and scan actions are not supported in high level API to keep them flexible.
