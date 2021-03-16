@@ -37,7 +37,9 @@ case class KeyDef[K](
   }
 }
 
-sealed trait Index {
+sealed trait Index[P] {
+  def partitionKeyDef: KeyDef[P]
+
   def tableName: String
   def containKey(av: java.util.Map[String, AttributeValue])
     : Option[java.util.Map[String, AttributeValue]]
@@ -62,9 +64,7 @@ sealed trait Index {
   }
 }
 
-sealed trait PartitionKeyIndex[P] extends Index {
-  def partitionKeyDef: KeyDef[P]
-
+sealed trait PartitionKeyIndex[P] extends Index[P] {
   def containKey(av: util.Map[String, AttributeValue])
     : Option[java.util.Map[String, AttributeValue]] = {
     av.containsKey(partitionKeyDef.attributeName).guard[Option].as {
@@ -82,9 +82,7 @@ sealed trait PartitionKeyIndex[P] extends Index {
     partitionKeyDef.mkKey[F](p)
 }
 
-sealed trait CompositeKeysIndex[P, S] extends Index {
-  def partitionKeyDef: KeyDef[P]
-
+sealed trait CompositeKeysIndex[P, S] extends Index[P] {
   def sortKeyDef: KeyDef[S]
 
   def containKey(av: util.Map[String, AttributeValue])
@@ -196,7 +194,7 @@ case class Query[P: Encoder, S: Encoder](
   sortKeyQuery: SortKeyQuery[S],
   filter: Expression
 ) {
-  def keyCondition(index: CompositeKeysIndex[P, S]): Expression = {
+  def keysCondition(index: CompositeKeysIndex[P, S]): Expression = {
     val partitionKeyExpression =
       mkPartitionKeyExpression(index.partitionKeyDef.attributeName)
 
@@ -206,10 +204,7 @@ case class Query[P: Encoder, S: Encoder](
     Monoid.maybeCombine(partitionKeyExpression, optSortKeyExpression)
   }
 
-  def partitionKeyOnlyCondition(table: CompositeKeysIndex[P, _]): Expression =
-    mkPartitionKeyExpression(table.partitionKeyDef.attributeName)
-
-  def keyCondition(table: PartitionKeyIndex[P]): Expression =
+  def keyCondition(table: Index[P]): Expression =
     mkPartitionKeyExpression(table.partitionKeyDef.attributeName)
 
   private def mkPartitionKeyExpression(partitionKeyAttributeName: String) = {
