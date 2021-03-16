@@ -3,7 +3,6 @@ name: build-website
 on:
   push:
     branches:
-      - develop
       - master
     paths:
       - 'website/**'
