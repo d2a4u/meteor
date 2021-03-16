@@ -1,7 +1,7 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val catsVersion = "2.2.0"
+val catsVersion = "2.3.3"
 val http4sVersion = "0.21.7"
 val fs2Version = "2.4.2"
 
