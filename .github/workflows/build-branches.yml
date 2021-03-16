@@ -1,10 +1,10 @@
 name: build-branches
 
 on:
-  push:
+  pull_request:
     branches:
-      - '!series/0.x'
-      - '!series/1.x'
+      - 'series/0.x'
+      - 'series/1.x'
     paths-ignore:
       - '**.md'
       - 'website/**'
