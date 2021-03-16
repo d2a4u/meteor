@@ -63,7 +63,7 @@ jobs:
           WITH_V: true
           TAG_CONTEXT: branch
           PRERELEASE_SUFFIX: RC
-          RELEASE_BRANCHES: series/0.x,series/1.x
+          RELEASE_BRANCHES: series/0.x
       - name: Import keys
         run: |
           touch /tmp/local.pubring.asc
