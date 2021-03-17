@@ -1,28 +1,29 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val catsVersion = "2.2.0"
-val http4sVersion = "0.21.7"
-val fs2Version = "2.4.2"
+val catsVersion = "2.4.2"
+val catsEffectVersion = "3.0.0-RC2"
+val http4sVersion = "1.0.0-M19"
+val fs2Version = "3.0.0-M8"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
-  "org.typelevel" %% "cats-effect" % catsVersion,
+  "org.typelevel" %% "cats-effect" % catsEffectVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.2",
   "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1",
-  "software.amazon.awssdk" % "dynamodb" % "2.16.5"
+  "software.amazon.awssdk" % "dynamodb" % "2.16.17"
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.2",
-  "org.scalacheck" %% "scalacheck" % "1.14.3",
-  "org.scalatestplus" %% "scalacheck-1-14" % "3.2.2.0"
+  "org.scalatest" %% "scalatest" % "3.2.6",
+  "org.scalacheck" %% "scalacheck" % "1.15.3",
+  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.6.0"
 )
 
 lazy val ItTest = config("it").extend(Test)
 
-lazy val scalaVer = "2.13.3"
+lazy val scalaVer = "2.13.5"
 
 lazy val commonSettings = Seq(
   organization in ThisBuild := "io.github.d2a4u",
@@ -55,7 +56,7 @@ lazy val commonSettings = Seq(
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
-    "org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full
+    "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
   ),
   scalacOptions := Seq(
     "-unchecked",
@@ -110,7 +111,7 @@ lazy val dynosaur = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.systemfw" %% "dynosaur-core" % "0.1.3"
+      "org.systemfw" %% "dynosaur-core" % "0.1.4"
     ),
     commonSettings
   ).dependsOn(awssdk)

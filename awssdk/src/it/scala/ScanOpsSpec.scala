@@ -1,8 +1,7 @@
 package meteor
 
 import cats.implicits._
-import cats.effect.IO
-import cats.effect.concurrent.Ref
+import cats.effect.{IO, Ref}
 import meteor.Util._
 import org.scalacheck.Arbitrary
 
