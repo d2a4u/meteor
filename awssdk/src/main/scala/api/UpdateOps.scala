@@ -1,7 +1,7 @@
 package meteor
 package api
 
-import cats.effect.Concurrent
+import cats.effect.Async
 import cats.implicits._
 import meteor.codec.{Decoder, Encoder}
 import meteor.errors.ConditionalCheckFailed
@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 trait UpdateOps extends PartitionKeyUpdateOps with CompositeKeysUpdateOps {}
 
 trait PartitionKeyUpdateOps extends SharedUpdateOps {
-  def updateOp[F[_]: Concurrent, P: Encoder, U: Decoder](
+  def updateOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
@@ -34,7 +34,7 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Concurrent, P: Encoder, U: Decoder](
+  def updateOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
@@ -55,7 +55,7 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Concurrent, P: Encoder](
+  def updateOp[F[_]: Async, P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression
@@ -74,7 +74,7 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Concurrent, P: Encoder](
+  def updateOp[F[_]: Async, P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
@@ -97,7 +97,7 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
 }
 
 trait CompositeKeysUpdateOps extends SharedUpdateOps {
-  def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
+  def updateOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -118,7 +118,7 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
+  def updateOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -140,7 +140,7 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder](
+  def updateOp[F[_]: Async, P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -160,7 +160,7 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Concurrent, P: Encoder, S: Encoder](
+  def updateOp[F[_]: Async, P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -184,22 +184,20 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
 }
 
 trait SharedUpdateOps {
-  def sendUpdateItem[F[_]: Concurrent](req: UpdateItemRequest)(
+  def sendUpdateItem[F[_]: Async](req: UpdateItemRequest)(
     jClient: DynamoDbAsyncClient
   ): F[Unit] =
-    (() => jClient.updateItem(req)).liftF[F].adaptError {
+    liftFuture(jClient.updateItem(req)).adaptError {
       case err: ConditionalCheckFailedException =>
         ConditionalCheckFailed(err.getMessage)
     }.void
 
-  def sendUpdateItem[F[_]: Concurrent, U: Decoder](
+  def sendUpdateItem[F[_]: Async, U: Decoder](
     req: UpdateItemRequest
   )(jClient: DynamoDbAsyncClient): F[Option[U]] =
-    (() => jClient.updateItem(req)).liftF[F].flatMap { resp =>
+    liftFuture(jClient.updateItem(req)).flatMap { resp =>
       if (resp.hasAttributes) {
-        Concurrent[F].fromEither(
-          resp.attributes().asAttributeValue.as[U].map(_.some)
-        )
+        resp.attributes().asAttributeValue.as[U].map(_.some).liftTo[F]
       } else {
         none[U].pure[F]
       }

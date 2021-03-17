@@ -1,32 +1,19 @@
 package meteor
 
-import cats.effect._
+import cats.effect.Async
 import cats.implicits._
 import meteor.errors.DecoderError
 
-import java.util.concurrent.{CompletableFuture, CompletionException}
+import java.util.concurrent.CompletableFuture
 import java.util.{HashMap => jHashMap, Map => jMap}
 
 private[meteor] object implicits extends syntax {
   type FailureOr[U] = Either[DecoderError, U]
 
-  implicit class FromCompletableFuture[A](thunk: () => CompletableFuture[A]) {
-    def liftF[F[_]: Concurrent]: F[A] =
-      Concurrent[F].cancelable[A] { cb =>
-
-        val future = thunk().whenComplete {
-          case (ok, err: CompletionException) =>
-            val underlineErr = Option(err).map { e =>
-              Option(e.getCause).fold[Throwable](e)(identity)
-            }
-            cb(underlineErr.toLeft(ok))
-
-          case (ok, err) =>
-            cb(Option(err).toLeft(ok))
-        }
-        Sync[F].delay(future.cancel(true)).void
-      }
-  }
+  def liftFuture[F[_], A](
+    thunk: => CompletableFuture[A]
+  )(implicit F: Async[F]): F[A] =
+    F.fromCompletableFuture(F.delay(thunk))
 
   implicit class JavaMap[K, V](m1: jMap[K, V]) {
     def ++(m2: jMap[K, V]): jMap[K, V] = {

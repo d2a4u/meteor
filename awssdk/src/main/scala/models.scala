@@ -18,7 +18,7 @@ case class KeyDef[K](
   attributeName: String,
   attributeType: DynamoDbType
 ) {
-  def mkKey[F[_]: MonadError[*[_], Throwable]](k: K)(implicit
+  def mkKey[F[_]: MonadThrow](k: K)(implicit
   encoder: Encoder[K]): F[java.util.Map[String, AttributeValue]] = {
     val av = k.asAttributeValue
     val valid = Map(attributeName -> av).asJava.pure[F]
@@ -45,7 +45,7 @@ sealed trait Index[P] {
   def tableName: String
   def containKey(av: java.util.Map[String, AttributeValue])
     : Option[java.util.Map[String, AttributeValue]]
-  def extractKey[F[_]: MonadError[*[_], Throwable], T: Encoder](t: T)
+  def extractKey[F[_]: MonadThrow, T: Encoder](t: T)
     : F[java.util.Map[String, AttributeValue]] = {
     val av = t.asAttributeValue
     if (av.hasM) {
@@ -79,7 +79,7 @@ sealed trait PartitionKeyIndex[P] extends Index[P] {
     }
   }
 
-  def mkKey[F[_]: MonadError[*[_], Throwable]](p: P)(implicit
+  def mkKey[F[_]: MonadThrow](p: P)(implicit
   encoder: Encoder[P]): F[java.util.Map[String, AttributeValue]] =
     partitionKeyDef.mkKey[F](p)
 }
@@ -106,7 +106,7 @@ sealed trait CompositeKeysIndex[P, S] extends Index[P] {
     }
   }
 
-  def mkKey[F[_]: MonadError[*[_], Throwable]](
+  def mkKey[F[_]: MonadThrow](
     p: P,
     s: S
   )(

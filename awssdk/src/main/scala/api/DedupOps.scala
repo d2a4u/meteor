@@ -1,12 +1,12 @@
 package meteor
 package api
 
-import cats.MonadError
+import cats.MonadThrow
 import cats.implicits._
 import fs2.Chunk
 
 trait DedupOps {
-  def dedupInOrdered[F[_]: MonadError[*[_], Throwable], T, U, V](
+  def dedupInOrdered[F[_]: MonadThrow, T, U, V](
     input: Chunk[T]
   )(mkKey: T => F[U])(transform: T => F[V]): F[List[V]] = {
     val iterator = input.reverseIterator
@@ -31,7 +31,7 @@ trait DedupOps {
     dedupInternal(Set.empty)(List.empty)
   }
 
-  def dedupInOrdered[F[_]: MonadError[*[_], Throwable], T, U](
+  def dedupInOrdered[F[_]: MonadThrow, T, U](
     input: Chunk[T]
   )(mkKey: T => F[U]): F[List[U]] = {
     val iterator = input.reverseIterator

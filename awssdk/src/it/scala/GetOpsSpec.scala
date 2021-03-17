@@ -10,7 +10,7 @@ class GetOpsSpec extends ITSpec {
 
   it should "return inserted item using partition key and range key" in forAll {
     test: TestData =>
-      compositeKeysTable[IO].use[IO, Option[TestData]] {
+      compositeKeysTable[IO].use[Option[TestData]] {
         case (client, table) =>
           client.put[TestData](table.tableName, test) >>
             client.get[Id, Range, TestData](
@@ -24,10 +24,7 @@ class GetOpsSpec extends ITSpec {
 
   it should "return inserted item using partition key only (table doesn't have range key)" in forAll {
     test: TestDataSimple =>
-      partitionKeyTable[IO].use[
-        IO,
-        Option[TestDataSimple]
-      ] {
+      partitionKeyTable[IO].use[Option[TestDataSimple]] {
         case (client, table) =>
           client.put[TestDataSimple](table.tableName, test) >>
             client.get[Id, TestDataSimple](

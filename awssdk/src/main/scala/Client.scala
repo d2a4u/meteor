@@ -1,6 +1,6 @@
 package meteor
 
-import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.effect.{Async, Resource, Sync}
 import fs2.Pipe
 import meteor.api.BatchGet
 import meteor.codec.{Decoder, Encoder}
@@ -446,10 +446,10 @@ trait Client[F[_]] {
 }
 
 object Client {
-  def apply[F[_]: Concurrent: Timer](jClient: DynamoDbAsyncClient): Client[F] =
+  def apply[F[_]: Async](jClient: DynamoDbAsyncClient): Client[F] =
     new DefaultClient[F](jClient)
 
-  def resource[F[_]: Concurrent: Timer](
+  def resource[F[_]: Async](
     cred: AwsCredentialsProvider,
     endpoint: URI,
     region: Region
@@ -462,7 +462,7 @@ object Client {
       )
     }.map(apply[F])
 
-  def resource[F[_]: Concurrent: Timer]: Resource[F, Client[F]] = {
+  def resource[F[_]: Async]: Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {
       Sync[F].delay(DefaultCredentialsProvider.create())
     }.flatMap { cred =>
@@ -474,14 +474,13 @@ object Client {
     }.map(apply[F])
   }
 
-  def resource[F[_]: Concurrent: Timer](exec: Executor)
-    : Resource[F, Client[F]] = {
+  def resource[F[_]: Async](exec: Executor): Resource[F, Client[F]] = {
     Resource.fromAutoCloseable {
       Sync[F].delay(DefaultCredentialsProvider.create())
     }.flatMap(cred => resource[F](exec, cred))
   }
 
-  def resource[F[_]: Concurrent: Timer](
+  def resource[F[_]: Async](
     exec: Executor,
     cred: AwsCredentialsProvider
   ): Resource[F, Client[F]] = {

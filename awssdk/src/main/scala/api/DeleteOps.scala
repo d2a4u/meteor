@@ -1,7 +1,7 @@
 package meteor
 package api
 
-import cats.effect.Concurrent
+import cats.effect.Async
 import cats.implicits._
 import meteor.codec.{Decoder, Encoder}
 import meteor.implicits._
@@ -11,7 +11,7 @@ import software.amazon.awssdk.services.dynamodb.model._
 trait DeleteOps extends PartitionKeyDeleteOps with CompositeKeysDeleteOps {}
 
 trait CompositeKeysDeleteOps {
-  def deleteOp[F[_]: Concurrent, P: Encoder, S: Encoder, U: Decoder](
+  def deleteOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -24,9 +24,9 @@ trait CompositeKeysDeleteOps {
           .key(key)
           .returnValues(returnValue)
           .build()
-      (() => jClient.deleteItem(req)).liftF[F].flatMap { resp =>
+      liftFuture(jClient.deleteItem(req)).flatMap { resp =>
         if (resp.hasAttributes) {
-          Concurrent[F].fromEither(
+          Async[F].fromEither(
             resp.attributes().asAttributeValue.as[U]
           ).map(_.some)
         } else {
@@ -38,7 +38,7 @@ trait CompositeKeysDeleteOps {
 }
 
 trait PartitionKeyDeleteOps {
-  def deleteOp[F[_]: Concurrent, P: Encoder, U: Decoder](
+  def deleteOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     returnValue: ReturnValue
@@ -50,9 +50,9 @@ trait PartitionKeyDeleteOps {
           .key(key)
           .returnValues(returnValue)
           .build()
-      (() => jClient.deleteItem(req)).liftF[F].flatMap { resp =>
+      liftFuture(jClient.deleteItem(req)).flatMap { resp =>
         if (resp.hasAttributes) {
-          Concurrent[F].fromEither(
+          Async[F].fromEither(
             resp.attributes().asAttributeValue.as[U]
           ).map(_.some)
         } else {
