@@ -26,7 +26,7 @@ trait SharedBatchWriteOps extends DedupOps {
   val MaxBatchWriteSize = 25
 
   def batchPutInorderedOp[F[_]: Timer: Concurrent, I: Encoder](
-    table: Index,
+    table: Index[_],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, I, Unit] = { in: Stream[F, I] =>
@@ -93,7 +93,7 @@ trait SharedBatchWriteOps extends DedupOps {
     F[_]: Timer: Concurrent,
     I: Encoder
   ](
-    table: Index,
+    table: Index[_],
     maxBatchWait: FiniteDuration
   ): Pipe[F, I, BatchWriteItemRequest] =
     _.groupWithin(MaxBatchWriteSize, maxBatchWait).evalMap { chunk =>
