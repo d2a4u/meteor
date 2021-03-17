@@ -2,8 +2,7 @@ package meteor
 
 import java.net.URI
 import java.util.UUID
-import cats.effect.concurrent.Ref
-import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.effect.{Async, Ref, Resource, Sync, Temporal}
 import cats.implicits._
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
@@ -15,7 +14,7 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.concurrent.duration._
 
 object Util {
-  def retryOf[F[_]: Timer: Sync, T](
+  def retryOf[F[_]: Async, T](
     f: F[T],
     interval: FiniteDuration = 1.second,
     maxRetry: Int = 10
@@ -31,7 +30,7 @@ object Util {
       } else {
         r.get.flatMap {
           case i if i < maxRetry =>
-            Timer[F].sleep(interval) >> r.set(i + 1) >> f
+            Temporal[F].sleep(interval) >> r.set(i + 1) >> f
           case _ =>
             new Exception("Max retry reached").raiseError[F, T]
         }
@@ -39,12 +38,12 @@ object Util {
     }
   }.flatten
 
-  def partitionKeyTable[F[_]: Concurrent: Timer]
+  def partitionKeyTable[F[_]: Async]
     : Resource[F, (Client[F], PartitionKeyTable[Id])] = {
     val hashKey = KeyDef[Id]("id", DynamoDbType.S)
     for {
       client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
-      randomName <- Resource.liftF(
+      randomName <- Resource.eval(
         Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
       )
       table = PartitionKeyTable[Id](randomName, hashKey)
@@ -58,13 +57,13 @@ object Util {
     } yield (client, table)
   }
 
-  def compositeKeysTable[F[_]: Concurrent: Timer]
+  def compositeKeysTable[F[_]: Async]
     : Resource[F, (Client[F], CompositeKeysTable[Id, Range])] = {
     val hashKey = KeyDef[Id]("id", DynamoDbType.S)
     val rangeKey = KeyDef[Range]("range", DynamoDbType.S)
     for {
       client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
-      randomName <- Resource.liftF(
+      randomName <- Resource.eval(
         Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
       )
       table = CompositeKeysTable[Id, Range](randomName, hashKey, rangeKey)
@@ -79,7 +78,7 @@ object Util {
     } yield (client, table)
   }
 
-  def compositeKeysWithSecondaryIndexTable[F[_]: Concurrent: Timer](
+  def compositeKeysWithSecondaryIndexTable[F[_]: Async](
     indexName: String
   ): Resource[
     F,
@@ -95,7 +94,7 @@ object Util {
     val rangeKey2 = KeyDef[Int]("int", DynamoDbType.N)
     for {
       client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
-      randomName <- Resource.liftF(
+      randomName <- Resource.eval(
         Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
       )
       table = CompositeKeysTable[Id, Range](
