@@ -62,7 +62,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
           TAG_CONTEXT: branch
-          RELEASE_BRANCHES: series/0.x,series/1.x
+          RELEASE_BRANCHES: series/0.x
       - name: Import keys
         run: |
           touch /tmp/local.pubring.asc

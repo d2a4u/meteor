@@ -8,6 +8,10 @@ on:
     paths-ignore:
       - '**.md'
       - 'website/**'
+  pull_request:
+    branches:
+      - 'series/0.x'
+      - 'series/1.x'
 
 jobs:
   build-tests:
