@@ -169,3 +169,4 @@ website/theme.toml
 website/.editorconfig
 website/resources/
 website/public/
+entrypoint.sh

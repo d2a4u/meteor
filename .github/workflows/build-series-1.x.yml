@@ -64,6 +64,7 @@ jobs:
           TAG_CONTEXT: branch
           PRERELEASE_SUFFIX: RC
           RELEASE_BRANCHES: series/0.x
+          DEFAULT_BUMP: patch
       - name: Import keys
         run: |
           touch /tmp/local.pubring.asc
