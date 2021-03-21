@@ -1,9 +1,9 @@
-name: build-master
+name: build-series-0.x
 
 on:
   push:
     branches:
-      - master
+      - 'series/0.x'
     paths-ignore:
       - '**.md'
       - 'website/**'
@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # fetch the whole repo history
       - name: Check cache
         uses: actions/cache@v2.1.1
         with:
@@ -55,10 +57,13 @@ jobs:
             ~/.sbt
             ~/.cache/coursier
       - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.33.0
+        uses: anothrNick/github-tag-action@1.34.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
+          TAG_CONTEXT: branch
+          RELEASE_BRANCHES: series/0.x
+          DEFAULT_BUMP: patch
       - name: Import keys
         run: |
           touch /tmp/local.pubring.asc
