@@ -19,7 +19,7 @@ abstract class CompositeIndex[F[_], P: Encoder, S: Encoder]
 
   def index: CompositeKeysIndex[P, S]
 
-  def retrieveOp[T: Decoder](
+  def retrieve[T: Decoder](
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
@@ -27,6 +27,18 @@ abstract class CompositeIndex[F[_], P: Encoder, S: Encoder]
     retrieveOp[F, P, T](
       index,
       partitionKey,
+      consistentRead,
+      limit
+    )(jClient)
+
+  def retrieve[T: Decoder](
+    query: Query[P, S],
+    consistentRead: Boolean,
+    limit: Int
+  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    retrieveOp[F, P, S, T](
+      index,
+      query,
       consistentRead,
       limit
     )(jClient)

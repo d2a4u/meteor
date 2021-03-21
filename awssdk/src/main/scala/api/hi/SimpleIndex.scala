@@ -16,6 +16,16 @@ abstract class SimpleIndex[F[_], P: Encoder] extends PartitionKeyGetOps {
   def jClient: DynamoDbAsyncClient
 
   def index: PartitionKeyIndex[P]
+
+  def retrieve[T: Decoder](
+    query: Query[P, Nothing],
+    consistentRead: Boolean
+  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): F[Option[T]] =
+    retrieveOp[F, P, T](
+      index,
+      query,
+      consistentRead
+    )(jClient)
 }
 
 case class SecondarySimpleIndex[F[_], P: Encoder](
@@ -26,17 +36,6 @@ case class SecondarySimpleIndex[F[_], P: Encoder](
 ) extends SimpleIndex[F, P] {
   val index: PartitionKeyIndex[P] =
     PartitionKeySecondaryIndex[P](tableName, indexName, partitionKeyDef)
-
-  def retrieve[T: Decoder](
-    partitionKey: P,
-    consistentRead: Boolean
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): F[Option[T]] =
-    retrieveOp[F, P, T](
-      index,
-      partitionKey,
-      consistentRead,
-      1
-    )(jClient).compile.last
 }
 
 case class SimpleTable[F[_], P: Encoder](
