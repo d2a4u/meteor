@@ -3,13 +3,16 @@ package meteor
 import java.net.URI
 import java.util.UUID
 import cats.effect.concurrent.Ref
-import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.effect.{Concurrent, IO, Resource, Sync, Timer}
 import cats.implicits._
+import meteor.api.hi.{CompositeTable, SimpleTable}
+import org.scalacheck.Arbitrary
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
   AwsCredentialsProviderChain
 }
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.concurrent.duration._
@@ -58,6 +61,28 @@ object Util {
     } yield (client, table)
   }
 
+  def simpleTable[F[_]: Concurrent: Timer]: Resource[F, SimpleTable[F, Id]] = {
+    val hashKey = KeyDef[Id]("id", DynamoDbType.S)
+    for {
+      jClient <- Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
+        Sync[F].delay(DynamoDbAsyncClient.builder().credentialsProvider(
+          dummyCred
+        ).endpointOverride(localDynamo).build())
+      }
+      client = Client[F](jClient)
+      randomName <- Resource.liftF(
+        Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
+      )
+      _ <- Resource.make(
+        client.createPartitionKeyTable(
+          randomName,
+          hashKey,
+          BillingMode.PAY_PER_REQUEST
+        )
+      )(_ => client.deleteTable(randomName))
+    } yield SimpleTable[F, Id](randomName, hashKey, jClient)
+  }
+
   def compositeKeysTable[F[_]: Concurrent: Timer]
     : Resource[F, (Client[F], CompositeKeysTable[Id, Range])] = {
     val hashKey = KeyDef[Id]("id", DynamoDbType.S)
@@ -77,6 +102,35 @@ object Util {
         )
       )(_ => client.deleteTable(randomName))
     } yield (client, table)
+  }
+
+  def compositeTable[F[_]: Concurrent: Timer]
+    : Resource[F, CompositeTable[F, Id, Range]] = {
+    val hashKey = KeyDef[Id]("id", DynamoDbType.S)
+    val rangeKey = KeyDef[Range]("range", DynamoDbType.S)
+    for {
+      jClient <- Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
+        Sync[F].delay(DynamoDbAsyncClient.builder().build())
+      }
+      client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
+      randomName <- Resource.liftF(
+        Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
+      )
+      table = CompositeTable[F, Id, Range](
+        randomName,
+        hashKey,
+        rangeKey,
+        jClient
+      )
+      _ <- Resource.make(
+        client.createCompositeKeysTable(
+          randomName,
+          hashKey,
+          rangeKey,
+          BillingMode.PAY_PER_REQUEST
+        )
+      )(_ => client.deleteTable(randomName))
+    } yield table
   }
 
   def compositeKeysWithSecondaryIndexTable[F[_]: Concurrent: Timer](
@@ -151,4 +205,7 @@ object Util {
     )
 
   def localDynamo: URI = URI.create("http://localhost:8000")
+
+  def sample[T: Arbitrary]: T =
+    implicitly[Arbitrary[T]].arbitrary.sample.get
 }

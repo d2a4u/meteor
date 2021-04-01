@@ -67,7 +67,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   def put[T: Encoder](
     tableName: String,
     t: T
-  ): F[Unit] = putOp[F, T](tableName, t)(jClient)
+  ): F[Unit] = putOp[F, T](tableName, t, Expression.empty)(jClient)
 
   def put[T: Encoder](
     tableName: String,
@@ -78,7 +78,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   def put[T: Encoder, U: Decoder](
     tableName: String,
     t: T
-  ): F[Option[U]] = putOp[F, T, U](tableName, t)(jClient)
+  ): F[Option[U]] = putOp[F, T, U](tableName, t, Expression.empty)(jClient)
 
   def put[T: Encoder, U: Decoder](
     tableName: String,
