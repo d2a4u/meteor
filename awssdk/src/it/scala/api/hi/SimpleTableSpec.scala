@@ -6,21 +6,22 @@ import cats.implicits._
 import meteor.Util._
 import meteor.implicits._
 import meteor.errors.ConditionalCheckFailed
+import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
 class SimpleTableSpec extends ITSpec {
-  behavior of "SimpleTable"
+  behavior of "SimpleTable CRUD ops"
 
   val data = sample[TestData]
 
   it should "round trip insert and get a record" in {
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       _.put[TestData](data)
     ).unsafeToFuture().futureValue._2 shouldEqual data.some
   }
 
   it should "round trip conditionally insert and get a record" in {
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       _.put[TestData](
         data,
@@ -36,7 +37,7 @@ class SimpleTableSpec extends ITSpec {
         Expression("attribute_not_exists(id)")
       )
 
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       { table =>
         write(table) >> write(table)
@@ -51,7 +52,7 @@ class SimpleTableSpec extends ITSpec {
     def write(table: SimpleTable[IO, Id], data: TestData) =
       table.put[TestData, TestData](data, Expression.empty)
 
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       { table =>
         write(table, data) >> write(table, data.copy(str = "foo"))
@@ -65,7 +66,7 @@ class SimpleTableSpec extends ITSpec {
         data.id
       )
 
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       write
     ).unsafeToFuture().futureValue._2 shouldEqual None
@@ -82,7 +83,7 @@ class SimpleTableSpec extends ITSpec {
         )
       )
 
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       write
     ).unsafeToFuture().futureValue._2 shouldEqual data.copy(bool =
@@ -103,7 +104,7 @@ class SimpleTableSpec extends ITSpec {
         )
       )
 
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       write
     ).unsafeToFuture().futureValue._2 shouldEqual data.copy(bool =
@@ -124,7 +125,7 @@ class SimpleTableSpec extends ITSpec {
         )
       )
 
-    testWriteRoundTrip(
+    testRoundTrip(
       data,
       write
     ).attempt.unsafeToFuture().futureValue match {
@@ -133,7 +134,79 @@ class SimpleTableSpec extends ITSpec {
     }
   }
 
-  def testWriteRoundTrip[T](
+  it should "update a record and return old value" in {
+    def write(table: SimpleTable[IO, Id]) =
+      table.put[TestData, TestData](data, Expression.empty) >> table.update[
+        TestData
+      ](
+        data.id,
+        ReturnValue.ALL_OLD,
+        Expression(
+          "SET #bool = :bool_value",
+          Map("#bool" -> "bool"),
+          Map(":bool_value" -> (!data.bool).asAttributeValue)
+        ),
+        Expression.empty
+      )
+    val updated = data.copy(bool = !data.bool)
+    testRoundTrip(data, write).unsafeToFuture().futureValue match {
+      case (Some(d), Some(u)) =>
+        d shouldEqual data
+        u shouldEqual updated
+      case _ => fail()
+    }
+  }
+
+  it should "update a record when a conditional expression is met and return old value" in {
+    def write(table: SimpleTable[IO, Id]) =
+      table.put[TestData, TestData](data, Expression.empty) >> table.update[
+        TestData
+      ](
+        data.id,
+        ReturnValue.ALL_OLD,
+        Expression(
+          "SET #bool = :bool_value",
+          Map("#bool" -> "bool"),
+          Map(":bool_value" -> (!data.bool).asAttributeValue)
+        ),
+        Expression(
+          s"attribute_exists(id)"
+        )
+      )
+
+    val updated = data.copy(bool = !data.bool)
+    testRoundTrip(data, write).unsafeToFuture().futureValue match {
+      case (Some(d), Some(u)) =>
+        d shouldEqual data
+        u shouldEqual updated
+      case _ => fail()
+    }
+  }
+
+  it should "fail updating a record when a conditional expression is not met when return value is specified" in {
+    def write(table: SimpleTable[IO, Id]) =
+      table.put[TestData, TestData](data, Expression.empty) >> table.update[
+        TestData
+      ](
+        data.id,
+        ReturnValue.ALL_OLD,
+        Expression(
+          "SET #bool = :bool_value",
+          Map("#bool" -> "bool"),
+          Map(":bool_value" -> (!data.bool).asAttributeValue)
+        ),
+        Expression(
+          s"attribute_not_exists(id)"
+        )
+      )
+
+    testRoundTrip(data, write).attempt.unsafeToFuture().futureValue match {
+      case Left(_: ConditionalCheckFailed) => succeed
+      case _ => fail()
+    }
+  }
+
+  def testRoundTrip[T](
     data: TestData,
     write: SimpleTable[IO, Id] => IO[T]
   ): IO[(T, Option[TestData])] = {
@@ -146,14 +219,5 @@ class SimpleTableSpec extends ITSpec {
         )
       } yield (w, r)
     }
-  }
-
-  def testReadRoundTrip[T](
-    read: SimpleTable[IO, Id] => IO[Option[T]]
-  ) = {
-    val data = sample[TestData]
-    simpleTable[IO].use { table =>
-      table.put[TestData](data) >> read(table)
-    }.unsafeToFuture().futureValue shouldEqual data.some
   }
 }

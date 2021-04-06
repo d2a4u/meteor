@@ -6,7 +6,6 @@ import meteor.Util._
 import meteor.implicits._
 import meteor.api.BatchGet
 import meteor.codec.Encoder
-import org.scalacheck.Arbitrary
 
 import scala.concurrent.duration._
 

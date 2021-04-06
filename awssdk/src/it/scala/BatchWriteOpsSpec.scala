@@ -3,7 +3,6 @@ package meteor
 import cats.implicits._
 import cats.effect.IO
 import meteor.Util._
-import org.scalacheck.Arbitrary
 
 import scala.concurrent.duration._
 

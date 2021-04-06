@@ -1,5 +1,6 @@
 package meteor
 
+import cats.implicits._
 import cats.effect.{Concurrent, Timer}
 import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.api._
@@ -90,12 +91,16 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S
-  ): F[Unit] = deleteOp[F, P, S](table, partitionKey, sortKey)(jClient)
+  ): F[Unit] =
+    deleteOp[F, P, S, Unit](table, partitionKey, sortKey, ReturnValue.NONE)(
+      jClient
+    ).void
 
   def delete[P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P
-  ): F[Unit] = deleteOp[F, P](table, partitionKey)(jClient)
+  ): F[Unit] =
+    deleteOp[F, P, Unit](table, partitionKey, ReturnValue.NONE)(jClient).void
 
   def scan[T: Decoder](
     tableName: String,

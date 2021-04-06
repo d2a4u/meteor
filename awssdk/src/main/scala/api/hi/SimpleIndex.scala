@@ -1,8 +1,9 @@
 package meteor
 package api.hi
 
-import cats.effect.{Concurrent, Timer}
 import fs2.{Pipe, RaiseThrowable}
+import cats.implicits._
+import cats.effect.{Concurrent, Timer}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
@@ -78,7 +79,7 @@ case class SimpleTable[F[_], P: Encoder](
     putOp[F, T, U](table.tableName, t, condition)(jClient)
 
   def delete(partitionKey: P)(implicit F: Concurrent[F]): F[Unit] =
-    deleteOp[F, P](table, partitionKey)(jClient)
+    deleteOp[F, P, Unit](table, partitionKey, ReturnValue.NONE)(jClient).void
 
   /**
     * Update an item by partition key P given an update expression
