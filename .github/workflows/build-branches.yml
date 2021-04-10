@@ -8,16 +8,20 @@ on:
     paths-ignore:
       - '**.md'
       - 'website/**'
+  pull_request:
+    branches:
+      - 'series/0.x'
+      - 'series/1.x'
 
 jobs:
   build-tests:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: Set up JDK 13
-        uses: actions/setup-java@v1
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
         with:
-          java-version: 13
+          java-version: adopt@1.11
       - name: Gen cache keys
         run: |
           md5sum project/build.properties project/plugins.sbt build.sbt > $GITHUB_WORKSPACE/.sbt_cache_key
