@@ -25,26 +25,24 @@ trait PartitionKeyGetOps extends SharedGetOps {
     }
   }
 
+  // the different between this and getOp is that filter expression is done on server side
   def retrieveOp[
     F[_]: Concurrent: RaiseThrowable,
     P: Encoder,
     T: Decoder
   ](
     index: PartitionKeyIndex[P],
-    partitionKey: P,
-    consistentRead: Boolean,
-    limit: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
-    val query = Query[P](partitionKey)
-    mkQueryRequestBuilder[F](
+    query: Query[P, Nothing],
+    consistentRead: Boolean
+  )(jClient: DynamoDbAsyncClient): F[Option[T]] = {
+    mkQueryRequestBuilder[F, P](
       index,
       keyExpression = query.keyCondition(index),
       filterExpression = query.filter,
       consistentRead = consistentRead,
-      limit = limit
-    ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
+      limit = 1
+    ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient)).compile.last
   }
-
 }
 
 trait CompositeKeysGetOps extends SharedGetOps {
@@ -70,9 +68,9 @@ trait CompositeKeysGetOps extends SharedGetOps {
     limit: Int
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
     val query = Query[P](partitionKey)
-    mkQueryRequestBuilder[F](
+    mkQueryRequestBuilder[F, P](
       index,
-      keyExpression = query.partitionKeyOnlyCondition(index),
+      keyExpression = query.keyCondition(index),
       filterExpression = query.filter,
       consistentRead = consistentRead,
       limit = limit
@@ -89,14 +87,15 @@ trait CompositeKeysGetOps extends SharedGetOps {
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] =
-    mkQueryRequestBuilder[F](
+  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] = {
+    mkQueryRequestBuilder[F, P](
       index,
-      keyExpression = query.keyCondition(index),
+      keyExpression = query.keysCondition(index),
       filterExpression = query.filter,
       consistentRead = consistentRead,
       limit = limit
     ).flatMap(builder => sendQueryRequest[F, U](builder)(jClient))
+  }
 }
 
 trait SharedGetOps {
@@ -151,8 +150,8 @@ trait SharedGetOps {
     }
   }
 
-  def mkQueryRequestBuilder[F[_]: Concurrent](
-    index: Index,
+  def mkQueryRequestBuilder[F[_]: Concurrent, P](
+    index: Index[P],
     keyExpression: Expression,
     filterExpression: Expression,
     consistentRead: Boolean,
