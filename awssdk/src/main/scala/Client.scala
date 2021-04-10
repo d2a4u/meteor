@@ -55,6 +55,15 @@ trait Client[F[_]] {
 
   /** Retrieve values from a table using a query.
     */
+  def retrieve[P: Encoder, U: Decoder](
+    index: PartitionKeyIndex[P],
+    query: Query[P, Nothing],
+    consistentRead: Boolean
+  ): F[Option[U]]
+
+  /**
+    * Retrieve values from a table using a query.
+    */
   def retrieve[P: Encoder, S: Encoder, U: Decoder](
     index: CompositeKeysIndex[P, S],
     query: Query[P, S],
@@ -306,7 +315,7 @@ trait Client[F[_]] {
     * within a batch.
     */
   def batchPut[T: Encoder](
-    table: Index,
+    table: Index[_],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, T, Unit]
@@ -320,7 +329,7 @@ trait Client[F[_]] {
     * within a batch.
     */
   def batchPut[T: Encoder](
-    table: Index,
+    table: Index[_],
     items: Iterable[T],
     backoffStrategy: BackoffStrategy
   ): F[Unit]
@@ -328,7 +337,7 @@ trait Client[F[_]] {
   /** Batch put unique items into a table.
     */
   def batchPutUnordered[T: Encoder](
-    table: Index,
+    table: Index[_],
     items: Set[T],
     parallelism: Int,
     backoffStrategy: BackoffStrategy
