@@ -1,0 +1,9 @@
+pull_request_rules:
+  - name: merge scala-steward's PRs
+    conditions:
+      - author=scala-steward
+      - status-success=build-tests
+    actions:
+      merge:
+        method: squash
+        strict: smart
