@@ -73,7 +73,39 @@ class RetrieveOpsSpec extends ITSpec {
       result shouldEqual input
   }
 
-  it should "filter results by given filter expression" in forAll {
+  it should "filter results by given filter expression for PartitionKeyTable" in forAll {
+    test: TestData =>
+
+      partitionKeyTable[IO].use {
+        case (client, table) =>
+          def retrieval(cond: Boolean) =
+            client.retrieve[Id, TestData](
+              table,
+              Query(
+                test.id,
+                Expression(
+                  "#b = :bool",
+                  Map("#b" -> "bool"),
+                  Map(
+                    ":bool" -> Encoder[Boolean].write(cond)
+                  )
+                )
+              ),
+              consistentRead = false
+            )
+          client.put[TestData](table.tableName, test) >> Util.retryOf(
+            for {
+              some <- retrieval(test.bool)
+              none <- retrieval(!test.bool)
+            } yield (some, none)
+          ) {
+            case (some, none) =>
+              some.isDefined && none.isEmpty
+          }
+      }.unsafeToFuture().futureValue shouldEqual (Some(test), None)
+  }
+
+  it should "filter results by given filter expression for CompositeKeysTable" in forAll {
     test: List[TestData] =>
       val unique = test.map(t => (t.id, t.range) -> t).toMap.values.toList
       val partitionKey = Id(Instant.now.toString)
