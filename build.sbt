@@ -22,12 +22,12 @@ lazy val testDependencies = Seq(
 
 lazy val ItTest = config("it").extend(Test)
 
-lazy val scalaVer = "2.13.3"
+lazy val scalaVer = "2.13.5"
 
 lazy val commonSettings = Seq(
   organization in ThisBuild := "io.github.d2a4u",
   scalaVersion := scalaVer,
-  crossScalaVersions ++= Seq("2.12.12"),
+  crossScalaVersions ++= Seq("2.12.13"),
   parallelExecution in Test := true,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
