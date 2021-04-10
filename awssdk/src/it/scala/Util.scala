@@ -5,7 +5,7 @@ import java.util.UUID
 import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, IO, Resource, Sync, Timer}
 import cats.implicits._
-import meteor.api.hi.{CompositeTable, SimpleTable}
+import meteor.api.hi.{CompositeTable, SecondarySimpleIndex, SimpleTable}
 import org.scalacheck.Arbitrary
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
@@ -83,6 +83,59 @@ object Util {
     } yield SimpleTable[F, Id](randomName, hashKey, jClient)
   }
 
+  def secondarySimpleIndex[F[_]: Concurrent: Timer]
+    : Resource[F, (SimpleTable[F, Id], SecondarySimpleIndex[F, Range])] = {
+    val hashKey = KeyDef[Id]("id", DynamoDbType.S)
+    val glob2ndHashKey = KeyDef[Range]("range", DynamoDbType.S)
+    for {
+      jClient <- Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
+        Sync[F].delay(DynamoDbAsyncClient.builder().credentialsProvider(
+          dummyCred
+        ).endpointOverride(localDynamo).build())
+      }
+      client = Client[F](jClient)
+      randomName <- Resource.liftF(
+        Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
+      )
+      randomIndexName <- Resource.liftF(
+        Sync[F].delay(
+          s"meteor-test-global-secondary-index-${UUID.randomUUID()}"
+        )
+      )
+      _ <- Resource.make(
+        client.createPartitionKeyTable(
+          randomName,
+          hashKey,
+          BillingMode.PAY_PER_REQUEST,
+          Map(hashKey.value, glob2ndHashKey.value),
+          Set(
+            GlobalSecondaryIndex
+              .builder()
+              .indexName(randomIndexName)
+              .keySchema(
+                KeySchemaElement.builder().attributeName("range").keyType(
+                  KeyType.HASH
+                ).build()
+              ).projection(Projection.builder().projectionType(
+                ProjectionType.ALL
+              ).build())
+              .build()
+          )
+        )
+      )(_ => client.deleteTable(randomName))
+    } yield {
+      (
+        SimpleTable[F, Id](randomName, hashKey, jClient),
+        SecondarySimpleIndex[F, Range](
+          randomName,
+          randomIndexName,
+          glob2ndHashKey,
+          jClient
+        )
+      )
+    }
+  }
+
   def compositeKeysTable[F[_]: Concurrent: Timer]
     : Resource[F, (Client[F], CompositeKeysTable[Id, Range])] = {
     val hashKey = KeyDef[Id]("id", DynamoDbType.S)
@@ -110,17 +163,13 @@ object Util {
     val rangeKey = KeyDef[Range]("range", DynamoDbType.S)
     for {
       jClient <- Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
-        Sync[F].delay(DynamoDbAsyncClient.builder().build())
+        Sync[F].delay(DynamoDbAsyncClient.builder().credentialsProvider(
+          dummyCred
+        ).endpointOverride(localDynamo).build())
       }
-      client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
+      client = Client[F](jClient)
       randomName <- Resource.liftF(
         Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
-      )
-      table = CompositeTable[F, Id, Range](
-        randomName,
-        hashKey,
-        rangeKey,
-        jClient
       )
       _ <- Resource.make(
         client.createCompositeKeysTable(
@@ -130,7 +179,12 @@ object Util {
           BillingMode.PAY_PER_REQUEST
         )
       )(_ => client.deleteTable(randomName))
-    } yield table
+    } yield CompositeTable[F, Id, Range](
+      randomName,
+      hashKey,
+      rangeKey,
+      jClient
+    )
   }
 
   def compositeKeysWithSecondaryIndexTable[F[_]: Concurrent: Timer](

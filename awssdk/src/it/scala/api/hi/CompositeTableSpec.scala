@@ -8,13 +8,8 @@ import meteor.implicits._
 import meteor.errors.ConditionalCheckFailed
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
-case class Result[T](
-  wrote: T,
-  read: Option[TestData]
-)
-
-class SimpleTableSpec extends ITSpec {
-  behavior of "SimpleTable CRUD ops"
+class CompositeTableSpec extends ITSpec {
+  behavior of "CompositeTable CRUD ops"
 
   val data = sample[TestData]
 
@@ -22,7 +17,7 @@ class SimpleTableSpec extends ITSpec {
     testRoundTrip(
       data,
       _.put[TestData](data)
-    ).unsafeToFuture().futureValue.read shouldEqual data.some
+    ).unsafeToFuture().futureValue._2 shouldEqual data.some
   }
 
   it should "round trip conditionally insert and get a record" in {
@@ -32,11 +27,11 @@ class SimpleTableSpec extends ITSpec {
         data,
         Expression("attribute_not_exists(id)")
       )
-    ).unsafeToFuture().futureValue.read shouldEqual data.some
+    ).unsafeToFuture().futureValue._2 shouldEqual data.some
   }
 
   it should "fail inserting item that doesn't meet conditional check" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData](
         data,
         Expression("attribute_not_exists(id)")
@@ -54,7 +49,7 @@ class SimpleTableSpec extends ITSpec {
   }
 
   it should "return old item when upsert twice" in {
-    def write(table: SimpleTable[IO, Id], data: TestData) =
+    def write(table: CompositeTable[IO, Id, Range], data: TestData) =
       table.put[TestData, TestData](data, Expression.empty)
 
     testRoundTrip(
@@ -62,25 +57,27 @@ class SimpleTableSpec extends ITSpec {
       { table =>
         write(table, data) >> write(table, data.copy(str = "foo"))
       }
-    ).unsafeToFuture().futureValue.wrote shouldEqual data.some
+    ).unsafeToFuture().futureValue._1 shouldEqual data.some
   }
 
   it should "round trip delete a record" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.delete(
-        data.id
+        data.id,
+        data.range
       )
 
     testRoundTrip(
       data,
       write
-    ).unsafeToFuture().futureValue.read shouldEqual None
+    ).unsafeToFuture().futureValue._2 shouldEqual None
   }
 
   it should "round trip update a record" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.update(
         data.id,
+        data.range,
         Expression(
           "SET #bool = :bool_value",
           Map("#bool" -> "bool"),
@@ -91,14 +88,15 @@ class SimpleTableSpec extends ITSpec {
     testRoundTrip(
       data,
       write
-    ).unsafeToFuture().futureValue.read shouldEqual data.copy(bool =
+    ).unsafeToFuture().futureValue._2 shouldEqual data.copy(bool =
       !data.bool).some
   }
 
   it should "round trip update a record when a conditional expression is met" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.update(
         data.id,
+        data.range,
         Expression(
           "SET #bool = :bool_value",
           Map("#bool" -> "bool"),
@@ -112,14 +110,15 @@ class SimpleTableSpec extends ITSpec {
     testRoundTrip(
       data,
       write
-    ).unsafeToFuture().futureValue.read shouldEqual data.copy(bool =
+    ).unsafeToFuture().futureValue._2 shouldEqual data.copy(bool =
       !data.bool).some
   }
 
   it should "fail updating a record when a conditional expression is not met" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.update(
         data.id,
+        data.range,
         Expression(
           "SET #bool = :bool_value",
           Map("#bool" -> "bool"),
@@ -140,11 +139,12 @@ class SimpleTableSpec extends ITSpec {
   }
 
   it should "update a record and return old value" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.update[
         TestData
       ](
         data.id,
+        data.range,
         ReturnValue.ALL_OLD,
         Expression(
           "SET #bool = :bool_value",
@@ -154,17 +154,21 @@ class SimpleTableSpec extends ITSpec {
         Expression.empty
       )
     val updated = data.copy(bool = !data.bool)
-    val result = testRoundTrip(data, write).unsafeToFuture().futureValue
-    result.wrote shouldEqual data
-    result.read shouldEqual updated
+    testRoundTrip(data, write).unsafeToFuture().futureValue match {
+      case (Some(d), Some(u)) =>
+        d shouldEqual data
+        u shouldEqual updated
+      case _ => fail()
+    }
   }
 
   it should "update a record when a conditional expression is met and return old value" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.update[
         TestData
       ](
         data.id,
+        data.range,
         ReturnValue.ALL_OLD,
         Expression(
           "SET #bool = :bool_value",
@@ -177,17 +181,21 @@ class SimpleTableSpec extends ITSpec {
       )
 
     val updated = data.copy(bool = !data.bool)
-    val result = testRoundTrip(data, write).unsafeToFuture().futureValue
-    result.wrote shouldEqual data
-    result.read shouldEqual updated
+    testRoundTrip(data, write).unsafeToFuture().futureValue match {
+      case (Some(d), Some(u)) =>
+        d shouldEqual data
+        u shouldEqual updated
+      case _ => fail()
+    }
   }
 
   it should "fail updating a record when a conditional expression is not met when return value is specified" in {
-    def write(table: SimpleTable[IO, Id]) =
+    def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.update[
         TestData
       ](
         data.id,
+        data.range,
         ReturnValue.ALL_OLD,
         Expression(
           "SET #bool = :bool_value",
@@ -207,16 +215,17 @@ class SimpleTableSpec extends ITSpec {
 
   def testRoundTrip[T](
     data: TestData,
-    write: SimpleTable[IO, Id] => IO[T]
-  ): IO[Result[T]] = {
-    simpleTable[IO].use { table =>
+    write: CompositeTable[IO, Id, Range] => IO[T]
+  ): IO[(T, Option[TestData])] = {
+    compositeTable[IO].use { table =>
       for {
         w <- write(table)
         r <- table.get[TestData](
           data.id,
+          data.range,
           consistentRead = true
         )
-      } yield Result(w, r)
+      } yield (w, r)
     }
   }
 }
