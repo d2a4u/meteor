@@ -17,7 +17,7 @@ class CompositeTableSpec extends ITSpec {
     testRoundTrip(
       data,
       _.put[TestData](data)
-    ).unsafeToFuture().futureValue._2 shouldEqual data.some
+    ).unsafeToFuture().futureValue.read shouldEqual data.some
   }
 
   it should "round trip conditionally insert and get a record" in {
@@ -27,7 +27,7 @@ class CompositeTableSpec extends ITSpec {
         data,
         Expression("attribute_not_exists(id)")
       )
-    ).unsafeToFuture().futureValue._2 shouldEqual data.some
+    ).unsafeToFuture().futureValue.read shouldEqual data.some
   }
 
   it should "fail inserting item that doesn't meet conditional check" in {
@@ -57,7 +57,7 @@ class CompositeTableSpec extends ITSpec {
       { table =>
         write(table, data) >> write(table, data.copy(str = "foo"))
       }
-    ).unsafeToFuture().futureValue._1 shouldEqual data.some
+    ).unsafeToFuture().futureValue.wrote shouldEqual data.some
   }
 
   it should "round trip delete a record" in {
@@ -70,7 +70,7 @@ class CompositeTableSpec extends ITSpec {
     testRoundTrip(
       data,
       write
-    ).unsafeToFuture().futureValue._2 shouldEqual None
+    ).unsafeToFuture().futureValue.read shouldEqual None
   }
 
   it should "round trip update a record" in {
@@ -88,7 +88,7 @@ class CompositeTableSpec extends ITSpec {
     testRoundTrip(
       data,
       write
-    ).unsafeToFuture().futureValue._2 shouldEqual data.copy(bool =
+    ).unsafeToFuture().futureValue.read shouldEqual data.copy(bool =
       !data.bool).some
   }
 
@@ -110,7 +110,7 @@ class CompositeTableSpec extends ITSpec {
     testRoundTrip(
       data,
       write
-    ).unsafeToFuture().futureValue._2 shouldEqual data.copy(bool =
+    ).unsafeToFuture().futureValue.read shouldEqual data.copy(bool =
       !data.bool).some
   }
 
@@ -154,12 +154,9 @@ class CompositeTableSpec extends ITSpec {
         Expression.empty
       )
     val updated = data.copy(bool = !data.bool)
-    testRoundTrip(data, write).unsafeToFuture().futureValue match {
-      case (Some(d), Some(u)) =>
-        d shouldEqual data
-        u shouldEqual updated
-      case _ => fail()
-    }
+    val result = testRoundTrip(data, write).unsafeToFuture().futureValue
+    result.wrote shouldEqual data.some
+    result.read shouldEqual updated.some
   }
 
   it should "update a record when a conditional expression is met and return old value" in {
@@ -181,12 +178,9 @@ class CompositeTableSpec extends ITSpec {
       )
 
     val updated = data.copy(bool = !data.bool)
-    testRoundTrip(data, write).unsafeToFuture().futureValue match {
-      case (Some(d), Some(u)) =>
-        d shouldEqual data
-        u shouldEqual updated
-      case _ => fail()
-    }
+    val result = testRoundTrip(data, write).unsafeToFuture().futureValue
+    result.wrote shouldEqual data.some
+    result.read shouldEqual updated.some
   }
 
   it should "fail updating a record when a conditional expression is not met when return value is specified" in {
@@ -216,7 +210,7 @@ class CompositeTableSpec extends ITSpec {
   def testRoundTrip[T](
     data: TestData,
     write: CompositeTable[IO, Id, Range] => IO[T]
-  ): IO[(T, Option[TestData])] = {
+  ): IO[RoundTripResult[T]] = {
     compositeTable[IO].use { table =>
       for {
         w <- write(table)
@@ -225,7 +219,7 @@ class CompositeTableSpec extends ITSpec {
           data.range,
           consistentRead = true
         )
-      } yield (w, r)
+      } yield RoundTripResult(w, r)
     }
   }
 }

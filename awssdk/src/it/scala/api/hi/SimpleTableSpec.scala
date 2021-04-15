@@ -8,11 +8,6 @@ import meteor.implicits._
 import meteor.errors.ConditionalCheckFailed
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
-case class Result[T](
-  wrote: T,
-  read: Option[TestData]
-)
-
 class SimpleTableSpec extends ITSpec {
   behavior of "SimpleTable CRUD ops"
 
@@ -155,8 +150,8 @@ class SimpleTableSpec extends ITSpec {
       )
     val updated = data.copy(bool = !data.bool)
     val result = testRoundTrip(data, write).unsafeToFuture().futureValue
-    result.wrote shouldEqual data
-    result.read shouldEqual updated
+    result.wrote shouldEqual data.some
+    result.read shouldEqual updated.some
   }
 
   it should "update a record when a conditional expression is met and return old value" in {
@@ -178,8 +173,8 @@ class SimpleTableSpec extends ITSpec {
 
     val updated = data.copy(bool = !data.bool)
     val result = testRoundTrip(data, write).unsafeToFuture().futureValue
-    result.wrote shouldEqual data
-    result.read shouldEqual updated
+    result.wrote shouldEqual data.some
+    result.read shouldEqual updated.some
   }
 
   it should "fail updating a record when a conditional expression is not met when return value is specified" in {
@@ -208,7 +203,7 @@ class SimpleTableSpec extends ITSpec {
   def testRoundTrip[T](
     data: TestData,
     write: SimpleTable[IO, Id] => IO[T]
-  ): IO[Result[T]] = {
+  ): IO[RoundTripResult[T]] = {
     simpleTable[IO].use { table =>
       for {
         w <- write(table)
@@ -216,7 +211,7 @@ class SimpleTableSpec extends ITSpec {
           data.id,
           consistentRead = true
         )
-      } yield Result(w, r)
+      } yield RoundTripResult(w, r)
     }
   }
 }
