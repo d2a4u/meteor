@@ -279,12 +279,11 @@ private[meteor] object Util {
   }
 
   def dummyCred: AwsCredentialsProviderChain =
-    AwsCredentialsProviderChain.of(
-      () =>
-        new AwsCredentials {
-          override def accessKeyId(): String = "DUMMY"
-          override def secretAccessKey(): String = "DUMMY"
-        }
+    AwsCredentialsProviderChain.of(() =>
+      new AwsCredentials {
+        override def accessKeyId(): String = "DUMMY"
+        override def secretAccessKey(): String = "DUMMY"
+      }
     )
 
   def localDynamo: URI = URI.create("http://localhost:8000")

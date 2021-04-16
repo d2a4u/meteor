@@ -16,11 +16,12 @@ trait DedupOps {
         for {
           u <- mkKey(t)
           v <- transform(t)
-          o <- if (exists.contains(u)) {
-            dedupInternal(exists)(soFar)
-          } else {
-            dedupInternal(exists + u)(v +: soFar)
-          }
+          o <-
+            if (exists.contains(u)) {
+              dedupInternal(exists)(soFar)
+            } else {
+              dedupInternal(exists + u)(v +: soFar)
+            }
         } yield o
       } else {
         soFar.pure[F]
@@ -39,11 +40,12 @@ trait DedupOps {
         val t = iterator.next()
         for {
           u <- mkKey(t)
-          o <- if (exists.contains(u)) {
-            dedupInternal(exists)(soFar)
-          } else {
-            dedupInternal(exists + u)(u +: soFar)
-          }
+          o <-
+            if (exists.contains(u)) {
+              dedupInternal(exists)(soFar)
+            } else {
+              dedupInternal(exists + u)(u +: soFar)
+            }
         } yield o
       } else {
         soFar.pure[F]

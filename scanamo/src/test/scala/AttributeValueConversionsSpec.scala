@@ -259,12 +259,14 @@ class AttributeValueConversionsSpec
       val dataV1 = data.map {
         case (k, v) =>
           k -> new AttributeValueV1().withL(v.map(b =>
-            new AttributeValueV1().withBOOL(b)): _*)
+            new AttributeValueV1().withBOOL(b)
+          ): _*)
       }.asJava
       val dataV2 = data.map {
         case (k, v) =>
           k -> AttributeValueV2.builder().l(v.map(b =>
-            AttributeValueV2.builder().bool(b).build()): _*).build()
+            AttributeValueV2.builder().bool(b).build()
+          ): _*).build()
       }.asJava
       val v1 = new AttributeValueV1().withM(dataV1)
       val v2 = AttributeValueV2.builder().m(dataV2).build()
@@ -276,12 +278,14 @@ class AttributeValueConversionsSpec
       val dataV1 = data.map {
         case (k, v) =>
           k -> new AttributeValueV1().withL(v.map(b =>
-            new AttributeValueV1().withS(b)): _*)
+            new AttributeValueV1().withS(b)
+          ): _*)
       }.asJava
       val dataV2 = data.map {
         case (k, v) =>
           k -> AttributeValueV2.builder().l(v.map(b =>
-            AttributeValueV2.builder().s(b).build()): _*).build()
+            AttributeValueV2.builder().s(b).build()
+          ): _*).build()
       }.asJava
       val v1 = new AttributeValueV1().withM(dataV1)
       val v2 = AttributeValueV2.builder().m(dataV2).build()
