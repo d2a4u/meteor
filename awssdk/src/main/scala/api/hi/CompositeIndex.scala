@@ -83,8 +83,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   )(implicit F: Concurrent[F]): F[Option[T]] =
     getOp[F, P, S, T](table, partitionKey, sortKey, consistentRead)(jClient)
 
-  /**
-    * Put an item into a table, return ReturnValue.NONE.
+  /** Put an item into a table, return ReturnValue.NONE.
     */
   def put[T: Encoder](
     t: T,
@@ -92,8 +91,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   )(implicit F: Concurrent[F]): F[Unit] =
     putOp[F, T](table.tableName, t, condition)(jClient)
 
-  /**
-    * Put an item into a table, return ReturnValue.ALL_OLD.
+  /** Put an item into a table, return ReturnValue.ALL_OLD.
     */
   def put[T: Encoder, U: Decoder](
     t: T,
@@ -106,8 +104,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
       jClient
     ).void
 
-  /**
-    * Update an item by partition key P given an update expression
+  /** Update an item by partition key P given an update expression
     * when it fulfills a condition expression.
     * Return Unit (ReturnValue.NONE).
     */
@@ -121,8 +118,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
       jClient
     )
 
-  /**
-    * Update an item by partition key P given an update expression
+  /** Update an item by partition key P given an update expression
     * when it fulfills a condition expression.
     * A Codec of U is required to deserialize return value.
     */
@@ -178,8 +174,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
-  /**
-    * Batch put items into a table where ordering of input items does not matter
+  /** Batch put items into a table where ordering of input items does not matter
     */
   def batchPutUnordered[T: Encoder](
     maxBatchWait: FiniteDuration,
