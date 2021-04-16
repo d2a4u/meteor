@@ -27,8 +27,8 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             Int.MaxValue
           ).compile.toList
-          input.traverse(
-            i => client.put[TestData](table.tableName, i)
+          input.traverse(i =>
+            client.put[TestData](table.tableName, i)
           ).void >> Util.retryOf(retrieval)(
             _.size == input.length
           )
@@ -131,8 +131,8 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             Int.MaxValue
           ).compile.toList
-          testUpdated.traverse(
-            i => client.put[TestData](table.tableName, i)
+          testUpdated.traverse(i =>
+            client.put[TestData](table.tableName, i)
           ) >> Util.retryOf(retrieval)(_.size == input.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
@@ -153,8 +153,8 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             1
           ).chunks.compile.toList
-          input.traverse(
-            i => client.put[TestData](table.tableName, i)
+          input.traverse(i =>
+            client.put[TestData](table.tableName, i)
           ) >> Util.retryOf(retrieval)(
             _.size == input.length
           )
