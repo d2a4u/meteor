@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <link rel="preload" as="font" href="https://d2a4u.github.io/meteor/fonts/vendor/jost/jost-v4-latin-regular.woff2" type="font/woff2" crossorigin>
 <link rel="preload" as="font" href="https://d2a4u.github.io/meteor/fonts/vendor/jost/jost-v4-latin-700.woff2" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="https://d2a4u.github.io/meteor/main.b46cea2cd7bd024ebfd5030a8a2089124e01198aec864b57642a91cb9dc69caf03a6c3bbd51e8a221a09874c8403f80c9f866b8e5c04f06e064cd69354767ce8.css" integrity="sha512-tGzqLNe9Ak6/1QMKiiCJEk4BGYrshktXZCqRy53GnK8DpsO71R6KIhoJh0yEA/gMn4ZrjlwE8G4GTNaTVHZ86A==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://d2a4u.github.io/meteor/main.fc69be714f47216f5aeabd125b560e7a376679049a184553bbff42c82cad02132dbbdd701b8ae1477e7af79e85a9916e2d2f0a865ac1ae699f76354a8bc11d93.css" integrity="sha512-/Gm&#43;cU9HIW9a6r0SW1YOejdmeQSaGEVTu/9CyCytAhMtu91wG4rhR356956FqZFuLS8KhlrBrmmfdjVKi8Edkw==" crossorigin="anonymous">
 <noscript><style>img.lazyload { display: none; }</style></noscript>
   <meta name="robots" content="index, follow">
   <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
@@ -111,7 +111,6 @@ import meteor._ import meteor.codec._ import meteor.syntax._ case class Book(id:
 				<h3>Introduction</h3>
   <ul class="list-unstyled">
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/introduction/getstarted/">Get Started</a></li>
-    <li><a class="docs-link active" href="https://d2a4u.github.io/meteor/docs/introduction/helloworld/">Hello World</a></li>
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/introduction/runtests/">Build and Tests</a></li>
     </ul>
   <h3>Codec</h3>
@@ -127,6 +126,7 @@ import meteor._ import meteor.codec._ import meteor.syntax._ case class Book(id:
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/api/itemactions/">Item Actions</a></li>
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/api/batchactions/">Batch Actions</a></li>
     </ul>
+  <h3>High Level API</h3>
   
 			</nav>        
 		</div>
@@ -141,7 +141,12 @@ import meteor._ import meteor.codec._ import meteor.syntax._ case class Book(id:
         <li></li>
       </ul>
     </li>
-    <li><a href="#write-and-read">Write and Read</a></li>
+    <li><a href="#write-and-read">Write and Read</a>
+      <ul>
+        <li><a href="#using-high-level-api">Using high level API</a></li>
+        <li><a href="#using-low-level-api">Using low level API</a></li>
+      </ul>
+    </li>
   </ul>
 </nav>
   </div>
@@ -186,19 +191,59 @@ from Java&rsquo;s <code>AttributeValue</code>.</p>
 <h4 id="table-and-secondary-index">Table and Secondary Index<a href="#table-and-secondary-index" class="anchor" aria-hidden="true">#</a> </h4>
 <p>DynamoDB actions can be performed against a table or a secondary index of a table. To do so in
 <code>meteor</code>, the table or secondary index needs to be explicitly defined such as:</p>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
-<span class="k">val</span> <span class="n">table</span> <span class="k">=</span> <span class="nc">PartitionKeyTable</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">))</span>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor.api.hi._</span>
+
+<span class="nc">SimpleTable</span><span class="o">[</span><span class="kt">F</span>, <span class="kt">Int</span><span class="o">](</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">),</span> <span class="n">client</span><span class="o">)</span>
 </code></pre></div><p>All supported index types are:</p>
 <ul>
-<li>PartitionKeyTable[P]</li>
-<li>PartitionKeySecondaryIndex[P]</li>
-<li>CompositeKeysTable[P, S]</li>
-<li>CompositeKeysSecondaryIndex[P, S]</li>
+<li><code>SimpleTable[F[_], P]</code> - represent a table with partition key (no sort key)</li>
+<li><code>SecondarySimpleIndex[F[_], P]</code> - represent a secondary index with partition key (no sort key)</li>
+<li><code>CompositeTable[F[_], P, S]</code> - represent a table with partition key and sort key</li>
+<li><code>SecondaryCompositeIndex[F[_], P, S]</code> - represent a secondary index with partition key and sort
+key</li>
 </ul>
-<p>The Java AWS SDK client usually just takes a <code>String</code> of table&rsquo;s name instead. <code>meteor</code> requires a
-table instance to build keys' <code>AttributeValue</code> correctly and tie it to the definition of the table.
-It is also used to deduplicate items in batch actions.</p>
+<p>The Java AWS SDK client usually just takes a <code>String</code> of table&rsquo;s name. However, <code>meteor</code> requires
+type parameters for table and secondary index, which are type(s) for partition key and sort key.
+This is to internally build keys' <code>AttributeValue</code> correctly and to deduplicate items in batch
+actions.</p>
 <h2 id="write-and-read">Write and Read<a href="#write-and-read" class="anchor" aria-hidden="true">#</a> </h2>
+<p>It is recommended to use the high level API to interact with a DynamoDB table for simplicity.
+Low level API provides a Java wrapper client which has complicated interfaces, however, it is still
+useful to use low level API to create, delete or scan a DynamoDB table.</p>
+<h3 id="using-high-level-api">Using high level API<a href="#using-high-level-api" class="anchor" aria-hidden="true">#</a> </h3>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
+<span class="k">import</span> <span class="nn">meteor.api.hi._</span>
+<span class="k">import</span> <span class="nn">cats.effect.</span><span class="o">{</span><span class="nc">ExitCode</span><span class="o">,</span> <span class="nc">IO</span><span class="o">,</span> <span class="nc">IOApp</span><span class="o">}</span>
+
+<span class="k">object</span> <span class="nc">Main</span> <span class="k">extends</span> <span class="nc">IOApp</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">dynamoClientSrc</span> <span class="k">=</span> <span class="nc">Client</span><span class="o">.</span><span class="n">resource</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span>
+  <span class="k">val</span> <span class="n">booksTableSrc</span> <span class="k">=</span> <span class="n">dynamoClientSrc</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span> <span class="n">client</span> <span class="k">=&gt;</span>
+    <span class="nc">SimpleTable</span><span class="o">[</span><span class="kt">IO</span>, <span class="kt">Int</span><span class="o">](</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">),</span> <span class="n">client</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">val</span> <span class="n">lotr</span> <span class="k">=</span> <span class="nc">Book</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">&#34;The Lord of the Rings&#34;</span><span class="o">)</span>
+
+  <span class="k">val</span> <span class="n">found</span> <span class="k">=</span> <span class="n">booksTableSrc</span><span class="o">.</span><span class="n">use</span> <span class="o">{</span> <span class="n">table</span> <span class="k">=&gt;</span>
+    <span class="c1">// To write
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">put</span> <span class="k">=</span> <span class="n">table</span><span class="o">.</span><span class="n">put</span><span class="o">(</span><span class="n">lotr</span><span class="o">)</span> <span class="c1">// return IO[Unit]
+</span><span class="c1"></span>    <span class="c1">// To read - eventually consistent
+</span><span class="c1"></span>    <span class="k">val</span> <span class="n">get</span> <span class="k">=</span>
+      <span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="o">[</span><span class="kt">Book</span><span class="o">](</span>
+        <span class="mi">1</span><span class="o">,</span>
+        <span class="n">consistentRead</span> <span class="k">=</span> <span class="kc">false</span>
+      <span class="o">)</span> <span class="c1">// return IO[Option[Book]]
+</span><span class="c1"></span>
+    <span class="n">put</span><span class="o">.</span><span class="n">flatMap</span><span class="o">(</span><span class="k">_</span> <span class="k">=&gt;</span> <span class="n">get</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">run</span><span class="o">(</span><span class="n">args</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span><span class="k">:</span> <span class="kt">IO</span><span class="o">[</span><span class="kt">ExitCode</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">found</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">book</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">IO</span><span class="o">(</span><span class="n">println</span><span class="o">(</span><span class="s">s&#34;Found </span><span class="si">$book</span><span class="s">&#34;</span><span class="o">))</span>
+      <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nc">IO</span><span class="o">(</span><span class="n">println</span><span class="o">(</span><span class="s">&#34;No book found&#34;</span><span class="o">))</span>
+    <span class="o">}.</span><span class="n">as</span><span class="o">(</span><span class="nc">ExitCode</span><span class="o">.</span><span class="nc">Success</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div><h3 id="using-low-level-api">Using low level API<a href="#using-low-level-api" class="anchor" aria-hidden="true">#</a> </h3>
 <div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
 <span class="k">import</span> <span class="nn">cats.effect.</span><span class="o">{</span><span class="nc">ExitCode</span><span class="o">,</span> <span class="nc">IO</span><span class="o">,</span> <span class="nc">IOApp</span><span class="o">}</span>
 
@@ -273,7 +318,7 @@ It is also used to deduplicate items in batch actions.</p>
 </footer>
     
     <script src="https://d2a4u.github.io/meteor/main.f6b484f556ad1f3bcf6061082139a2f21fa759f13930c39a25fe4a9f78f35e64122c2d86dffd56e67b292dabbda4095d8077194f196e0e348441c106a9f3d40e.js" integrity="sha512-9rSE9VatHzvPYGEIITmi8h&#43;nWfE5MMOaJf5Kn3jzXmQSLC2G3/1W5nspLau9pAldgHcZTxluDjSEQcEGqfPUDg==" crossorigin="anonymous" defer></script>
-  <script src="https://d2a4u.github.io/meteor/index.min.8c61c6e52388e455384012cb245d16da73201c60dd09e3d0b4f17a4bfdc746b75b9b644afd9ce18f4bcbf44b9cc09a92bfe482aa8605e61497f104d73d950e25.js" integrity="sha512-jGHG5SOI5FU4QBLLJF0W2nMgHGDdCePQtPF6S/3HRrdbm2RK/Zzhj0vL9EucwJqSv&#43;SCqoYF5hSX8QTXPZUOJQ==" crossorigin="anonymous" defer></script>
+  <script src="https://d2a4u.github.io/meteor/index.min.833e4569b503845eb988a6be08910323f93eec6ff20b8dcae56a013a7d871527119aa84e3d76fcb65ea947915f8a038a08fa1fddd1e1784bbdc20103c2dce6ea.js" integrity="sha512-gz5FabUDhF65iKa&#43;CJEDI/k&#43;7G/yC43K5WoBOn2HFScRmqhOPXb8tl6pR5FfigOKCPof3dHheEu9wgEDwtzm6g==" crossorigin="anonymous" defer></script>
 
   </body>
 </html>

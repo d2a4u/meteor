@@ -11,25 +11,27 @@
   <meta name="robots" content="index, follow">
   <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
-  <title>Dynosaur Schema - meteor</title>
+  <title>High Level API - meteor</title>
 <meta name="description" content="A Scala wrapper for AWS SDK 2 DynamoDB library using cats effect and fs2.">
-<link rel="canonical" href="https://d2a4u.github.io/meteor/docs/codec/dynosaur/">
+<link rel="canonical" href="https://d2a4u.github.io/meteor/docs/api/highlevel/">
 <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="Dynosaur Schema">
-<meta name="twitter:description" content="The meteor-dynosaur module provides integration with Dynosaur library. It provides implicit conversion from Dynosaur&rsquo;s schema to meteor&rsquo;s codec. This is an experiment feature, hence, it is subjected to change.
-import meteor.dynosaur.formats.conversions._ import meteor.Codec val bookSchema: Schema[Book] = ... val bookCodec: Codec[Book] = implicitly[Codec[Book]] ">
+    <meta name="twitter:title" content="High Level API">
+<meta name="twitter:description" content="The actions API is considered low level because it is a 1-2-1 mapping to the Java AWS SDK calls. In contrast, high level API abstracts over DynamoDB tables which makes it simpler to work with. For example:
+Low level API action:
+import meteor._ import cats.effect.IO val client: Client[IO] = ??? val booksTable = PartitionKeyTable[Int](&#34;books-table&#34;, KeyDef[Int](&#34;id&#34;, DynamoDbType.N)) val lotr = Book(1, &#34;The Lord of the Rings&#34;) val get = client.get[Int, Book]( booksTable, 1, consistentRead = false ) High level API table:">
 
 <meta name="twitter:site" content="@">
 <meta name="twitter:creator" content="@">
 
-<meta property="og:title" content="Dynosaur Schema">
-<meta property="og:description" content="The meteor-dynosaur module provides integration with Dynosaur library. It provides implicit conversion from Dynosaur&rsquo;s schema to meteor&rsquo;s codec. This is an experiment feature, hence, it is subjected to change.
-import meteor.dynosaur.formats.conversions._ import meteor.Codec val bookSchema: Schema[Book] = ... val bookCodec: Codec[Book] = implicitly[Codec[Book]] ">
+<meta property="og:title" content="High Level API">
+<meta property="og:description" content="The actions API is considered low level because it is a 1-2-1 mapping to the Java AWS SDK calls. In contrast, high level API abstracts over DynamoDB tables which makes it simpler to work with. For example:
+Low level API action:
+import meteor._ import cats.effect.IO val client: Client[IO] = ??? val booksTable = PartitionKeyTable[Int](&#34;books-table&#34;, KeyDef[Int](&#34;id&#34;, DynamoDbType.N)) val lotr = Book(1, &#34;The Lord of the Rings&#34;) val get = client.get[Int, Book]( booksTable, 1, consistentRead = false ) High level API table:">
 <meta property="og:type" content="article">
-<meta property="og:url" content="https://d2a4u.github.io/meteor/docs/codec/dynosaur/">
+<meta property="og:url" content="https://d2a4u.github.io/meteor/docs/api/highlevel/">
 
-  <meta property="article:published_time" content="2021-01-26T22:19:06+00:00">
-  <meta property="article:modified_time" content="2021-01-26T22:19:06+00:00">
+  <meta property="article:published_time" content="2021-03-06T07:43:39+00:00">
+  <meta property="article:modified_time" content="2021-03-06T07:43:39+00:00">
   <meta property="og:site_name" content="meteor">
 
 <meta property="article:publisher" content="https://www.facebook.com/">
@@ -53,13 +55,13 @@ import meteor.dynosaur.formats.conversions._ import meteor.Codec val bookSchema:
     },{
         "@type": "ListItem",
         "position":  3 ,
-        "name": "Codec",
-        "item": "https:\/\/d2a4u.github.io\/meteor\/docs\/codec\/"
+        "name": "Api",
+        "item": "https:\/\/d2a4u.github.io\/meteor\/docs\/api\/"
     },{
         "@type": "ListItem",
         "position":  4 ,
-        "name": "Dynosaur",
-        "item": "https:\/\/d2a4u.github.io\/meteor\/docs\/codec\/dynosaur\/"
+        "name": "Highlevel",
+        "item": "https:\/\/d2a4u.github.io\/meteor\/docs\/api\/highlevel\/"
     }]
 }
 </script>
@@ -114,7 +116,7 @@ import meteor.dynosaur.formats.conversions._ import meteor.Codec val bookSchema:
   <h3>Codec</h3>
   <ul class="list-unstyled">
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/codec/meteor/">meteor Codec</a></li>
-    <li><a class="docs-link active" href="https://d2a4u.github.io/meteor/docs/codec/dynosaur/">Dynosaur Schema</a></li>
+    <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/codec/dynosaur/">Dynosaur Schema</a></li>
     <li><a class="docs-link" href="https://d2a4u.github.io/meteor/docs/codec/scanamo/">Scanamo Format</a></li>
     </ul>
   <h3>API</h3>
@@ -131,35 +133,75 @@ import meteor.dynosaur.formats.conversions._ import meteor.Codec val bookSchema:
 		<nav class="docs-toc d-none d-xl-block col-xl-3" aria-label="Secondary navigation">
 			<div class="page-links">
     <h3>On this page</h3>
-    <nav id="TableOfContents"></nav>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#supports">Supports</a></li>
+    <li><a href="#limitations">Limitations</a></li>
+  </ul>
+</nav>
   </div>
 
 		</nav>
 		<main class="docs-content col-lg-11 col-xl-9">
-		<h1>Dynosaur Schema</h1>
+		<h1>High Level API</h1>
 			<p class="lead"></p>
-			<p>The <code>meteor-dynosaur</code> module provides integration with <a href="https://systemfw.org/dynosaur/#/">Dynosaur library</a>.
-It provides implicit conversion from <code>Dynosaur</code>&rsquo;s schema to <code>meteor</code>&rsquo;s codec. This is an experiment
-feature, hence, it is subjected to change.</p>
-<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor.dynosaur.formats.conversions._</span>
-<span class="k">import</span> <span class="nn">meteor.Codec</span>
+			<p>The actions API is considered low level because it is a 1-2-1 mapping to the Java AWS SDK calls.
+In contrast, high level API abstracts over DynamoDB tables which makes it simpler to work with.
+For example:</p>
+<p><strong>Low level API action:</strong></p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
+<span class="k">import</span> <span class="nn">cats.effect.IO</span>
 
-<span class="k">val</span> <span class="n">bookSchema</span><span class="k">:</span> <span class="kt">Schema</span><span class="o">[</span><span class="kt">Book</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
-<span class="k">val</span> <span class="n">bookCodec</span><span class="k">:</span> <span class="kt">Codec</span><span class="o">[</span><span class="kt">Book</span><span class="o">]</span> <span class="k">=</span> <span class="n">implicitly</span><span class="o">[</span><span class="kt">Codec</span><span class="o">[</span><span class="kt">Book</span><span class="o">]]</span>
-</code></pre></div>
+<span class="k">val</span> <span class="n">client</span><span class="k">:</span> <span class="kt">Client</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span> <span class="k">=</span> <span class="o">???</span>
+<span class="k">val</span> <span class="n">booksTable</span> <span class="k">=</span> <span class="nc">PartitionKeyTable</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">))</span>
+<span class="k">val</span> <span class="n">lotr</span> <span class="k">=</span> <span class="nc">Book</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">&#34;The Lord of the Rings&#34;</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="n">get</span> <span class="k">=</span>
+  <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="o">[</span><span class="kt">Int</span>, <span class="kt">Book</span><span class="o">](</span>
+    <span class="n">booksTable</span><span class="o">,</span>
+    <span class="mi">1</span><span class="o">,</span>
+    <span class="n">consistentRead</span> <span class="k">=</span> <span class="kc">false</span>
+  <span class="o">)</span>
+</code></pre></div><p><strong>High level API table:</strong></p>
+<div class="highlight"><pre class="chroma"><code class="language-scala" data-lang="scala"><span class="k">import</span> <span class="nn">meteor._</span>
+<span class="k">import</span> <span class="nn">meteor.api.hi._</span>
+<span class="k">import</span> <span class="nn">cats.effect.IO</span>
+
+<span class="k">val</span> <span class="n">client</span><span class="k">:</span> <span class="kt">Client</span><span class="o">[</span><span class="kt">IO</span><span class="o">]</span> <span class="k">=</span> <span class="o">???</span>
+<span class="k">val</span> <span class="n">booksTable</span> <span class="k">=</span> <span class="nc">SimpleTable</span><span class="o">[</span><span class="kt">IO</span>, <span class="kt">Int</span><span class="o">](</span><span class="s">&#34;books-table&#34;</span><span class="o">,</span> <span class="nc">KeyDef</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="s">&#34;id&#34;</span><span class="o">,</span> <span class="nc">DynamoDbType</span><span class="o">.</span><span class="n">N</span><span class="o">),</span> <span class="n">client</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">lotr</span> <span class="k">=</span> <span class="nc">Book</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="s">&#34;The Lord of the Rings&#34;</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="n">put</span> <span class="k">=</span> <span class="n">booksTable</span><span class="o">.</span><span class="n">get</span><span class="o">[</span><span class="kt">Book</span><span class="o">](</span><span class="mi">1</span><span class="o">,</span> <span class="n">consistentRead</span> <span class="k">=</span> <span class="kc">false</span><span class="o">)</span>
+</code></pre></div><p>The differences might not look like much, but there are several benefits that high level API
+provides.</p>
+<p>When using low level API actions, it can get confusing sometimes when there are several
+overloaded methods for the same actions to cater use cases for a table with a partition key or for
+a table with composite keys. The high level API removes this confusion by only provide the methods
+that are actionable on the table. It also bounds the key&rsquo;s type(s) to table&rsquo;s definition to reduce
+the number of type parameters required. Context bound of <code>F[_]</code> is now also on the method&rsquo;s level.</p>
+<h2 id="supports">Supports<a href="#supports" class="anchor" aria-hidden="true">#</a> </h2>
+<ul>
+<li><code>SimpleTable</code> represent a DynamoDB table which only has partition key index.</li>
+<li><code>CompositeTable</code> represent a DynamoDB table which has both partition key and sort key indexes.</li>
+<li><code>SimpleIndex</code> represent a secondary index on a partition key.</li>
+<li><code>SecondaryCompositeIndex</code> represent a secondary index on composite keys.</li>
+</ul>
+<h2 id="limitations">Limitations<a href="#limitations" class="anchor" aria-hidden="true">#</a> </h2>
+<p>Table actions and scan actions are not supported in high level API to keep them flexible.</p>
+
 			<div class="docs-navigation d-flex justify-content-between">
 	
-	<a href="https://d2a4u.github.io/meteor/docs/codec/meteor/">
+	<a href="https://d2a4u.github.io/meteor/docs/api/itemactions/">
 			<div class="card my-1">
 				<div class="card-body py-2">
-					&larr; meteor Codec
+					&larr; Item Actions
 				</div>
 			</div>
 		</a>
-	<a class="ml-auto" href="https://d2a4u.github.io/meteor/docs/codec/scanamo/">
+	<a class="ml-auto" href="https://d2a4u.github.io/meteor/docs/api/batchactions/">
 			<div class="card my-1">
 				<div class="card-body py-2">
-					Scanamo Format &rarr;
+					Batch Actions &rarr;
 				</div>
 			</div>
 		</a>
