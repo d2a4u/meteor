@@ -14,12 +14,6 @@ import scala.jdk.CollectionConverters._
 trait PutOps {
   def putOp[F[_]: Concurrent, T: Encoder](
     tableName: String,
-    t: T
-  )(jClient: DynamoDbAsyncClient): F[Unit] =
-    putOp[F, T](tableName, t, Expression.empty)(jClient)
-
-  def putOp[F[_]: Concurrent, T: Encoder](
-    tableName: String,
     t: T,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
@@ -53,12 +47,6 @@ trait PutOps {
         ConditionalCheckFailed(err.getMessage)
     }
   }
-
-  def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
-    tableName: String,
-    t: T
-  )(jClient: DynamoDbAsyncClient): F[Option[U]] =
-    putOp[F, T, U](tableName, t, Expression.empty)(jClient)
 
   def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
     tableName: String,

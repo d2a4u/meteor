@@ -57,7 +57,7 @@ class RetrieveOpsSpec extends ITSpec {
     test: TestData =>
       val input = test.copy(str = "test", int = 0)
       val result =
-        compositeKeysWithSecondaryIndexTable[IO]("second-index").use {
+        compositeKeysWithSecondaryIndexTable[IO].use {
           case (client, table, secondaryIndex) =>
             val retrieval = client.retrieve[String, Int, TestData](
               secondaryIndex,

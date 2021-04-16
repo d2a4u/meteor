@@ -5,16 +5,23 @@ import java.util.UUID
 import cats.effect.concurrent.Ref
 import cats.effect.{Concurrent, Resource, Sync, Timer}
 import cats.implicits._
+import meteor.api.hi._
+import org.scalacheck.Arbitrary
 import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
   AwsCredentialsProviderChain
 }
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.concurrent.duration._
 
-object Util {
+private[meteor] object Util {
+  type SimpleTableWithGlobIndex[F[_], T] = SimpleTable[F, T]
+  type CompositeTableWithGlobIndex[F[_], T, U] = CompositeTable[F, T, U]
+  type CompositeKeysTableWithGlobIndex[T, U] = CompositeKeysTable[T, U]
+
   def retryOf[F[_]: Timer: Sync, T](
     f: F[T],
     interval: FiniteDuration = 1.second,
@@ -40,78 +47,208 @@ object Util {
   }.flatten
 
   def partitionKeyTable[F[_]: Concurrent: Timer]
-    : Resource[F, (Client[F], PartitionKeyTable[Id])] = {
-    val hashKey = KeyDef[Id]("id", DynamoDbType.S)
-    for {
-      client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
-      randomName <- Resource.liftF(
-        Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
-      )
-      table = PartitionKeyTable[Id](randomName, hashKey)
-      _ <- Resource.make(
-        client.createPartitionKeyTable(
-          randomName,
-          hashKey,
-          BillingMode.PAY_PER_REQUEST
-        )
-      )(_ => client.deleteTable(randomName))
-    } yield (client, table)
-  }
+    : Resource[F, (Client[F], PartitionKeyTable[Id])] =
+    internalSimpleResources[F].map {
+      case (c, t, _, _, _) => (c, t)
+    }
+
+  def simpleTable[F[_]: Concurrent: Timer]: Resource[F, SimpleTable[F, Id]] =
+    internalSimpleResources[F].map {
+      case (_, _, t, _, _) => t
+    }
+
+  def secondarySimpleIndex[F[_]: Concurrent: Timer]
+    : Resource[F, (SimpleTable[F, Id], SecondarySimpleIndex[F, Range])] =
+    internalSimpleResources[F].map {
+      case (_, _, _, t, i) => (t, i)
+    }
 
   def compositeKeysTable[F[_]: Concurrent: Timer]
-    : Resource[F, (Client[F], CompositeKeysTable[Id, Range])] = {
-    val hashKey = KeyDef[Id]("id", DynamoDbType.S)
-    val rangeKey = KeyDef[Range]("range", DynamoDbType.S)
-    for {
-      client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
-      randomName <- Resource.liftF(
-        Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
-      )
-      table = CompositeKeysTable[Id, Range](randomName, hashKey, rangeKey)
-      _ <- Resource.make(
-        client.createCompositeKeysTable(
-          randomName,
-          hashKey,
-          rangeKey,
-          BillingMode.PAY_PER_REQUEST
-        )
-      )(_ => client.deleteTable(randomName))
-    } yield (client, table)
-  }
+    : Resource[F, (Client[F], CompositeKeysTable[Id, Range])] =
+    internalCompositeResources[F].map {
+      case (c, t, _, _, _, _, _) => (c, t)
+    }
 
-  def compositeKeysWithSecondaryIndexTable[F[_]: Concurrent: Timer](
-    indexName: String
-  ): Resource[
+  def compositeTable[F[_]: Concurrent: Timer]
+    : Resource[F, CompositeTable[F, Id, Range]] =
+    internalCompositeResources[F].map {
+      case (_, _, _, _, t, _, _) => t
+    }
+
+  def secondaryCompositeIndex[F[_]: Concurrent: Timer]: Resource[
+    F,
+    (CompositeTable[F, Id, Range], SecondaryCompositeIndex[F, String, Int])
+  ] =
+    internalCompositeResources[F].map {
+      case (_, _, _, _, _, t, i) => (t, i)
+    }
+
+  def compositeKeysWithSecondaryIndexTable[F[_]: Concurrent: Timer]: Resource[
     F,
     (
       Client[F],
       CompositeKeysTable[Id, Range],
       CompositeKeysSecondaryIndex[String, Int]
     )
+  ] =
+    internalCompositeResources[F].map {
+      case (c, _, t, i, _, _, _) => (c, t, i)
+    }
+
+  private def genName[F[_]: Sync](prefix: String): Resource[F, String] = {
+    Resource.liftF[F, String](
+      Sync[F].delay(s"$prefix-${UUID.randomUUID()}")
+    )
+  }
+
+  private def jClientSrc[F[_]: Sync] = {
+    Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
+      Sync[F].delay(DynamoDbAsyncClient.builder().credentialsProvider(
+        dummyCred
+      ).endpointOverride(localDynamo).region(Region.EU_WEST_1).build())
+    }
+  }
+
+  private def internalSimpleResources[F[_]: Concurrent: Timer]: Resource[
+    F,
+    (
+      Client[F],
+      PartitionKeyTable[Id],
+      SimpleTable[F, Id],
+      SimpleTableWithGlobIndex[F, Id],
+      SecondarySimpleIndex[F, Range]
+    )
+  ] = {
+    val hashKey1 = KeyDef[Id]("id", DynamoDbType.S)
+    val glob2ndHashKey = KeyDef[Range]("range", DynamoDbType.S)
+    for {
+      jClient <- jClientSrc[F]
+      client = Client[F](jClient)
+      simpleRandomName <- genName("simple-table")
+      simpleRandomNameWithGlobIndex <- genName("simple-table-with-glob-index")
+      simpleRandomIndexName <- genName("global-secondary-simple-index")
+      pkt = PartitionKeyTable[Id](
+        simpleRandomName,
+        hashKey1
+      )
+      st = SimpleTable[F, Id](
+        simpleRandomName,
+        hashKey1,
+        jClient
+      )
+      stgi = SimpleTable[F, Id](
+        simpleRandomNameWithGlobIndex,
+        hashKey1,
+        jClient
+      )
+      ssi = SecondarySimpleIndex[F, Range](
+        simpleRandomNameWithGlobIndex,
+        simpleRandomIndexName,
+        glob2ndHashKey,
+        jClient
+      )
+      _ <- Resource.make(
+        client.createPartitionKeyTable(
+          simpleRandomName,
+          hashKey1,
+          BillingMode.PAY_PER_REQUEST
+        )
+      )(_ => client.deleteTable(simpleRandomName))
+      _ <- Resource.make(
+        client.createPartitionKeyTable(
+          simpleRandomNameWithGlobIndex,
+          hashKey1,
+          BillingMode.PAY_PER_REQUEST,
+          Map(hashKey1.value, glob2ndHashKey.value),
+          Set(
+            GlobalSecondaryIndex
+              .builder()
+              .indexName(simpleRandomIndexName)
+              .keySchema(
+                KeySchemaElement.builder().attributeName("range").keyType(
+                  KeyType.HASH
+                ).build()
+              ).projection(Projection.builder().projectionType(
+                ProjectionType.ALL
+              ).build())
+              .build()
+          )
+        )
+      )(_ => client.deleteTable(simpleRandomNameWithGlobIndex))
+    } yield (client, pkt, st, stgi, ssi)
+  }
+
+  private def internalCompositeResources[F[_]: Concurrent: Timer]: Resource[
+    F,
+    (
+      Client[F],
+      CompositeKeysTable[Id, Range],
+      CompositeKeysTableWithGlobIndex[Id, Range],
+      CompositeKeysSecondaryIndex[String, Int],
+      CompositeTable[F, Id, Range],
+      CompositeTableWithGlobIndex[F, Id, Range],
+      SecondaryCompositeIndex[F, String, Int]
+    )
   ] = {
     val hashKey1 = KeyDef[Id]("id", DynamoDbType.S)
     val rangeKey1 = KeyDef[Range]("range", DynamoDbType.S)
     val hashKey2 = KeyDef[String]("str", DynamoDbType.S)
     val rangeKey2 = KeyDef[Int]("int", DynamoDbType.N)
+
     for {
-      client <- Client.resource[F](dummyCred, localDynamo, Region.EU_WEST_1)
-      randomName <- Resource.liftF(
-        Sync[F].delay(s"meteor-test-${UUID.randomUUID()}")
+      jClient <- jClientSrc[F]
+      client = Client[F](jClient)
+      compositeRandomName <- genName("composite-table")
+      compositeRandomNameWithGlobIndex <- genName(
+        "composite-table-with-glob-index"
       )
-      table = CompositeKeysTable[Id, Range](
-        randomName,
+      compositeRandomIndexName <- genName("global-secondary-composite-index")
+      ckt = CompositeKeysTable[Id, Range](
+        compositeRandomName,
         hashKey1,
         rangeKey1
       )
-      index = CompositeKeysSecondaryIndex[String, Int](
-        randomName,
-        indexName,
+      cktsi = CompositeKeysTable[Id, Range](
+        compositeRandomNameWithGlobIndex,
+        hashKey1,
+        rangeKey1
+      )
+      cksi = CompositeKeysSecondaryIndex[String, Int](
+        compositeRandomNameWithGlobIndex,
+        compositeRandomIndexName,
         hashKey2,
         rangeKey2
       )
+      ct = CompositeTable[F, Id, Range](
+        compositeRandomName,
+        hashKey1,
+        rangeKey1,
+        jClient
+      )
+      ctwg = CompositeTable[F, Id, Range](
+        compositeRandomNameWithGlobIndex,
+        hashKey1,
+        rangeKey1,
+        jClient
+      )
+      sci = SecondaryCompositeIndex[F, String, Int](
+        compositeRandomNameWithGlobIndex,
+        compositeRandomIndexName,
+        hashKey2,
+        rangeKey2,
+        jClient
+      )
       _ <- Resource.make(
         client.createCompositeKeysTable[Id, Range](
-          randomName,
+          compositeRandomName,
+          hashKey1,
+          rangeKey1,
+          BillingMode.PAY_PER_REQUEST
+        )
+      )(_ => client.deleteTable(compositeRandomName))
+      _ <- Resource.make(
+        client.createCompositeKeysTable[Id, Range](
+          compositeRandomNameWithGlobIndex,
           hashKey1,
           rangeKey1,
           BillingMode.PAY_PER_REQUEST,
@@ -123,7 +260,7 @@ object Util {
           ),
           Set(
             GlobalSecondaryIndex.builder().indexName(
-              indexName
+              compositeRandomIndexName
             ).keySchema(
               KeySchemaElement.builder().attributeName("str").keyType(
                 KeyType.HASH
@@ -137,8 +274,8 @@ object Util {
           ),
           Set.empty
         )
-      )(_ => client.deleteTable(randomName))
-    } yield (client, table, index)
+      )(_ => client.deleteTable(compositeRandomNameWithGlobIndex))
+    } yield (client, ckt, cktsi, cksi, ct, ctwg, sci)
   }
 
   def dummyCred: AwsCredentialsProviderChain =
@@ -150,4 +287,7 @@ object Util {
     )
 
   def localDynamo: URI = URI.create("http://localhost:8000")
+
+  def sample[T: Arbitrary]: T =
+    implicitly[Arbitrary[T]].arbitrary.sample.get
 }
