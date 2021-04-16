@@ -1,6 +1,6 @@
 # meteor
 
-All documentation is available on the [microsite](https://d2a4u.github.io/meteor/) - WIP
+All documentation is available on the [microsite](https://d2a4u.github.io/meteor/)
 
 ## Credit
 
