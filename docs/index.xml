@@ -53,14 +53,14 @@ Expression( expression = &amp;#34;#pAt BETWEEN :from AND :to&amp;#34;, attribute
     </item>
     
     <item>
-      <title>Table Actions</title>
-      <link>https://d2a4u.github.io/meteor/docs/api/tableactions/</link>
-      <pubDate>Wed, 27 Jan 2021 00:17:07 +0000</pubDate>
+      <title>High Level API</title>
+      <link>https://d2a4u.github.io/meteor/docs/api/highlevel/</link>
+      <pubDate>Sat, 06 Mar 2021 07:43:39 +0000</pubDate>
       
-      <guid>https://d2a4u.github.io/meteor/docs/api/tableactions/</guid>
-      <description>Create Table creation returns F[Unit] where F[_] is semantically blocked (no actual JVM thread being blocked) until the table has been created and its status is available.
-import meteor._ val creation: F[Unit] = client.createPartitionKeyTable( &amp;#34;books-table&amp;#34;, KeyDef[Int](&amp;#34;id&amp;#34;, DynamoDbType.N), BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:
-import software.amazon.awssdk.services.dynamodb.model._ val global2ndIndex = GlobalSecondaryIndex .builder() .indexName(&amp;#34;books-by-author&amp;#34;) .keySchema( KeySchemaElement.builder().attributeName(&amp;#34;author&amp;#34;).keyType(KeyType.HASH).build(), KeySchemaElement.builder().attributeName(&amp;#34;title&amp;#34;).keyType(KeyType.RANGE).build() ) .</description>
+      <guid>https://d2a4u.github.io/meteor/docs/api/highlevel/</guid>
+      <description>The actions API is considered low level because it is a 1-2-1 mapping to the Java AWS SDK calls. In contrast, high level API abstracts over DynamoDB tables which makes it simpler to work with. For example:
+Low level API action:
+import meteor._ import cats.effect.IO val client: Client[IO] = ??? val booksTable = PartitionKeyTable[Int](&amp;#34;books-table&amp;#34;, KeyDef[Int](&amp;#34;id&amp;#34;, DynamoDbType.N)) val lotr = Book(1, &amp;#34;The Lord of the Rings&amp;#34;) val get = client.get[Int, Book]( booksTable, 1, consistentRead = false ) High level API table:</description>
     </item>
     
     <item>
@@ -75,17 +75,6 @@ def get[P: Encoder, S: Encoder, U: Decoder]( table: CompositeKeysTable[P, S], pa
     </item>
     
     <item>
-      <title>High Level API</title>
-      <link>https://d2a4u.github.io/meteor/docs/api/highlevel/</link>
-      <pubDate>Sat, 06 Mar 2021 07:43:39 +0000</pubDate>
-      
-      <guid>https://d2a4u.github.io/meteor/docs/api/highlevel/</guid>
-      <description>The actions API is considered low level because it is a 1-2-1 mapping to the Java AWS SDK calls. In contrast, high level API abstracts over DynamoDB tables which makes it simpler to work with. For example:
-Low level API action:
-import meteor._ import cats.effect.IO val client: Client[IO] = ??? val booksTable = PartitionKeyTable[Int](&amp;#34;books-table&amp;#34;, KeyDef[Int](&amp;#34;id&amp;#34;, DynamoDbType.N)) val lotr = Book(1, &amp;#34;The Lord of the Rings&amp;#34;) val get = client.get[Int, Book]( booksTable, 1, consistentRead = false ) High level API table:</description>
-    </item>
-    
-    <item>
       <title>Batch Actions</title>
       <link>https://d2a4u.github.io/meteor/docs/api/batchactions/</link>
       <pubDate>Wed, 27 Jan 2021 00:17:46 +0000</pubDate>
@@ -94,6 +83,17 @@ import meteor._ import cats.effect.IO val client: Client[IO] = ??? val booksTabl
       <description>All batch APIs require a Java BackoffStrategy. A default value is provided by:
 import meteor.Client Client.BackoffStrategy.default The settings for this default is based on AWS SDK&amp;rsquo;s default for DynamoDbRetryPolicy.
 De-duplication DynamoDB batch write action has validation on performing multiple operations on the same item, such as, create and delete the same item in the same batch request. meteor provides de-duplication internally such that, within a batch, the later action is chosen over all previous actions on the same item.</description>
+    </item>
+    
+    <item>
+      <title>Table Actions</title>
+      <link>https://d2a4u.github.io/meteor/docs/api/tableactions/</link>
+      <pubDate>Wed, 27 Jan 2021 00:17:07 +0000</pubDate>
+      
+      <guid>https://d2a4u.github.io/meteor/docs/api/tableactions/</guid>
+      <description>Create Table creation returns F[Unit] where F[_] is semantically blocked (no actual JVM thread being blocked) until the table has been created and its status is available.
+import meteor._ val creation: F[Unit] = client.createPartitionKeyTable( &amp;#34;books-table&amp;#34;, KeyDef[Int](&amp;#34;id&amp;#34;, DynamoDbType.N), BillingMode.PAY_PER_REQUEST ) attributeDefinition is required only when there are secondary indexes on those attributes. For example, given the following secondary index:
+import software.amazon.awssdk.services.dynamodb.model._ val global2ndIndex = GlobalSecondaryIndex .builder() .indexName(&amp;#34;books-by-author&amp;#34;) .keySchema( KeySchemaElement.builder().attributeName(&amp;#34;author&amp;#34;).keyType(KeyType.HASH).build(), KeySchemaElement.builder().attributeName(&amp;#34;title&amp;#34;).keyType(KeyType.RANGE).build() ) .</description>
     </item>
     
     <item>
