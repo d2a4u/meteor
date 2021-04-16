@@ -14,12 +14,6 @@ import scala.jdk.CollectionConverters._
 trait PutOps {
   def putOp[F[_]: Concurrent, T: Encoder](
     tableName: String,
-    t: T
-  )(jClient: DynamoDbAsyncClient): F[Unit] =
-    putOp[F, T](tableName, t, Expression.empty)(jClient)
-
-  def putOp[F[_]: Concurrent, T: Encoder](
-    tableName: String,
     t: T,
     condition: Expression
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
@@ -28,35 +22,31 @@ trait PutOps {
         .tableName(tableName)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.NONE)
-    val builder = if (condition.isEmpty) {
-      builder0
-    } else {
-      val builder1 = builder0
-        .conditionExpression(condition.expression)
-      val builder2 = if (condition.attributeValues.nonEmpty) {
+    val builder =
+      if (condition.isEmpty) {
         builder0
-          .expressionAttributeValues(condition.attributeValues.asJava)
       } else {
-        builder1
+        val builder1 = builder0
+          .conditionExpression(condition.expression)
+        val builder2 =
+          if (condition.attributeValues.nonEmpty) {
+            builder0
+              .expressionAttributeValues(condition.attributeValues.asJava)
+          } else {
+            builder1
+          }
+        if (condition.attributeNames.nonEmpty) {
+          builder2.expressionAttributeNames(condition.attributeNames.asJava)
+        } else {
+          builder2
+        }
       }
-      if (condition.attributeNames.nonEmpty) {
-        builder2.expressionAttributeNames(condition.attributeNames.asJava)
-      } else {
-        builder2
-      }
-    }
     val req = builder.build()
     (() => jClient.putItem(req)).liftF[F].void.adaptError {
       case err: ConditionalCheckFailedException =>
         ConditionalCheckFailed(err.getMessage)
     }
   }
-
-  def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
-    tableName: String,
-    t: T
-  )(jClient: DynamoDbAsyncClient): F[Option[U]] =
-    putOp[F, T, U](tableName, t, Expression.empty)(jClient)
 
   def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
     tableName: String,
@@ -68,23 +58,25 @@ trait PutOps {
         .tableName(tableName)
         .item(Encoder[T].write(t).m())
         .returnValues(ReturnValue.ALL_OLD)
-    val builder = if (condition.isEmpty) {
-      builder0
-    } else {
-      val builder1 = builder0
-        .conditionExpression(condition.expression)
-      val builder2 = if (condition.attributeValues.nonEmpty) {
+    val builder =
+      if (condition.isEmpty) {
         builder0
-          .expressionAttributeValues(condition.attributeValues.asJava)
       } else {
-        builder1
+        val builder1 = builder0
+          .conditionExpression(condition.expression)
+        val builder2 =
+          if (condition.attributeValues.nonEmpty) {
+            builder0
+              .expressionAttributeValues(condition.attributeValues.asJava)
+          } else {
+            builder1
+          }
+        if (condition.attributeNames.nonEmpty) {
+          builder2.expressionAttributeNames(condition.attributeNames.asJava)
+        } else {
+          builder2
+        }
       }
-      if (condition.attributeNames.nonEmpty) {
-        builder2.expressionAttributeNames(condition.attributeNames.asJava)
-      } else {
-        builder2
-      }
-    }
     val req = builder.build()
     (() => jClient.putItem(req)).liftF[F].flatMap { resp =>
       if (resp.hasAttributes) {
