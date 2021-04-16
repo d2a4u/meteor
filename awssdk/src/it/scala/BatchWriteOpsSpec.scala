@@ -3,7 +3,6 @@ package meteor
 import cats.implicits._
 import cats.effect.IO
 import meteor.Util._
-import org.scalacheck.Arbitrary
 
 import scala.concurrent.duration._
 
@@ -15,7 +14,7 @@ class BatchWriteOpsSpec extends ITSpec {
 
   it should "batch put items via Pipe" in {
     val size = 200
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val input = (0 until size).map { i =>
       testData.copy(id = Id(i.toString))
     }
@@ -54,7 +53,7 @@ class BatchWriteOpsSpec extends ITSpec {
 
   it should "batch put fixed size Seq" in {
     val size = 200
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val input = (0 until size).map { i =>
       testData.copy(id = Id(i.toString))
     }
@@ -91,7 +90,7 @@ class BatchWriteOpsSpec extends ITSpec {
 
   it should "preserve order when batch put items" in {
     val size = 200
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val input = fs2.Stream.range(0, size).map { i =>
       testData.copy(int = i)
     }
@@ -113,7 +112,7 @@ class BatchWriteOpsSpec extends ITSpec {
   }
 
   it should "de-duplicate put, put and delete item correctly" in {
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
 
     val input = fs2.Stream(
       testData.asRight[(Id, Range)],
@@ -129,7 +128,7 @@ class BatchWriteOpsSpec extends ITSpec {
   }
 
   it should "de-duplicate put, delete and put item correctly" in {
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val updatedTestData = testData.copy(str = "updated")
 
     val input = fs2.Stream(
@@ -146,7 +145,7 @@ class BatchWriteOpsSpec extends ITSpec {
   }
 
   it should "de-duplicate delete put and put item correctly" in {
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val updatedTestData = testData.copy(str = "updated")
 
     val input = fs2.Stream(
@@ -163,7 +162,7 @@ class BatchWriteOpsSpec extends ITSpec {
   }
 
   it should "de-duplicate delete put and delete item correctly" in {
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
 
     val input = fs2.Stream(
       (testData.id, testData.range).asLeft[TestData],
@@ -180,7 +179,7 @@ class BatchWriteOpsSpec extends ITSpec {
 
   it should "batch put items unordered" in {
     val size = 200
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val input = (0 until size).map { i =>
       testData.copy(id = Id(i.toString))
     }

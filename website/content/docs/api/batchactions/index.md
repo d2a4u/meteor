@@ -112,6 +112,13 @@ The following scenarios are supported:
 - batch delete items (built-in de-duplication)
 - batch put and delete items (built-in de-duplication)
 
+#### Parallelism
+
+Some batch write actions require a parallelism parameter. This is used to optimism calls to 
+DynamoDB by sending requests in parallel. However, because under the hood, the Java AWS SDK uses 
+a HTTP client to call DynamoDB which has a bounded number of connections, hence, the parallelism 
+parameter cannot be greater than the number of connections.
+
 #### Batch Put or Batch Delete Items
 
 Batch put or batch delete items work on a single table. De-duplication is built in, within the same 
