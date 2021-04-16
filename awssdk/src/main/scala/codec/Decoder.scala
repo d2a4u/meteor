@@ -212,4 +212,6 @@ object Decoder {
           ]]
         }
     }
+
+  implicit val dynamoDecoderForUnit: Decoder[Unit] = const(())
 }
