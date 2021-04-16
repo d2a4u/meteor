@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'series/0.x'
     paths:
       - 'website/**'
 
