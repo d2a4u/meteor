@@ -3,8 +3,11 @@ package api.hi
 
 import cats.effect.IO
 import cats.implicits._
+import fs2._
 import meteor.Util._
 import meteor.codec.Encoder
+
+import scala.concurrent.duration.DurationInt
 
 class CompositeIndexSpec extends ITSpec {
 
@@ -43,6 +46,24 @@ class CompositeIndexSpec extends ITSpec {
     }
   }
 
+  it should "retrieve multiple items for the same partition key" in {
+    val partitionKey = Id("foo")
+    val data = List.fill(200)(sample[TestData]).map { item =>
+      item.copy(id = partitionKey)
+    }
+    val result = compositeTable[IO].use { table =>
+      table.batchPut[TestData](
+        1.minute,
+        Client.BackoffStrategy.default
+      ).apply(Stream.emits(data)).compile.drain >> table.retrieve[TestData](
+        partitionKey,
+        consistentRead = true,
+        500
+      ).compile.toList
+    }.unsafeToFuture().futureValue
+    result should contain theSameElementsAs data
+  }
+
   "SecondaryCompositeIndex" should "filter results by given filter expression" in {
     def retrieval(index: CompositeIndex[IO, String, Int], cond: Boolean) =
       index.retrieve[TestData](
@@ -75,5 +96,23 @@ class CompositeIndexSpec extends ITSpec {
       case _ =>
         fail()
     }
+  }
+
+  it should "retrieve multiple items for the same partition key" in {
+    val partitionKey = "foo"
+    val data = List.fill(200)(sample[TestData]).map { item =>
+      item.copy(str = partitionKey)
+    }
+    val result = secondaryCompositeIndex[IO].use {
+      case (table, index) =>
+        table.batchPut[TestData](
+          1.minute,
+          Client.BackoffStrategy.default
+        ).apply(Stream.emits(data)).compile.drain >> index.retrieve[TestData](
+          partitionKey,
+          500
+        ).compile.toList
+    }.unsafeToFuture().futureValue
+    result should contain theSameElementsAs data
   }
 }

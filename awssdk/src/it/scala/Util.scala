@@ -11,6 +11,7 @@ import software.amazon.awssdk.auth.credentials.{
   AwsCredentials,
   AwsCredentialsProviderChain
 }
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
@@ -94,10 +95,18 @@ private[meteor] object Util {
       case (c, _, t, i, _, _, _) => (c, t, i)
     }
 
-  def genName[F[_]: Sync](prefix: String): Resource[F, String] = {
+  private def genName[F[_]: Sync](prefix: String): Resource[F, String] = {
     Resource.liftF[F, String](
       Sync[F].delay(s"$prefix-${UUID.randomUUID()}")
     )
+  }
+
+  private def jClientSrc[F[_]: Sync] = {
+    Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
+      Sync[F].delay(DynamoDbAsyncClient.builder().credentialsProvider(
+        dummyCred
+      ).endpointOverride(localDynamo).region(Region.EU_WEST_1).build())
+    }
   }
 
   private def internalSimpleResources[F[_]: Concurrent: Timer]: Resource[
@@ -113,11 +122,7 @@ private[meteor] object Util {
     val hashKey1 = KeyDef[Id]("id", DynamoDbType.S)
     val glob2ndHashKey = KeyDef[Range]("range", DynamoDbType.S)
     for {
-      jClient <- Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
-        Sync[F].delay(DynamoDbAsyncClient.builder().credentialsProvider(
-          dummyCred
-        ).endpointOverride(localDynamo).build())
-      }
+      jClient <- jClientSrc[F]
       client = Client[F](jClient)
       simpleRandomName <- genName("simple-table")
       simpleRandomNameWithGlobIndex <- genName("simple-table-with-glob-index")
@@ -191,11 +196,7 @@ private[meteor] object Util {
     val rangeKey2 = KeyDef[Int]("int", DynamoDbType.N)
 
     for {
-      jClient <- Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
-        Sync[F].delay(DynamoDbAsyncClient.builder().credentialsProvider(
-          dummyCred
-        ).endpointOverride(localDynamo).build())
-      }
+      jClient <- jClientSrc[F]
       client = Client[F](jClient)
       compositeRandomName <- genName("composite-table")
       compositeRandomNameWithGlobIndex <- genName(

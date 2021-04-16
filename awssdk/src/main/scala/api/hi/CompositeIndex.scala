@@ -21,18 +21,6 @@ abstract class CompositeIndex[F[_], P: Encoder, S: Encoder]
   def index: CompositeKeysIndex[P, S]
 
   def retrieve[T: Decoder](
-    partitionKey: P,
-    consistentRead: Boolean,
-    limit: Int
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
-    retrieveOp[F, P, T](
-      index,
-      partitionKey,
-      consistentRead,
-      limit
-    )(jClient)
-
-  def retrieve[T: Decoder](
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
@@ -59,6 +47,17 @@ case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
       partitionKeyDef,
       sortKeyDef
     )
+
+  def retrieve[T: Decoder](
+    partitionKey: P,
+    limit: Int
+  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    retrieveOp[F, P, T](
+      index,
+      partitionKey,
+      consistentRead = false,
+      limit
+    )(jClient)
 }
 
 case class CompositeTable[F[_], P: Encoder, S: Encoder](
@@ -144,6 +143,18 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     )(
       jClient
     )
+
+  def retrieve[T: Decoder](
+    partitionKey: P,
+    consistentRead: Boolean,
+    limit: Int
+  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    retrieveOp[F, P, T](
+      index,
+      partitionKey,
+      consistentRead,
+      limit
+    )(jClient)
 
   def batchGet[T: Decoder](
     consistentRead: Boolean,
