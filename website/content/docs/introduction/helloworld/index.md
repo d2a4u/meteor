@@ -83,6 +83,45 @@ It is also used to deduplicate items in batch actions.
 
 ## Write and Read
 
+### Using high level API
+
+```scala
+import meteor._
+import meteor.api.hi._
+import cats.effect.{ExitCode, IO, IOApp}
+
+object Main extends IOApp {
+  val dynamoClientSrc = Client.resource[IO]
+  val booksTableSrc = dynamoClientSrc.map { client =>
+    SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), client)
+  }
+
+  val lotr = Book(1, "The Lord of the Rings")
+
+  val found = booksTableSrc.use { table =>
+    // To write
+    val put = table.put[Book](lotr) // return IO[Unit]
+    // To read - eventually consistent
+    val get =
+      table.get[Book](
+        1,
+        consistentRead = false
+      ) // return IO[Option[Book]]
+
+    put.flatMap(_ => get)
+  }
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    found.map {
+      case Some(book) => IO(println(s"Found $book"))
+      case None => IO(println("No book found"))
+    }.as(ExitCode.Success)
+  }
+}
+```
+
+### Using low level API
+
 ```scala
 import meteor._
 import cats.effect.{ExitCode, IO, IOApp}

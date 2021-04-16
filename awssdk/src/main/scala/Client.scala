@@ -182,6 +182,28 @@ trait Client[F[_]] {
   ): F[Option[U]]
 
   /**
+    * Update an item by partition key P given an update expression.
+    * Return Unit (ReturnValue.NONE).
+    */
+  def update[P: Encoder](
+    table: PartitionKeyTable[P],
+    partitionKey: P,
+    update: Expression
+  ): F[Unit]
+
+  /**
+    * Update an item by partition key P given an update expression
+    * when it fulfills a condition expression.
+    * Return Unit (ReturnValue.NONE).
+    */
+  def update[P: Encoder](
+    table: PartitionKeyTable[P],
+    partitionKey: P,
+    update: Expression,
+    condition: Expression
+  ): F[Unit]
+
+  /**
     * Update an item by partition key P and a sort key S, given an update expression.
     * A Codec of U is required to deserialize return value.
     */
@@ -206,28 +228,6 @@ trait Client[F[_]] {
     condition: Expression,
     returnValue: ReturnValue
   ): F[Option[U]]
-
-  /**
-    * Update an item by partition key P given an update expression.
-    * Return Unit (ReturnValue.NONE).
-    */
-  def update[P: Encoder](
-    table: PartitionKeyTable[P],
-    partitionKey: P,
-    update: Expression
-  ): F[Unit]
-
-  /**
-    * Update an item by partition key P given an update expression
-    * when it fulfills a condition expression.
-    * Return Unit (ReturnValue.NONE).
-    */
-  def update[P: Encoder](
-    table: PartitionKeyTable[P],
-    partitionKey: P,
-    update: Expression,
-    condition: Expression
-  ): F[Unit]
 
   /**
     * Update an item by partition key P and a sort key S, given an update expression.
@@ -255,9 +255,13 @@ trait Client[F[_]] {
 
   /**
     * Batch get items from multiple tables.
+    *
+    * Parallelism should match maximum connections of the underline http client, default is 50:
+    * https://github.com/aws/aws-sdk-java-v2/blob/35267ca707c3fb5cdf7e3e98758a8ef969269183/http-client-spi/src/main/java/software/amazon/awssdk/http/SdkHttpConfigurationOption.java#L121
     */
   def batchGet(
     requests: Map[String, BatchGet],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Map[String, Iterable[AttributeValue]]]
 
@@ -270,6 +274,7 @@ trait Client[F[_]] {
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[P],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
@@ -282,6 +287,7 @@ trait Client[F[_]] {
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[(P, S)],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
@@ -319,6 +325,7 @@ trait Client[F[_]] {
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
     keys: Iterable[P],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
@@ -330,6 +337,7 @@ trait Client[F[_]] {
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     keys: Iterable[(P, S)],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
