@@ -1,5 +1,6 @@
 package meteor
 
+import cats.implicits._
 import cats.effect.{Concurrent, Timer}
 import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.api._
@@ -67,7 +68,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   def put[T: Encoder](
     tableName: String,
     t: T
-  ): F[Unit] = putOp[F, T](tableName, t)(jClient)
+  ): F[Unit] = putOp[F, T](tableName, t, Expression.empty)(jClient)
 
   def put[T: Encoder](
     tableName: String,
@@ -78,7 +79,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
   def put[T: Encoder, U: Decoder](
     tableName: String,
     t: T
-  ): F[Option[U]] = putOp[F, T, U](tableName, t)(jClient)
+  ): F[Option[U]] = putOp[F, T, U](tableName, t, Expression.empty)(jClient)
 
   def put[T: Encoder, U: Decoder](
     tableName: String,
@@ -90,12 +91,16 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S
-  ): F[Unit] = deleteOp[F, P, S](table, partitionKey, sortKey)(jClient)
+  ): F[Unit] =
+    deleteOp[F, P, S, Unit](table, partitionKey, sortKey, ReturnValue.NONE)(
+      jClient
+    ).void
 
   def delete[P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P
-  ): F[Unit] = deleteOp[F, P](table, partitionKey)(jClient)
+  ): F[Unit] =
+    deleteOp[F, P, Unit](table, partitionKey, ReturnValue.NONE)(jClient).void
 
   def scan[T: Decoder](
     tableName: String,
@@ -199,15 +204,17 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
 
   def batchGet(
     requests: Map[String, BatchGet],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Map[String, Iterable[AttributeValue]]] =
-    batchGetOp[F](requests, backoffStrategy)(jClient)
+    batchGetOp[F](requests, parallelism, backoffStrategy)(jClient)
 
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[P],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, U](
@@ -215,6 +222,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       projection,
       keys,
+      parallelism,
       backoffStrategy
     )(jClient)
 
@@ -223,6 +231,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     consistentRead: Boolean,
     projection: Expression,
     keys: Iterable[(P, S)],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, S, U](
@@ -230,6 +239,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       projection,
       keys,
+      parallelism,
       backoffStrategy
     )(jClient)
 
@@ -271,6 +281,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
     keys: Iterable[P],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, U](
@@ -278,6 +289,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       Expression.empty,
       keys,
+      parallelism,
       backoffStrategy
     )(
       jClient
@@ -287,6 +299,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     keys: Iterable[(P, S)],
+    parallelism: Int,
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]] =
     batchGetOp[F, P, S, U](
@@ -294,6 +307,7 @@ class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
       consistentRead,
       Expression.empty,
       keys,
+      parallelism,
       backoffStrategy
     )(
       jClient

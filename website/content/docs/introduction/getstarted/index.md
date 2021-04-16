@@ -45,13 +45,13 @@ libraryDependencies += "io.github.d2a4u" %% "meteor-scanamo" % "LATEST_VERSION"
 libraryDependencies += "io.github.d2a4u" %% "meteor-dynosaur" % "LATEST_VERSION"
 ```
 
-## Fine Tuning
+## Optimisation
 
 `meteor` uses AWS SDK v2 `DynamoDbAsyncClient` under the hood to make calls to the underline Java
 API. The `DynamoDbAsyncClient` internally create a `NettyNioAsyncHttpClient` with a default value
 for maximum connections of 50. This can be increased depending on the hardware/virtual machine
 configuration. There is also an alternative [AWS CRT HTTP client](https://aws.amazon.com/about-aws/whats-new/2020/09/aws-crt-http-client-in-aws-sdk-for-java-2x/) 
-that can be used and tuned similarly. The official documentation can be found [here](https://docs.amazonaws.cn/en_us/sdk-for-java/latest/developer-guide/http-configuration-netty.html).
+that can be used and tuned similarly. The official documentation can be found [here](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/http-configuration-netty.html).
 
 ```scala
 import cats.effect._
