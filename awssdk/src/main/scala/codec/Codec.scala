@@ -7,7 +7,6 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 trait Codec[A] extends Decoder[A] with Encoder[A]
 
 object Codec {
-
   def apply[A](implicit codec: Codec[A]): Codec[A] = codec
 
   implicit def dynamoCodecFromEncoderAndDecoder[A](

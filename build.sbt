@@ -3,7 +3,7 @@ import sbt.addCompilerPlugin
 
 val catsVersion = "2.2.0"
 val http4sVersion = "0.21.7"
-val fs2Version = "2.4.2"
+val fs2Version = "2.4.6"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
@@ -16,7 +16,7 @@ lazy val dependencies = Seq(
 
 lazy val testDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.2.2",
-  "org.scalacheck" %% "scalacheck" % "1.14.3",
+  "org.scalacheck" %% "scalacheck" % "1.15.3",
   "org.scalatestplus" %% "scalacheck-1-14" % "3.2.2.0"
 )
 
