@@ -61,7 +61,9 @@ class CompositeIndexSpec extends ITSpec {
         500
       ).compile.toList
     }.unsafeToFuture().futureValue
-    result should contain theSameElementsAs data
+    result.sortBy(_.range.value) should contain theSameElementsAs data.sortBy(
+      _.range.value
+    )
   }
 
   "SecondaryCompositeIndex" should "filter results by given filter expression" in {
@@ -113,6 +115,8 @@ class CompositeIndexSpec extends ITSpec {
           500
         ).compile.toList
     }.unsafeToFuture().futureValue
-    result should contain theSameElementsAs data
+    result.sortBy(_.range.value) should contain theSameElementsAs data.sortBy(
+      _.range.value
+    )
   }
 }

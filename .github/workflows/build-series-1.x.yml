@@ -42,6 +42,7 @@ jobs:
           sbt ";+compile;+test;+it:test"
 
   tag-release:
+    concurrency: ci-${{ github.ref }}
     needs: build-tests
     runs-on: ubuntu-20.04
     steps:

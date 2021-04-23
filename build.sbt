@@ -25,15 +25,15 @@ lazy val ItTest = config("it").extend(Test)
 lazy val scalaVer = "2.13.5"
 
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "io.github.d2a4u",
+  ThisBuild / organization := "io.github.d2a4u",
   scalaVersion := scalaVer,
   crossScalaVersions ++= Seq("2.12.13"),
-  parallelExecution in Test := true,
+  Test / parallelExecution := true,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
   homepage := Some(url("https://d2a4u.github.io/meteor/")),
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
   scmInfo := Some(
     ScmInfo(
@@ -51,7 +51,7 @@ lazy val commonSettings = Seq(
   ),
   pgpPublicRing := file("/tmp/local.pubring.asc"),
   pgpSecretRing := file("/tmp/local.secring.asc"),
-  releaseEarlyWith in Global := SonatypePublisher,
+  Global / releaseEarlyWith := SonatypePublisher,
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
@@ -65,8 +65,8 @@ lazy val commonSettings = Seq(
     "utf8",
     "-language:higherKinds"
   ),
-  scalacOptions in Test ~= filterConsoleScalacOptions,
-  scalacOptions in Compile ~= filterConsoleScalacOptions
+  Test / scalacOptions ~= filterConsoleScalacOptions,
+  Compile / scalacOptions ~= filterConsoleScalacOptions
 )
 
 lazy val root = project
@@ -87,7 +87,7 @@ lazy val awssdk = project
   .configs(ItTest)
   .settings(
     inConfig(ItTest)(Defaults.testSettings),
-    testOptions in ItTest += Tests.Argument(
+    ItTest / testOptions += Tests.Argument(
       "-oD"
     ) // enabled time measurement for each test
   )
@@ -101,7 +101,7 @@ lazy val dynosaur = project
   .in(file("dynosaur"))
   .settings(
     inConfig(Test)(Defaults.testSettings),
-    testOptions in Test += Tests.Argument(
+    Test / testOptions += Tests.Argument(
       "-oD"
     ) // enabled time measurement for each test
   )
@@ -119,7 +119,7 @@ lazy val scanamo = project
   .in(file("scanamo"))
   .settings(
     inConfig(Test)(Defaults.testSettings),
-    testOptions in Test += Tests.Argument(
+    Test / testOptions += Tests.Argument(
       "-oD"
     ) // enabled time measurement for each test
   )
