@@ -48,9 +48,13 @@ class CompositeIndexSpec extends ITSpec {
 
   it should "retrieve multiple items for the same partition key" in {
     val partitionKey = Id("foo")
-    val data = List.fill(200)(sample[TestData]).map { item =>
-      item.copy(id = partitionKey)
-    }
+    val data =
+      List.fill(200)(sample[Range]).distinct.map { range =>
+        sample[TestData].copy(
+          id = partitionKey,
+          range = range
+        )
+      }
     val result = compositeTable[IO].use { table =>
       table.batchPut[TestData](
         1.minute,
@@ -102,9 +106,13 @@ class CompositeIndexSpec extends ITSpec {
 
   it should "retrieve multiple items for the same partition key" in {
     val partitionKey = "foo"
-    val data = List.fill(200)(sample[TestData]).map { item =>
-      item.copy(str = partitionKey)
-    }
+    val data =
+      List.fill(200)(sample[Range]).distinct.map { range =>
+        sample[TestData].copy(
+          str = partitionKey,
+          range = range
+        )
+      }
     val result = secondaryCompositeIndex[IO].use {
       case (table, index) =>
         table.batchPut[TestData](
