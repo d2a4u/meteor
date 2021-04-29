@@ -3,7 +3,7 @@ package api.hi
 
 import fs2.{Pipe, RaiseThrowable}
 import cats.implicits._
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Concurrent
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
 import scala.concurrent.duration.FiniteDuration
+import cats.effect.Temporal
 
 abstract class SimpleIndex[F[_], P: Encoder] extends PartitionKeyGetOps {
   def partitionKeyDef: KeyDef[P]
@@ -112,7 +113,7 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, P, T] =
+  )(implicit F: Concurrent[F], TI: Temporal[F]): Pipe[F, P, T] =
     batchGetOp[F, P, T](
       table,
       consistentRead,
@@ -125,7 +126,7 @@ case class SimpleTable[F[_], P: Encoder](
   def batchPut[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  )(implicit F: Concurrent[F], TI: Temporal[F]): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
   /** Batch put items into a table where ordering of input items does not matter
@@ -134,7 +135,7 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  )(implicit F: Concurrent[F], TI: Temporal[F]): Pipe[F, T, Unit] =
     batchPutUnorderedOp[F, T](
       table.tableName,
       maxBatchWait,
@@ -146,7 +147,7 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, P, Unit] =
+  )(implicit F: Concurrent[F], TI: Temporal[F]): Pipe[F, P, Unit] =
     batchDeleteUnorderedOp[F, P](
       table,
       maxBatchWait,
@@ -157,7 +158,7 @@ case class SimpleTable[F[_], P: Encoder](
   def batchWrite[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, Either[P, T], Unit] =
+  )(implicit F: Concurrent[F], TI: Temporal[F]): Pipe[F, Either[P, T], Unit] =
     batchWriteInorderedOp[F, P, T](table, maxBatchWait, backoffStrategy)(
       jClient
     )

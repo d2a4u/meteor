@@ -1,7 +1,7 @@
 package meteor
 package api
 
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Concurrent
 import cats.implicits._
 import meteor.errors.UnexpectedTableStatus
 import meteor.implicits._
@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import cats.effect.Temporal
 
 trait TableOps {
   def describeOp[F[_]: Concurrent](tableName: String)(
@@ -29,7 +30,7 @@ trait TableOps {
   }
 
   def createCompositeKeysTableOp[
-    F[_]: Concurrent: Timer,
+    F[_]: Concurrent: Temporal,
     P,
     S
   ](
@@ -64,7 +65,7 @@ trait TableOps {
   }
 
   def createPartitionKeyTableOp[
-    F[_]: Concurrent: Timer,
+    F[_]: Concurrent: Temporal,
     P
   ](
     tableName: String,
@@ -95,7 +96,7 @@ trait TableOps {
   }
 
   private def sendCreateTableRequest[
-    F[_]: Concurrent: Timer
+    F[_]: Concurrent: Temporal
   ](
     tableName: String,
     keySchema: List[KeySchemaElement],
@@ -125,7 +126,7 @@ trait TableOps {
     createTable[F](builder3.build(), waitTillReady)(jClient)
   }
 
-  private def createTable[F[_]: Concurrent: Timer](
+  private def createTable[F[_]: Concurrent: Temporal](
     createTableRequest: CreateTableRequest,
     waitTillReady: Boolean
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
@@ -138,7 +139,7 @@ trait TableOps {
     }
   }
 
-  private def waitTillActive[F[_]: Concurrent: Timer](
+  private def waitTillActive[F[_]: Concurrent: Temporal](
     tableName: String,
     pollMs: FiniteDuration = 100.milliseconds
   )(jClient: DynamoDbAsyncClient): F[Unit] =
@@ -146,7 +147,7 @@ trait TableOps {
       resp.tableStatus() match {
         case TableStatus.ACTIVE => ().pure[F]
         case TableStatus.CREATING | TableStatus.UPDATING =>
-          Timer[F].sleep(pollMs) >> waitTillActive(
+          Temporal[F].sleep(pollMs) >> waitTillActive(
             tableName,
             pollMs
           )(jClient)
