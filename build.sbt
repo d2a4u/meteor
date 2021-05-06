@@ -110,7 +110,7 @@ lazy val dynosaur = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.systemfw" %% "dynosaur-core" % "0.1.4"
+      "org.systemfw" %% "dynosaur-core" % "0.2.0"
     ),
     commonSettings
   ).dependsOn(awssdk)
