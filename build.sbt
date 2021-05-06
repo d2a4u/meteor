@@ -11,12 +11,12 @@ lazy val dependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1",
-  "software.amazon.awssdk" % "dynamodb" % "2.16.45"
+  "software.amazon.awssdk" % "dynamodb" % "2.16.57"
 )
 
 lazy val testDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.2.8",
-  "org.scalacheck" %% "scalacheck" % "1.15.3",
+  "org.scalacheck" %% "scalacheck" % "1.15.4",
   "org.scalatestplus" %% "scalacheck-1-14" % "3.2.2.0"
 )
 
@@ -110,7 +110,7 @@ lazy val dynosaur = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.systemfw" %% "dynosaur-core" % "0.1.4"
+      "org.systemfw" %% "dynosaur-core" % "0.2.0"
     ),
     commonSettings
   ).dependsOn(awssdk)
