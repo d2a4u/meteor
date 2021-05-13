@@ -4,7 +4,7 @@ package api
 import java.util.{Map => jMap}
 
 import cats.implicits._
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Concurrent
 import fs2.{Pipe, Stream}
 import meteor.codec.Encoder
 import meteor.implicits._
@@ -16,6 +16,7 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.compat.java8.DurationConverters._
+import cats.effect.Temporal
 
 trait BatchWriteOps
     extends PartitionKeyBatchWriteOps
@@ -24,7 +25,7 @@ trait BatchWriteOps
 trait SharedBatchWriteOps extends DedupOps {
   val MaxBatchWriteSize = 25
 
-  def batchPutInorderedOp[F[_]: Timer: Concurrent, I: Encoder](
+  def batchPutInorderedOp[F[_]: Temporal: Concurrent, I: Encoder](
     table: Index[_],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
@@ -37,7 +38,7 @@ trait SharedBatchWriteOps extends DedupOps {
     }
   }.andThen(_.drain)
 
-  def batchPutUnorderedOp[F[_]: Timer: Concurrent, I: Encoder](
+  def batchPutUnorderedOp[F[_]: Temporal: Concurrent, I: Encoder](
     tableName: String,
     maxBatchWait: FiniteDuration,
     parallelism: Int,
@@ -59,7 +60,7 @@ trait SharedBatchWriteOps extends DedupOps {
     }.map(sendHandleLeftOver(_, backoffStrategy)(jClient)).parJoin(parallelism)
   }.andThen(_.drain)
 
-  def sendHandleLeftOver[F[_]: Concurrent: Timer](
+  def sendHandleLeftOver[F[_]: Concurrent: Temporal](
     req: BatchWriteItemRequest,
     backoffStrategy: BackoffStrategy,
     retried: Int = 0
@@ -89,7 +90,7 @@ trait SharedBatchWriteOps extends DedupOps {
     }
 
   def mkPutRequestInOrdered[
-    F[_]: Timer: Concurrent,
+    F[_]: Temporal: Concurrent,
     I: Encoder
   ](
     table: Index[_],
@@ -125,7 +126,7 @@ trait SharedBatchWriteOps extends DedupOps {
 
 trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
   private def mkDeleteRequestOutOrdered[
-    F[_]: Timer: Concurrent,
+    F[_]: Temporal: Concurrent,
     P: Encoder,
     S: Encoder
   ](
@@ -153,7 +154,7 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
     }
 
   private def mkRequestInOrdered[
-    F[_]: Timer: Concurrent,
+    F[_]: Temporal: Concurrent,
     DP: Encoder,
     DS: Encoder,
     P: Encoder
@@ -207,7 +208,7 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
       }
     }
 
-  def batchDeleteUnorderedOp[F[_]: Timer: Concurrent, P: Encoder, S: Encoder](
+  def batchDeleteUnorderedOp[F[_]: Temporal: Concurrent, P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
@@ -225,7 +226,7 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
   }.andThen(_.drain)
 
   def batchWriteInorderedOp[
-    F[_]: Timer: Concurrent,
+    F[_]: Temporal: Concurrent,
     P: Encoder,
     S: Encoder,
     I: Encoder
@@ -246,7 +247,7 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
 
 trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
 
-  private def mkDeleteRequestOutOrdered[F[_]: Timer: Concurrent, P: Encoder](
+  private def mkDeleteRequestOutOrdered[F[_]: Temporal: Concurrent, P: Encoder](
     table: PartitionKeyTable[P],
     maxBatchWait: FiniteDuration
   ): Pipe[F, P, BatchWriteItemRequest] =
@@ -268,7 +269,7 @@ trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
     }
 
   private def mkRequestInOrdered[
-    F[_]: Timer: Concurrent,
+    F[_]: Temporal: Concurrent,
     DP: Encoder, // delete by partition key
     P: Encoder // put item
   ](
@@ -317,7 +318,7 @@ trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
       }
     }
 
-  def batchDeleteUnorderedOp[F[_]: Timer: Concurrent, P: Encoder](
+  def batchDeleteUnorderedOp[F[_]: Temporal: Concurrent, P: Encoder](
     table: PartitionKeyTable[P],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
@@ -329,7 +330,7 @@ trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
     }.parJoin(parallelism)
   }.andThen(_.drain)
 
-  def batchWriteInorderedOp[F[_]: Timer: Concurrent, DP: Encoder, P: Encoder](
+  def batchWriteInorderedOp[F[_]: Temporal: Concurrent, DP: Encoder, P: Encoder](
     table: PartitionKeyTable[DP],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy

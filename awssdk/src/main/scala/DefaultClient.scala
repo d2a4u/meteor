@@ -1,7 +1,7 @@
 package meteor
 
 import cats.implicits._
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Concurrent
 import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
@@ -11,8 +11,9 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.collection.immutable.Iterable
 import scala.concurrent.duration._
+import cats.effect.Temporal
 
-class DefaultClient[F[_]: Concurrent: Timer: RaiseThrowable](
+class DefaultClient[F[_]: Concurrent: Temporal: RaiseThrowable](
   jClient: DynamoDbAsyncClient
 ) extends Client[F]
     with DeleteOps
