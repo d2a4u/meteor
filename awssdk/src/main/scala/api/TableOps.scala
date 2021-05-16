@@ -10,8 +10,8 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
-trait TableOps {
-  def describeOp[F[_]: Concurrent](tableName: String)(
+private[meteor] trait TableOps {
+  private[meteor] def describeOp[F[_]: Concurrent](tableName: String)(
     jClient: DynamoDbAsyncClient
   ): F[TableDescription] = {
     val req = DescribeTableRequest.builder().tableName(tableName).build()
@@ -20,7 +20,7 @@ trait TableOps {
     }
   }
 
-  def deleteTableOp[F[_]: Concurrent](
+  private[meteor] def deleteTableOp[F[_]: Concurrent](
     tableName: String
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     val deleteTableRequest =
@@ -28,7 +28,7 @@ trait TableOps {
     (() => jClient.deleteTable(deleteTableRequest)).liftF[F].void
   }
 
-  def createCompositeKeysTableOp[
+  private[meteor] def createCompositeKeysTableOp[
     F[_]: Concurrent: Timer,
     P,
     S
@@ -63,7 +63,7 @@ trait TableOps {
     )(jClient)
   }
 
-  def createPartitionKeyTableOp[
+  private[meteor] def createPartitionKeyTableOp[
     F[_]: Concurrent: Timer,
     P
   ](

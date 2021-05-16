@@ -12,9 +12,9 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.jdk.CollectionConverters._
 
-trait ScanOps {
+private[meteor] trait ScanOps {
 
-  def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
+  private[meteor] def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
     tableName: String,
     filter: Expression,
     consistentRead: Boolean,
@@ -88,7 +88,7 @@ trait ScanOps {
     } yield t
   }
 
-  def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
+  private[meteor] def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
     tableName: String,
     consistentRead: Boolean,
     parallelism: Int

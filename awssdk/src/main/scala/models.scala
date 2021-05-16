@@ -14,6 +14,12 @@ import java.util
 import java.util.{HashMap => jHashMap}
 import scala.jdk.CollectionConverters._
 
+/** Key's definition, a representation of DynamoDB's key.
+  *
+  * @param attributeName attribute's name
+  * @param attributeType attribute's type
+  * @tparam K key's type
+  */
 case class KeyDef[K](
   attributeName: String,
   attributeType: DynamoDbType
@@ -39,7 +45,7 @@ case class KeyDef[K](
   val value: (String, DynamoDbType) = attributeName -> attributeType
 }
 
-sealed trait Index[P] {
+private[meteor] sealed trait Index[P] {
   def partitionKeyDef: KeyDef[P]
 
   def tableName: String
@@ -66,7 +72,7 @@ sealed trait Index[P] {
   }
 }
 
-sealed trait PartitionKeyIndex[P] extends Index[P] {
+private[meteor] sealed trait PartitionKeyIndex[P] extends Index[P] {
   def containKey(av: util.Map[String, AttributeValue])
     : Option[java.util.Map[String, AttributeValue]] = {
     av.containsKey(partitionKeyDef.attributeName).guard[Option].as {
@@ -84,7 +90,7 @@ sealed trait PartitionKeyIndex[P] extends Index[P] {
     partitionKeyDef.mkKey[F](p)
 }
 
-sealed trait CompositeKeysIndex[P, S] extends Index[P] {
+private[meteor] sealed trait CompositeKeysIndex[P, S] extends Index[P] {
   def sortKeyDef: KeyDef[S]
 
   def containKey(av: util.Map[String, AttributeValue])

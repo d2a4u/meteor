@@ -11,8 +11,8 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.jdk.CollectionConverters._
 
-trait PutOps {
-  def putOp[F[_]: Concurrent, T: Encoder](
+private[meteor] trait PutOps {
+  private[meteor] def putOp[F[_]: Concurrent, T: Encoder](
     tableName: String,
     t: T,
     condition: Expression
@@ -48,7 +48,7 @@ trait PutOps {
     }
   }
 
-  def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
+  private[meteor] def putOp[F[_]: Concurrent, T: Encoder, U: Decoder](
     tableName: String,
     t: T,
     condition: Expression

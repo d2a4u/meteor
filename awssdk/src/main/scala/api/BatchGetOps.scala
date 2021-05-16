@@ -29,15 +29,15 @@ case class BatchGet(
   projection: Expression = Expression.empty
 )
 
-trait BatchGetOps
+private[meteor] trait BatchGetOps
     extends PartitionKeyBatchGetOps
     with CompositeKeysBatchGetOps {}
 
-trait SharedBatchGetOps extends DedupOps {
+private[meteor] trait SharedBatchGetOps extends DedupOps {
   // 100 is the maximum amount of items for BatchGetItem
-  val MaxBatchGetSize = 100
+  private val MaxBatchGetSize = 100
 
-  def batchGetOp[F[_]: Timer: Concurrent: RaiseThrowable](
+  private[meteor] def batchGetOp[F[_]: Timer: Concurrent: RaiseThrowable](
     requests: Map[String, BatchGet],
     parallelism: Int,
     backoffStrategy: BackoffStrategy
@@ -82,7 +82,7 @@ trait SharedBatchGetOps extends DedupOps {
     }
   }
 
-  private[api] def batchGetOpInternal[
+  private[meteor] def batchGetOpInternal[
     F[_]: Timer: Concurrent: RaiseThrowable,
     K,
     T: Decoder
@@ -114,7 +114,7 @@ trait SharedBatchGetOps extends DedupOps {
       responses.parJoin(parallelism).flatMap(parseResponse[F, T](tableName))
     }
 
-  private[api] def mkBatchGetRequest(
+  private[meteor] def mkBatchGetRequest(
     keys: Seq[jMap[String, AttributeValue]],
     consistentRead: Boolean,
     projection: Expression
@@ -138,7 +138,7 @@ trait SharedBatchGetOps extends DedupOps {
     }
   }
 
-  private[api] def parseResponse[F[_]: RaiseThrowable, U: Decoder](
+  private[meteor] def parseResponse[F[_]: RaiseThrowable, U: Decoder](
     tableName: String
   )(
     resp: BatchGetItemResponse
@@ -149,7 +149,7 @@ trait SharedBatchGetOps extends DedupOps {
     }
   }
 
-  private[api] def loop[F[_]: Concurrent: Timer](
+  private[meteor] def loop[F[_]: Concurrent: Timer](
     items: jMap[
       String,
       KeysAndAttributes
@@ -184,8 +184,8 @@ trait SharedBatchGetOps extends DedupOps {
   }
 }
 
-trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
-  def batchGetOp[
+private[meteor] trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
+  private[meteor] def batchGetOp[
     F[_]: Timer: Concurrent: RaiseThrowable,
     P: Encoder,
     S: Encoder,
@@ -214,7 +214,12 @@ trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
       in.through(pipe)
   }
 
-  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, S: Encoder, T: Decoder](
+  private[meteor] def batchGetOp[
+    F[_]: Concurrent: Timer,
+    P: Encoder,
+    S: Encoder,
+    T: Decoder
+  ](
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
     projection: Expression,
@@ -238,8 +243,8 @@ trait CompositeKeysBatchGetOps extends SharedBatchGetOps {
   }
 }
 
-trait PartitionKeyBatchGetOps extends SharedBatchGetOps {
-  def batchGetOp[
+private[meteor] trait PartitionKeyBatchGetOps extends SharedBatchGetOps {
+  private[meteor] def batchGetOp[
     F[_]: Timer: Concurrent: RaiseThrowable,
     P: Encoder,
     T: Decoder
@@ -261,7 +266,11 @@ trait PartitionKeyBatchGetOps extends SharedBatchGetOps {
       backoffStrategy
     )(table.mkKey[F])
 
-  def batchGetOp[F[_]: Concurrent: Timer, P: Encoder, T: Decoder](
+  private[meteor] def batchGetOp[
+    F[_]: Concurrent: Timer,
+    P: Encoder,
+    T: Decoder
+  ](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
     projection: Expression,
@@ -283,4 +292,4 @@ trait PartitionKeyBatchGetOps extends SharedBatchGetOps {
 
 }
 
-object BatchGetOps extends BatchGetOps
+private[meteor] object BatchGetOps extends BatchGetOps
