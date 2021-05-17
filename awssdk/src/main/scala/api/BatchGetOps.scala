@@ -95,13 +95,14 @@ trait SharedBatchGetOps extends DedupOps {
     Stream.iterable(keys).chunkN(MaxBatchGetSize).evalMap { chunk =>
       dedupInOrdered[F, K, jMap[String, AttributeValue]](chunk)(mkKey).map {
         keys =>
-          val keyAndAttrs = if (projection.isEmpty) {
-            KeysAndAttributes.builder().consistentRead(
-              consistentRead
-            ).keys(keys: _*).build()
-          } else {
-            mkBatchGetRequest(keys, consistentRead, projection)
-          }
+          val keyAndAttrs =
+            if (projection.isEmpty) {
+              KeysAndAttributes.builder().consistentRead(
+                consistentRead
+              ).keys(keys: _*).build()
+            } else {
+              mkBatchGetRequest(keys, consistentRead, projection)
+            }
           val req = Map(tableName -> keyAndAttrs).asJava
           loop[F](req, backoffStrategy)(jClient)
       }

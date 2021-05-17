@@ -2,7 +2,7 @@ package meteor
 package api.hi
 
 import cats.implicits._
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Async
 import fs2.{Pipe, RaiseThrowable}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
 import scala.concurrent.duration.FiniteDuration
 
-abstract class CompositeIndex[F[_], P: Encoder, S: Encoder]
+abstract class CompositeIndex[F[_]: Async, P: Encoder, S: Encoder]
     extends CompositeKeysGetOps {
   def partitionKeyDef: KeyDef[P]
   def sortKeyDef: KeyDef[S]
@@ -24,7 +24,7 @@ abstract class CompositeIndex[F[_], P: Encoder, S: Encoder]
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     retrieveOp[F, P, S, T](
       index,
       query,
@@ -33,7 +33,7 @@ abstract class CompositeIndex[F[_], P: Encoder, S: Encoder]
     )(jClient)
 }
 
-case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
+case class SecondaryCompositeIndex[F[_]: Async, P: Encoder, S: Encoder](
   tableName: String,
   indexName: String,
   partitionKeyDef: KeyDef[P],
@@ -51,7 +51,7 @@ case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
   def retrieve[T: Decoder](
     partitionKey: P,
     limit: Int
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     retrieveOp[F, P, T](
       index,
       partitionKey,
@@ -60,7 +60,7 @@ case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
     )(jClient)
 }
 
-case class CompositeTable[F[_], P: Encoder, S: Encoder](
+case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
   tableName: String,
   partitionKeyDef: KeyDef[P],
   sortKeyDef: KeyDef[S],
@@ -80,7 +80,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
-  )(implicit F: Concurrent[F]): F[Option[T]] =
+  ): F[Option[T]] =
     getOp[F, P, S, T](table, partitionKey, sortKey, consistentRead)(jClient)
 
   /** Put an item into a table, return ReturnValue.NONE.
@@ -88,7 +88,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   def put[T: Encoder](
     t: T,
     condition: Expression = Expression.empty
-  )(implicit F: Concurrent[F]): F[Unit] =
+  ): F[Unit] =
     putOp[F, T](table.tableName, t, condition)(jClient)
 
   /** Put an item into a table, return ReturnValue.ALL_OLD.
@@ -96,10 +96,10 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   def put[T: Encoder, U: Decoder](
     t: T,
     condition: Expression
-  )(implicit F: Concurrent[F]): F[Option[U]] =
+  ): F[Option[U]] =
     putOp[F, T, U](table.tableName, t, condition)(jClient)
 
-  def delete(partitionKey: P, sortKey: S)(implicit F: Concurrent[F]): F[Unit] =
+  def delete(partitionKey: P, sortKey: S): F[Unit] =
     deleteOp[F, P, S, Unit](table, partitionKey, sortKey, ReturnValue.NONE)(
       jClient
     ).void
@@ -113,7 +113,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     sortKey: S,
     update: Expression,
     condition: Expression = Expression.empty
-  )(implicit F: Concurrent[F]): F[Unit] =
+  ): F[Unit] =
     updateOp[F, P, S](table, partitionKey, sortKey, update, condition)(
       jClient
     )
@@ -128,7 +128,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     returnValue: ReturnValue,
     update: Expression,
     condition: Expression
-  )(implicit F: Concurrent[F]): F[Option[T]] =
+  ): F[Option[T]] =
     updateOp[F, P, S, T](
       table,
       partitionKey,
@@ -144,7 +144,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     retrieveOp[F, P, T](
       index,
       partitionKey,
@@ -158,7 +158,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, (P, S), T] =
+  ): Pipe[F, (P, S), T] =
     batchGetOp[F, P, S, T](
       table,
       consistentRead,
@@ -171,7 +171,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   def batchPut[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  ): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
   /** Batch put items into a table where ordering of input items does not matter
@@ -180,7 +180,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  ): Pipe[F, T, Unit] =
     batchPutUnorderedOp[F, T](
       table.tableName,
       maxBatchWait,
@@ -192,7 +192,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, (P, S), Unit] =
+  ): Pipe[F, (P, S), Unit] =
     batchDeleteUnorderedOp[F, P, S](
       table,
       maxBatchWait,
@@ -203,7 +203,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   def batchWrite[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, Either[(P, S), T], Unit] =
+  ): Pipe[F, Either[(P, S), T], Unit] =
     batchWriteInorderedOp[F, P, S, T](table, maxBatchWait, backoffStrategy)(
       jClient
     )

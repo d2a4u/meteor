@@ -67,7 +67,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
           TAG_CONTEXT: branch
-          PRERELEASE_SUFFIX: RC
-          RELEASE_BRANCHES: series/0.x
+          RELEASE_BRANCHES: series/1.x
           DEFAULT_BUMP: patch
           DRY_RUN: true
+#      - name: Import keys
+#        run: |
+#          touch /tmp/local.pubring.asc
+#          touch /tmp/local.secring.asc
+#          echo $PGP_PUB_RING > /tmp/local.pubring.asc
+#          echo $PGP_SEC_RING > /tmp/local.secring.asc
+#        env:
+#          PGP_PUB_RING: ${{ secrets.PGP_PUB_RING }}
+#          PGP_SEC_RING: ${{ secrets.PGP_SEC_RING }}
+#      - name: Publish
+#        run: |
+#          sbt +releaseEarly -J-Xms3G -J-Xmx6G -J-Xss4m
+#        env:
+#          SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+#          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+#          PGP_PASSWORD: ${{ secrets.PGP_PASSWORD }}
+#      - name: Clean up
+#        run: |
+#          rm /tmp/local.pubring.asc
+#          rm /tmp/local.secring.asc

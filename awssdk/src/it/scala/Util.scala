@@ -94,7 +94,7 @@ private[meteor] object Util {
     }
 
   private def genName[F[_]: Sync](prefix: String): Resource[F, String] = {
-    Resource.liftF[F, String](
+    Resource.eval[F, String](
       Sync[F].delay(s"$prefix-${UUID.randomUUID()}")
     )
   }
