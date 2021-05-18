@@ -15,7 +15,7 @@ class ScanOpsSpec extends ITSpec {
     val size = 200
     val ref = Ref.of[IO, Int](0)
 
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val input = fs2.Stream.range(0, size).map { i =>
       testData.copy(id = Id(i.toString))
     }.covary[IO]

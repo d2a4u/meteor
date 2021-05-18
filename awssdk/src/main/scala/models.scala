@@ -35,6 +35,8 @@ case class KeyDef[K](
       ]]
     }
   }
+
+  val value: (String, DynamoDbType) = attributeName -> attributeType
 }
 
 sealed trait Index[P] {

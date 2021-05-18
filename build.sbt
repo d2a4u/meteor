@@ -1,10 +1,9 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val catsVersion = "2.4.2"
-val catsEffectVersion = "3.0.0-RC2"
-val http4sVersion = "1.0.0-M19"
-val fs2Version = "3.0.0-M8"
+val catsVersion = "2.6.0"
+val catsEffectVersion = "3.1.0"
+val fs2Version = "3.0.3"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
@@ -12,12 +11,12 @@ lazy val dependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.2",
   "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1",
-  "software.amazon.awssdk" % "dynamodb" % "2.16.17"
+  "software.amazon.awssdk" % "dynamodb" % "2.16.62"
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.6",
-  "org.scalacheck" %% "scalacheck" % "1.15.3",
+  "org.scalatest" %% "scalatest" % "3.2.8",
+  "org.scalacheck" %% "scalacheck" % "1.15.4",
   "org.scalatestplus" %% "scalacheck-1-15" % "3.2.6.0"
 )
 
@@ -26,15 +25,15 @@ lazy val ItTest = config("it").extend(Test)
 lazy val scalaVer = "2.13.5"
 
 lazy val commonSettings = Seq(
-  organization in ThisBuild := "io.github.d2a4u",
+  ThisBuild / organization := "io.github.d2a4u",
   scalaVersion := scalaVer,
   crossScalaVersions ++= Seq("2.12.13"),
-  parallelExecution in Test := true,
+  Test / parallelExecution := true,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
   homepage := Some(url("https://d2a4u.github.io/meteor/")),
   publishMavenStyle := true,
-  publishArtifact in Test := false,
+  Test / publishArtifact := false,
   pomIncludeRepository := { _ => false },
   scmInfo := Some(
     ScmInfo(
@@ -52,7 +51,7 @@ lazy val commonSettings = Seq(
   ),
   pgpPublicRing := file("/tmp/local.pubring.asc"),
   pgpSecretRing := file("/tmp/local.secring.asc"),
-  releaseEarlyWith in Global := SonatypePublisher,
+  Global / releaseEarlyWith := SonatypePublisher,
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
@@ -66,8 +65,8 @@ lazy val commonSettings = Seq(
     "utf8",
     "-language:higherKinds"
   ),
-  scalacOptions in Test ~= filterConsoleScalacOptions,
-  scalacOptions in Compile ~= filterConsoleScalacOptions
+  Test / scalacOptions ~= filterConsoleScalacOptions,
+  Compile / scalacOptions ~= filterConsoleScalacOptions
 )
 
 lazy val root = project
@@ -88,7 +87,7 @@ lazy val awssdk = project
   .configs(ItTest)
   .settings(
     inConfig(ItTest)(Defaults.testSettings),
-    testOptions in ItTest += Tests.Argument(
+    ItTest / testOptions += Tests.Argument(
       "-oD"
     ) // enabled time measurement for each test
   )
@@ -102,7 +101,7 @@ lazy val dynosaur = project
   .in(file("dynosaur"))
   .settings(
     inConfig(Test)(Defaults.testSettings),
-    testOptions in Test += Tests.Argument(
+    Test / testOptions += Tests.Argument(
       "-oD"
     ) // enabled time measurement for each test
   )
@@ -111,7 +110,7 @@ lazy val dynosaur = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.systemfw" %% "dynosaur-core" % "0.1.4"
+      "org.systemfw" %% "dynosaur-core" % "0.2.0"
     ),
     commonSettings
   ).dependsOn(awssdk)
@@ -120,7 +119,7 @@ lazy val scanamo = project
   .in(file("scanamo"))
   .settings(
     inConfig(Test)(Defaults.testSettings),
-    testOptions in Test += Tests.Argument(
+    Test / testOptions += Tests.Argument(
       "-oD"
     ) // enabled time measurement for each test
   )

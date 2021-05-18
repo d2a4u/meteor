@@ -22,7 +22,12 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     table.mkKey[F](partitionKey).flatMap { key =>
       val req =
-        mkUpdateRequestBuilder(table.tableName, update, returnValue).key(
+        mkUpdateRequestBuilder(
+          table.tableName,
+          update,
+          Expression.empty,
+          returnValue
+        ).key(
           key
         ).build()
       sendUpdateItem[F, U](req)(jClient)
@@ -57,7 +62,12 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     table.mkKey[F](partitionKey).flatMap { key =>
       val req =
-        mkUpdateRequestBuilder(table.tableName, update, ReturnValue.NONE).key(
+        mkUpdateRequestBuilder(
+          table.tableName,
+          update,
+          Expression.empty,
+          ReturnValue.NONE
+        ).key(
           key
         ).build()
       sendUpdateItem[F](req)(jClient)
@@ -96,7 +106,12 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     table.mkKey[F](partitionKey, sortKey).flatMap { key =>
       val req =
-        mkUpdateRequestBuilder(table.tableName, update, returnValue).key(
+        mkUpdateRequestBuilder(
+          table.tableName,
+          update,
+          Expression.empty,
+          returnValue
+        ).key(
           key
         ).build()
       sendUpdateItem[F, U](req)(jClient)
@@ -133,7 +148,12 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
   )(jClient: DynamoDbAsyncClient): F[Unit] = {
     table.mkKey[F](partitionKey, sortKey).flatMap { key =>
       val req =
-        mkUpdateRequestBuilder(table.tableName, update, ReturnValue.NONE).key(
+        mkUpdateRequestBuilder(
+          table.tableName,
+          update,
+          Expression.empty,
+          ReturnValue.NONE
+        ).key(
           key
         ).build()
       sendUpdateItem[F](req)(jClient)
@@ -192,28 +212,24 @@ trait SharedUpdateOps {
     update: Expression,
     condition: Expression,
     returnValue: ReturnValue
-  ): UpdateItemRequest.Builder =
-    UpdateItemRequest.builder()
+  ): UpdateItemRequest.Builder = {
+    val builder0 = UpdateItemRequest.builder()
       .tableName(tableName)
       .updateExpression(update.expression)
-      .conditionExpression(condition.expression)
-      .expressionAttributeNames(
-        (update.attributeNames ++ condition.attributeNames).asJava
-      )
-      .expressionAttributeValues(
-        (update.attributeValues ++ condition.attributeValues).asJava
-      )
       .returnValues(returnValue)
-
-  def mkUpdateRequestBuilder(
-    tableName: String,
-    update: Expression,
-    returnValue: ReturnValue
-  ): UpdateItemRequest.Builder =
-    UpdateItemRequest.builder()
-      .tableName(tableName)
-      .updateExpression(update.expression)
-      .expressionAttributeNames(update.attributeNames.asJava)
-      .expressionAttributeValues(update.attributeValues.asJava)
-      .returnValues(returnValue)
+    if (condition.isEmpty) {
+      builder0
+        .expressionAttributeNames(update.attributeNames.asJava)
+        .expressionAttributeValues(update.attributeValues.asJava)
+    } else {
+      builder0
+        .conditionExpression(condition.expression)
+        .expressionAttributeNames(
+          (update.attributeNames ++ condition.attributeNames).asJava
+        )
+        .expressionAttributeValues(
+          (update.attributeValues ++ condition.attributeValues).asJava
+        )
+    }
+  }
 }

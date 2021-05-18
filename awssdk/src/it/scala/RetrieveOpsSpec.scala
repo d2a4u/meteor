@@ -27,8 +27,8 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             Int.MaxValue
           ).compile.toList
-          input.traverse(
-            i => client.put[TestData](table.tableName, i)
+          input.traverse(i =>
+            client.put[TestData](table.tableName, i)
           ).void >> Util.retryOf(retrieval)(
             _.size == input.length
           )
@@ -57,7 +57,7 @@ class RetrieveOpsSpec extends ITSpec {
     test: TestData =>
       val input = test.copy(str = "test", int = 0)
       val result =
-        compositeKeysWithSecondaryIndexTable[IO]("second-index").use {
+        compositeKeysWithSecondaryIndexTable[IO].use {
           case (client, table, secondaryIndex) =>
             val retrieval = client.retrieve[String, Int, TestData](
               secondaryIndex,
@@ -131,8 +131,8 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             Int.MaxValue
           ).compile.toList
-          testUpdated.traverse(
-            i => client.put[TestData](table.tableName, i)
+          testUpdated.traverse(i =>
+            client.put[TestData](table.tableName, i)
           ) >> Util.retryOf(retrieval)(_.size == input.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
@@ -150,8 +150,8 @@ class RetrieveOpsSpec extends ITSpec {
             consistentRead = false,
             1
           ).chunks.compile.toList
-          input.traverse(
-            i => client.put[TestData](table.tableName, i)
+          input.traverse(i =>
+            client.put[TestData](table.tableName, i)
           ) >> Util.retryOf(retrieval)(
             _.size == input.length
           )

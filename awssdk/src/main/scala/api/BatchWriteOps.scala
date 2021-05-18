@@ -130,24 +130,26 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
     S: Encoder
   ](
     table: CompositeKeysTable[P, S],
-    maxBatchWait: FiniteDuration
+    maxBatchWait: FiniteDuration,
+    parallelism: Int
   ): Pipe[F, (P, S), BatchWriteItemRequest] =
-    _.groupWithin(MaxBatchWriteSize, maxBatchWait).evalMap { chunk =>
-      chunk.traverse {
-        case (p, s) =>
-          table.mkKey[F](p, s).map { key =>
-            (p, s, key)
-          }
-      }.map { c =>
-        val reqs = c.foldLeft(Map.empty[(P, S), WriteRequest]) {
-          case (acc, (p, s, key)) =>
-            val del = DeleteRequest.builder().key(key).build()
-            val req = WriteRequest.builder().deleteRequest(del).build()
-            acc + ((p, s) -> req)
-        }.values.toList.asJava
-        val writes = Map(table.tableName -> reqs).asJava
-        BatchWriteItemRequest.builder().requestItems(writes).build()
-      }
+    _.groupWithin(MaxBatchWriteSize, maxBatchWait).mapAsync(parallelism) {
+      chunk =>
+        chunk.traverse {
+          case (p, s) =>
+            table.mkKey[F](p, s).map { key =>
+              (p, s, key)
+            }
+        }.map { c =>
+          val reqs = c.foldLeft(Map.empty[(P, S), WriteRequest]) {
+            case (acc, (p, s, key)) =>
+              val del = DeleteRequest.builder().key(key).build()
+              val req = WriteRequest.builder().deleteRequest(del).build()
+              acc + ((p, s) -> req)
+          }.values.toList.asJava
+          val writes = Map(table.tableName -> reqs).asJava
+          BatchWriteItemRequest.builder().requestItems(writes).build()
+        }
     }
 
   private def mkRequestInOrdered[
@@ -212,7 +214,11 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
     backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, (P, S), Unit] = {
     in: Stream[F, (P, S)] =>
-      mkDeleteRequestOutOrdered[F, P, S](table, maxBatchWait).apply(in).map {
+      mkDeleteRequestOutOrdered[F, P, S](
+        table,
+        maxBatchWait,
+        parallelism
+      ).apply(in).map {
         req =>
           sendHandleLeftOver(req, backoffStrategy)(jClient)
       }.parJoin(parallelism)

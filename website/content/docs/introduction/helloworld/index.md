@@ -6,7 +6,7 @@ date: 2021-01-26T22:25:49Z
 lastmod: 2021-01-26T22:25:49Z
 draft: false
 images: []
-menu: 
+menu:
   docs:
     parent: "introduction"
 weight: 901
@@ -46,7 +46,7 @@ object Book {
 
 #### Client
 
-A `meteor` client is required to perform DynamoDB actions. To create a cats-effect `Resource` of 
+A `meteor` client is required to perform DynamoDB actions. To create a cats-effect `Resource` of
 `Client`:
 
 ```scala
@@ -61,27 +61,72 @@ Internally, a default Java `DynamoDbAsyncClient` is created. Alternatively, you 
 
 #### Table and Secondary Index
 
-DynamoDB actions can be performed against a table or a secondary index of a table. To do so in 
+DynamoDB actions can be performed against a table or a secondary index of a table. To do so in
 `meteor`, the table or secondary index needs to be explicitly defined such as:
 
 ```scala
-import meteor._
-val table = PartitionKeyTable[Int]("books-table", KeyDef[Int]("id", DynamoDbType.N))
+import meteor.api.hi._
+
+SimpleTable[F, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), client)
 ```
 
 All supported index types are:
 
-- PartitionKeyTable[P]
-- PartitionKeySecondaryIndex[P]
-- CompositeKeysTable[P, S]
-- CompositeKeysSecondaryIndex[P, S]
+- `SimpleTable[F[_], P]` - represent a table with partition key (no sort key)
+- `SecondarySimpleIndex[F[_], P]` - represent a secondary index with partition key (no sort key)
+- `CompositeTable[F[_], P, S]` - represent a table with partition key and sort key
+- `SecondaryCompositeIndex[F[_], P, S]` - represent a secondary index with partition key and sort
+  key
 
-
-The Java AWS SDK client usually just takes a `String` of table's name instead. `meteor` requires a 
-table instance to build keys' `AttributeValue` correctly and tie it to the definition of the table.
-It is also used to deduplicate items in batch actions.
+The Java AWS SDK client usually just takes a `String` of table's name. However, `meteor` requires
+type parameters for table and secondary index, which are type(s) for partition key and sort key.
+This is to internally build keys' `AttributeValue` correctly and to deduplicate items in batch
+actions.
 
 ## Write and Read
+
+It is recommended to use the high level API to interact with a DynamoDB table for simplicity.
+Low level API provides a Java wrapper client which has complicated interfaces, however, it is still
+useful to use low level API to create, delete or scan a DynamoDB table.
+
+### Using high level API
+
+```scala
+import meteor._
+import meteor.api.hi._
+import cats.effect.{ExitCode, IO, IOApp}
+
+object Main extends IOApp {
+  val dynamoClientSrc = Client.resource[IO]
+  val booksTableSrc = dynamoClientSrc.map { client =>
+    SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), client)
+  }
+
+  val lotr = Book(1, "The Lord of the Rings")
+
+  val found = booksTableSrc.use { table =>
+    // To write
+    val put = table.put(lotr) // return IO[Unit]
+    // To read - eventually consistent
+    val get =
+      table.get[Book](
+        1,
+        consistentRead = false
+      ) // return IO[Option[Book]]
+
+    put.flatMap(_ => get)
+  }
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    found.map {
+      case Some(book) => IO(println(s"Found $book"))
+      case None => IO(println("No book found"))
+    }.as(ExitCode.Success)
+  }
+}
+```
+
+### Using low level API
 
 ```scala
 import meteor._

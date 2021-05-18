@@ -6,7 +6,6 @@ import meteor.Util._
 import meteor.implicits._
 import meteor.api.BatchGet
 import meteor.codec.Encoder
-import org.scalacheck.Arbitrary
 
 import scala.concurrent.duration._
 
@@ -18,7 +17,7 @@ class BatchGetOpsSpec extends ITSpec {
 
   it should "batch get items from different tables" in {
     val size = 5
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val input1 = fs2.Stream.range(0, size).map { i =>
       testData.copy(id = Id("1" + i.toString))
     }
@@ -78,6 +77,7 @@ class BatchGetOpsSpec extends ITSpec {
               table1.tableName -> batchGet1,
               table2.tableName -> batchGet2
             ),
+            50,
             backOff
           )
         put1(input1).compile.drain >> put2(
@@ -92,7 +92,7 @@ class BatchGetOpsSpec extends ITSpec {
 
   it should "batch get items" in {
     val size = 200
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val input = fs2.Stream.range(0, size).map { i =>
       testData.copy(id = Id(i.toString))
     }
@@ -132,7 +132,7 @@ class BatchGetOpsSpec extends ITSpec {
   }
 
   it should "deduplicate batch get requests" in {
-    val testData = implicitly[Arbitrary[TestData]].arbitrary.sample.get
+    val testData = sample[TestData]
     val duplicatedKeys =
       fs2.Stream.constant((testData.id, testData.range)).take(5)
 
