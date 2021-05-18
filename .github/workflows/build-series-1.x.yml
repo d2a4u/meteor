@@ -69,6 +69,7 @@ jobs:
           TAG_CONTEXT: branch
           RELEASE_BRANCHES: series/1.x
           DEFAULT_BUMP: patch
+          INITIAL_VERSION: 1.0.1
           DRY_RUN: true
 #      - name: Import keys
 #        run: |
