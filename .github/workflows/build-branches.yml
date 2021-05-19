@@ -3,15 +3,13 @@ name: build-branches
 on:
   push:
     branches:
-      - '!series/0.x'
-      - '!series/1.x'
+      - '!main'
     paths-ignore:
       - '**.md'
       - 'website/**'
   pull_request:
     branches:
-      - 'series/0.x'
-      - 'series/1.x'
+      - 'main'
 
 jobs:
   build-tests:
