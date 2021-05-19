@@ -38,6 +38,6 @@ jobs:
         run: |
           docker ps
           docker run --network container:dynamodb-local curlimages/curl:7.73.0 -v --retry 20 --retry-all-errors http://localhost:8000/
-      - name: Run build and tests
+      - name: Check format, build and tests
         run:
-          sbt ";+compile;+test;+it:test"
+          sbt ";scalafmtCheckAll;+compile;+test;+it:test"
