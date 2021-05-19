@@ -73,7 +73,8 @@ trait SharedBatchGetOps extends DedupOps {
           elem.responses().asScala.map {
             case (tableName, avs) =>
               tableName -> avs.asScala.toList.map(av =>
-                AttributeValue.builder().m(av).build())
+                AttributeValue.builder().m(av).build()
+              )
           }
         }
       }
