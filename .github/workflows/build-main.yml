@@ -1,9 +1,9 @@
-name: build-series-1.x
+name: build-main
 
 on:
   push:
     branches:
-      - 'series/1.x'
+      - 'main'
     paths-ignore:
       - '**.md'
       - 'website/**'
@@ -66,10 +66,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
-          TAG_CONTEXT: repo
-          RELEASE_BRANCHES: series/1.x
+          RELEASE_BRANCHES: main
           DEFAULT_BUMP: patch
-          INITIAL_VERSION: 1.0.1
+          CUSTOM_TAG: v1.0.2
           DRY_RUN: true
 #      - name: Import keys
 #        run: |
