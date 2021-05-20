@@ -22,7 +22,7 @@ lazy val testDependencies = Seq(
 
 lazy val ItTest = config("it").extend(Test)
 
-lazy val scalaVer = "2.13.5"
+lazy val scalaVer = "2.13.6"
 
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
