@@ -3,8 +3,7 @@ name: build-website
 on:
   push:
     branches:
-      - master
-      - 'series/0.x'
+      - main
     paths:
       - 'website/**'
 

@@ -2,8 +2,7 @@ package meteor
 
 import java.net.URI
 import java.util.UUID
-import cats.effect.concurrent.Ref
-import cats.effect.{Concurrent, Resource, Sync, Timer}
+import cats.effect.{Async, Ref, Resource, Sync, Temporal}
 import cats.implicits._
 import meteor.api.hi._
 import org.scalacheck.Arbitrary
@@ -22,7 +21,7 @@ private[meteor] object Util {
   type CompositeTableWithGlobIndex[F[_], T, U] = CompositeTable[F, T, U]
   type CompositeKeysTableWithGlobIndex[T, U] = CompositeKeysTable[T, U]
 
-  def retryOf[F[_]: Timer: Sync, T](
+  def retryOf[F[_]: Async, T](
     f: F[T],
     interval: FiniteDuration = 1.second,
     maxRetry: Int = 10
@@ -38,7 +37,7 @@ private[meteor] object Util {
       } else {
         r.get.flatMap {
           case i if i < maxRetry =>
-            Timer[F].sleep(interval) >> r.set(i + 1) >> f
+            Temporal[F].sleep(interval) >> r.set(i + 1) >> f
           case _ =>
             new Exception("Max retry reached").raiseError[F, T]
         }
@@ -46,36 +45,35 @@ private[meteor] object Util {
     }
   }.flatten
 
-  def partitionKeyTable[F[_]: Concurrent: Timer]
+  def partitionKeyTable[F[_]: Async]
     : Resource[F, (Client[F], PartitionKeyTable[Id])] =
     internalSimpleResources[F].map {
       case (c, t, _, _, _) => (c, t)
     }
 
-  def simpleTable[F[_]: Concurrent: Timer]: Resource[F, SimpleTable[F, Id]] =
+  def simpleTable[F[_]: Async]: Resource[F, SimpleTable[F, Id]] =
     internalSimpleResources[F].map {
       case (_, _, t, _, _) => t
     }
 
-  def secondarySimpleIndex[F[_]: Concurrent: Timer]
+  def secondarySimpleIndex[F[_]: Async]
     : Resource[F, (SimpleTable[F, Id], SecondarySimpleIndex[F, Range])] =
     internalSimpleResources[F].map {
       case (_, _, _, t, i) => (t, i)
     }
 
-  def compositeKeysTable[F[_]: Concurrent: Timer]
+  def compositeKeysTable[F[_]: Async]
     : Resource[F, (Client[F], CompositeKeysTable[Id, Range])] =
     internalCompositeResources[F].map {
       case (c, t, _, _, _, _, _) => (c, t)
     }
 
-  def compositeTable[F[_]: Concurrent: Timer]
-    : Resource[F, CompositeTable[F, Id, Range]] =
+  def compositeTable[F[_]: Async]: Resource[F, CompositeTable[F, Id, Range]] =
     internalCompositeResources[F].map {
       case (_, _, _, _, t, _, _) => t
     }
 
-  def secondaryCompositeIndex[F[_]: Concurrent: Timer]: Resource[
+  def secondaryCompositeIndex[F[_]: Async]: Resource[
     F,
     (CompositeTable[F, Id, Range], SecondaryCompositeIndex[F, String, Int])
   ] =
@@ -83,7 +81,7 @@ private[meteor] object Util {
       case (_, _, _, _, _, t, i) => (t, i)
     }
 
-  def compositeKeysWithSecondaryIndexTable[F[_]: Concurrent: Timer]: Resource[
+  def compositeKeysWithSecondaryIndexTable[F[_]: Async]: Resource[
     F,
     (
       Client[F],
@@ -96,7 +94,7 @@ private[meteor] object Util {
     }
 
   private def genName[F[_]: Sync](prefix: String): Resource[F, String] = {
-    Resource.liftF[F, String](
+    Resource.eval[F, String](
       Sync[F].delay(s"$prefix-${UUID.randomUUID()}")
     )
   }
@@ -109,7 +107,7 @@ private[meteor] object Util {
     }
   }
 
-  private def internalSimpleResources[F[_]: Concurrent: Timer]: Resource[
+  private def internalSimpleResources[F[_]: Async]: Resource[
     F,
     (
       Client[F],
@@ -178,7 +176,7 @@ private[meteor] object Util {
     } yield (client, pkt, st, stgi, ssi)
   }
 
-  private def internalCompositeResources[F[_]: Concurrent: Timer]: Resource[
+  private def internalCompositeResources[F[_]: Async]: Resource[
     F,
     (
       Client[F],
@@ -283,8 +281,7 @@ private[meteor] object Util {
       new AwsCredentials {
         override def accessKeyId(): String = "DUMMY"
         override def secretAccessKey(): String = "DUMMY"
-      }
-    )
+      })
 
   def localDynamo: URI = URI.create("http://localhost:8000")
 

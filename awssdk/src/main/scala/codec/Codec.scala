@@ -11,9 +11,6 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 trait Codec[A] extends Decoder[A] with Encoder[A]
 
 object Codec {
-
-  /** Returns the [[Codec]] for the specified type.
-    */
   def apply[A](implicit codec: Codec[A]): Codec[A] = codec
 
   /** Returns a new [[Codec]] for the specified type given an [[Encoder]] and a [[Decoder]] in scope

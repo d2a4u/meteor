@@ -1,7 +1,7 @@
 package meteor
 package api
 
-import cats.effect.Concurrent
+import cats.effect.Async
 import cats.implicits._
 import fs2.{Pipe, RaiseThrowable, Stream}
 import meteor.codec.Decoder
@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 
 private[meteor] trait ScanOps {
 
-  private[meteor] def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
+  private[meteor] def scanOp[F[_]: Async: RaiseThrowable, T: Decoder](
     tableName: String,
     filter: Expression,
     consistentRead: Boolean,
@@ -58,7 +58,7 @@ private[meteor] trait ScanOps {
       filter: Expression,
       req: SegmentPassThrough[ScanRequest]
     ): Stream[F, SegmentPassThrough[ScanResponse]] =
-      Stream.eval((() => jClient.scan(req.u)).liftF[F]).flatMap { resp =>
+      Stream.eval(liftFuture(jClient.scan(req.u))).flatMap { resp =>
         Stream.emit(SegmentPassThrough(resp, req.segment)) ++ {
           if (resp.hasLastEvaluatedKey && !resp.lastEvaluatedKey().isEmpty) {
             val nextReq =
@@ -77,7 +77,7 @@ private[meteor] trait ScanOps {
 
     for {
       cond <- Stream.eval(
-        Concurrent[F].fromOption(
+        Async[F].fromOption(
           filter.nonEmpty.guard[Option].as(filter),
           InvalidExpression
         )
@@ -88,7 +88,7 @@ private[meteor] trait ScanOps {
     } yield t
   }
 
-  private[meteor] def scanOp[F[_]: Concurrent: RaiseThrowable, T: Decoder](
+  private[meteor] def scanOp[F[_]: Async: RaiseThrowable, T: Decoder](
     tableName: String,
     consistentRead: Boolean,
     parallelism: Int
@@ -115,7 +115,7 @@ private[meteor] trait ScanOps {
     def loop(
       req: SegmentPassThrough[ScanRequest]
     ): Stream[F, SegmentPassThrough[ScanResponse]] =
-      Stream.eval((() => jClient.scan(req.u)).liftF[F]).flatMap { resp =>
+      Stream.eval(liftFuture(jClient.scan(req.u))).flatMap { resp =>
         Stream.emit(SegmentPassThrough(resp, req.segment)).covary[F] ++ {
           if (resp.hasLastEvaluatedKey && !resp.lastEvaluatedKey().isEmpty) {
             val nextReq = SegmentPassThrough(

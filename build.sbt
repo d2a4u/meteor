@@ -1,23 +1,23 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val catsVersion = "2.5.0"
-val http4sVersion = "0.21.7"
-val fs2Version = "2.5.5"
+val catsVersion = "2.6.0"
+val catsEffectVersion = "3.1.0"
+val fs2Version = "3.0.3"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
-  "org.typelevel" %% "cats-effect" % catsVersion,
+  "org.typelevel" %% "cats-effect" % catsEffectVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
-  "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1",
-  "software.amazon.awssdk" % "dynamodb" % "2.16.62"
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.2",
+  "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.0",
+  "software.amazon.awssdk" % "dynamodb" % "2.16.65"
 )
 
 lazy val testDependencies = Seq(
   "org.scalatest" %% "scalatest" % "3.2.8",
   "org.scalacheck" %% "scalacheck" % "1.15.4",
-  "org.scalatestplus" %% "scalacheck-1-14" % "3.2.2.0"
+  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.6.0"
 )
 
 lazy val ItTest = config("it").extend(Test)

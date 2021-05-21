@@ -2,7 +2,7 @@ package meteor
 package api.hi
 
 import cats.implicits._
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Async
 import fs2.{Pipe, RaiseThrowable}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
@@ -13,7 +13,7 @@ import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 import scala.concurrent.duration.FiniteDuration
 
 private[meteor] sealed abstract class CompositeIndex[
-  F[_],
+  F[_]: Async,
   P: Encoder,
   S: Encoder
 ] extends CompositeKeysGetOps {
@@ -29,7 +29,6 @@ private[meteor] sealed abstract class CompositeIndex[
     * @param query a query to filter items by key condition
     * @param consistentRead toggle to perform consistent read
     * @param limit limit the number of items to be returned
-    * @param F implicit evidence for Concurrent
     * @param RT implicit evidence for RaiseThrowable
     * @tparam T return item's type
     * @return a fs2 Stream of items
@@ -38,7 +37,7 @@ private[meteor] sealed abstract class CompositeIndex[
     query: Query[P, S],
     consistentRead: Boolean,
     limit: Int
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     retrieveOp[F, P, S, T](
       index,
       query,
@@ -58,7 +57,7 @@ private[meteor] sealed abstract class CompositeIndex[
   * @tparam P partition key type
   * @tparam S sort key type
   */
-case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
+case class SecondaryCompositeIndex[F[_]: Async, P: Encoder, S: Encoder](
   tableName: String,
   indexName: String,
   partitionKeyDef: KeyDef[P],
@@ -80,7 +79,6 @@ case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
     *
     * @param partitionKey partition key
     * @param limit number of items to be returned
-    * @param F implicit evidence for Concurrent
     * @param RT implicit evidence for RaiseThrowable
     * @tparam T returned item's type
     * @return a fs2 Stream of items
@@ -88,7 +86,7 @@ case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
   def retrieve[T: Decoder](
     partitionKey: P,
     limit: Int
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     retrieveOp[F, P, T](
       index,
       partitionKey,
@@ -103,11 +101,10 @@ case class SecondaryCompositeIndex[F[_], P: Encoder, S: Encoder](
   * @param partitionKeyDef partition key definition
   * @param sortKeyDef sort key definition
   * @param jClient DynamoDB java async client
-  * @tparam F effect type
   * @tparam P partition key's type
   * @tparam S sort key's type
   */
-case class CompositeTable[F[_], P: Encoder, S: Encoder](
+case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
   tableName: String,
   partitionKeyDef: KeyDef[P],
   sortKeyDef: KeyDef[S],
@@ -128,7 +125,6 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param partitionKey partition key
     * @param sortKey sort key
     * @param consistentRead flag to enable strongly consistent read
-    * @param F implicit evidence for Concurrent
     * @tparam T returned item's type
     * @return an optional item of type T
     */
@@ -136,28 +132,26 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     partitionKey: P,
     sortKey: S,
     consistentRead: Boolean
-  )(implicit F: Concurrent[F]): F[Option[T]] =
+  ): F[Option[T]] =
     getOp[F, P, S, T](table, partitionKey, sortKey, consistentRead)(jClient)
 
   /** Put an item into a table.
     *
     * @param t item to be put
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @tparam T item's type
     * @return Unit
     */
   def put[T: Encoder](
     t: T,
     condition: Expression = Expression.empty
-  )(implicit F: Concurrent[F]): F[Unit] =
+  ): F[Unit] =
     putOp[F, T](table.tableName, t, condition)(jClient)
 
   /** Put an item into a table and return previous value.
     *
     * @param t item to be put
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @tparam T item's type
     * @tparam U returned item's type
     * @return an option item of type U
@@ -165,17 +159,16 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
   def put[T: Encoder, U: Decoder](
     t: T,
     condition: Expression
-  )(implicit F: Concurrent[F]): F[Option[U]] =
+  ): F[Option[U]] =
     putOp[F, T, U](table.tableName, t, condition)(jClient)
 
   /** Delete an item by composite keys.
     *
     * @param partitionKey partition key
     * @param sortKey sort key
-    * @param F implicit evidence for Concurrent
     * @return Unit
     */
-  def delete(partitionKey: P, sortKey: S)(implicit F: Concurrent[F]): F[Unit] =
+  def delete(partitionKey: P, sortKey: S): F[Unit] =
     deleteOp[F, P, S, Unit](table, partitionKey, sortKey, ReturnValue.NONE)(
       jClient
     ).void
@@ -187,7 +180,6 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param sortKey sort key
     * @param update update expression
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @return Unit
     */
   def update(
@@ -195,7 +187,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     sortKey: S,
     update: Expression,
     condition: Expression = Expression.empty
-  )(implicit F: Concurrent[F]): F[Unit] =
+  ): F[Unit] =
     updateOp[F, P, S](table, partitionKey, sortKey, update, condition)(
       jClient
     )
@@ -208,7 +200,6 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param returnValue flag to define which item to be returned
     * @param update update expression
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @tparam T returned item's type
     * @return an optional item of type T
     */
@@ -218,7 +209,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     returnValue: ReturnValue,
     update: Expression,
     condition: Expression
-  )(implicit F: Concurrent[F]): F[Option[T]] =
+  ): F[Option[T]] =
     updateOp[F, P, S, T](
       table,
       partitionKey,
@@ -237,7 +228,6 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param partitionKey partition key
     * @param consistentRead flag to enable strongly consistent read
     * @param limit number of items to be returned
-    * @param F implicit evidence for Concurrent
     * @param RT implicit evidence for RaiseThrowable
     * @tparam T returned item's type
     * @return a fs2 Stream of items
@@ -246,7 +236,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     partitionKey: P,
     consistentRead: Boolean,
     limit: Int
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     retrieveOp[F, P, T](
       index,
       partitionKey,
@@ -267,8 +257,6 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param parallelism number of connections that can be open at the same time
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from composite keys P and S as a tuple to T
     */
@@ -278,7 +266,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, (P, S), T] =
+  ): Pipe[F, (P, S), T] =
     batchGetOp[F, P, S, T](
       table,
       consistentRead,
@@ -300,15 +288,13 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param maxBatchWait time window to collect items into a batch
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from T to Unit
     */
   def batchPut[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  ): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
   /** Put items in batch, '''un-ordered'''. Meaning batches are processed in '''parallel''', hence,
@@ -324,8 +310,6 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param parallelism number of connections that can be open at the same time
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from T to Unit
     */
@@ -333,7 +317,7 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  ): Pipe[F, T, Unit] =
     batchPutUnorderedOp[F, T](
       table.tableName,
       maxBatchWait,
@@ -352,15 +336,13 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param parallelism number of connections that can be open at the same time
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @return a fs2 Pipe from composite keys P and S as a tuple to Unit
     */
   def batchDelete(
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, (P, S), Unit] =
+  ): Pipe[F, (P, S), Unit] =
     batchDeleteUnorderedOp[F, P, S](
       table,
       maxBatchWait,
@@ -379,15 +361,13 @@ case class CompositeTable[F[_], P: Encoder, S: Encoder](
     * @param maxBatchWait time window to collect items into a batch
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from Either[(P, S), T], represent deletion (Left) or put (Right) to Unit.
     */
   def batchWrite[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, Either[(P, S), T], Unit] =
+  ): Pipe[F, Either[(P, S), T], Unit] =
     batchWriteInorderedOp[F, P, S, T](table, maxBatchWait, backoffStrategy)(
       jClient
     )

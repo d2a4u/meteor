@@ -3,7 +3,7 @@ package api.hi
 
 import fs2.{Pipe, RaiseThrowable}
 import cats.implicits._
-import cats.effect.{Concurrent, Timer}
+import cats.effect.Async
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
@@ -12,7 +12,7 @@ import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
 import scala.concurrent.duration.FiniteDuration
 
-private[meteor] sealed abstract class SimpleIndex[F[_], P: Encoder]
+private[meteor] sealed abstract class SimpleIndex[F[_]: Async, P: Encoder]
     extends PartitionKeyGetOps {
   def partitionKeyDef: KeyDef[P]
   def jClient: DynamoDbAsyncClient
@@ -24,7 +24,6 @@ private[meteor] sealed abstract class SimpleIndex[F[_], P: Encoder]
     *
     * @param query a query to filter items by key condition
     * @param consistentRead toggle to perform consistent read
-    * @param F implicit evidence for Concurrent
     * @param RT implicit evidence for RaiseThrowable
     * @tparam T return item's type
     * @return optional item of type T
@@ -32,7 +31,7 @@ private[meteor] sealed abstract class SimpleIndex[F[_], P: Encoder]
   def retrieve[T: Decoder](
     query: Query[P, Nothing],
     consistentRead: Boolean
-  )(implicit F: Concurrent[F], RT: RaiseThrowable[F]): F[Option[T]] =
+  )(implicit RT: RaiseThrowable[F]): F[Option[T]] =
     retrieveOp[F, P, T](
       index,
       query,
@@ -49,7 +48,7 @@ private[meteor] sealed abstract class SimpleIndex[F[_], P: Encoder]
   * @tparam F effect type
   * @tparam P partition key type
   */
-case class SecondarySimpleIndex[F[_], P: Encoder](
+case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
   tableName: String,
   indexName: String,
   partitionKeyDef: KeyDef[P],
@@ -67,7 +66,7 @@ case class SecondarySimpleIndex[F[_], P: Encoder](
   * @tparam F effect type
   * @tparam P partition key's type
   */
-case class SimpleTable[F[_], P: Encoder](
+case class SimpleTable[F[_]: Async, P: Encoder](
   tableName: String,
   partitionKeyDef: KeyDef[P],
   jClient: DynamoDbAsyncClient
@@ -86,35 +85,32 @@ case class SimpleTable[F[_], P: Encoder](
     *
     * @param partitionKey partition key
     * @param consistentRead flag to enable strongly consistent read
-    * @param F implicit evidence for Concurrent
     * @tparam T returned item's type
     * @return an optional item of type T
     */
   def get[T: Decoder](
     partitionKey: P,
     consistentRead: Boolean
-  )(implicit F: Concurrent[F]): F[Option[T]] =
+  ): F[Option[T]] =
     getOp[F, P, T](table, partitionKey, consistentRead)(jClient)
 
   /** Put an item into a table.
     *
     * @param t item to be put
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @tparam T item's type
     * @return Unit
     */
   def put[T: Encoder](
     t: T,
     condition: Expression = Expression.empty
-  )(implicit F: Concurrent[F]): F[Unit] =
+  ): F[Unit] =
     putOp[F, T](table.tableName, t, condition)(jClient)
 
   /** Put an item into a table and return previous value.
     *
     * @param t item to be put
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @tparam T item's type
     * @tparam U returned item's type
     * @return an option item of type U
@@ -122,16 +118,15 @@ case class SimpleTable[F[_], P: Encoder](
   def put[T: Encoder, U: Decoder](
     t: T,
     condition: Expression
-  )(implicit F: Concurrent[F]): F[Option[U]] =
+  ): F[Option[U]] =
     putOp[F, T, U](table.tableName, t, condition)(jClient)
 
   /** Delete an item by partition key.
     *
     * @param partitionKey partition key
-    * @param F implicit evidence for Concurrent
     * @return Unit
     */
-  def delete(partitionKey: P)(implicit F: Concurrent[F]): F[Unit] =
+  def delete(partitionKey: P): F[Unit] =
     deleteOp[F, P, Unit](table, partitionKey, ReturnValue.NONE)(jClient).void
 
   /** Update an item by partition key given an update expression when a condition expression is
@@ -140,14 +135,13 @@ case class SimpleTable[F[_], P: Encoder](
     * @param partitionKey partition key
     * @param update update expression
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @return Unit
     */
   def update(
     partitionKey: P,
     update: Expression,
     condition: Expression = Expression.empty
-  )(implicit F: Concurrent[F]): F[Unit] =
+  ): F[Unit] =
     updateOp[F, P](table, partitionKey, update, condition)(
       jClient
     )
@@ -159,7 +153,6 @@ case class SimpleTable[F[_], P: Encoder](
     * @param returnValue flag to define which item to be returned
     * @param update update expression
     * @param condition conditional expression
-    * @param F implicit evidence for Concurrent
     * @tparam T returned item's type
     * @return an optional item of type T
     */
@@ -168,7 +161,7 @@ case class SimpleTable[F[_], P: Encoder](
     returnValue: ReturnValue,
     update: Expression,
     condition: Expression
-  )(implicit F: Concurrent[F]): F[Option[T]] =
+  ): F[Option[T]] =
     updateOp[F, P, T](table, partitionKey, update, condition, returnValue)(
       jClient
     )
@@ -186,8 +179,6 @@ case class SimpleTable[F[_], P: Encoder](
     * @param parallelism number of connections that can be open at the same time
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from partition key P to T
     */
@@ -197,7 +188,7 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, P, T] =
+  ): Pipe[F, P, T] =
     batchGetOp[F, P, T](
       table,
       consistentRead,
@@ -219,15 +210,13 @@ case class SimpleTable[F[_], P: Encoder](
     * @param maxBatchWait time window to collect items into a batch
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from T to Unit
     */
   def batchPut[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  ): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
   /** Put items in batch, '''un-ordered'''. Meaning batches are processed in '''parallel''', hence,
@@ -243,8 +232,6 @@ case class SimpleTable[F[_], P: Encoder](
     * @param parallelism number of connections that can be open at the same time
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from T to Unit
     */
@@ -252,7 +239,7 @@ case class SimpleTable[F[_], P: Encoder](
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, T, Unit] =
+  ): Pipe[F, T, Unit] =
     batchPutUnorderedOp[F, T](
       table.tableName,
       maxBatchWait,
@@ -271,15 +258,13 @@ case class SimpleTable[F[_], P: Encoder](
     * @param parallelism number of connections that can be open at the same time
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @return a fs2 Pipe from composite keys P and S as a tuple to Unit
     */
   def batchDelete(
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, P, Unit] =
+  ): Pipe[F, P, Unit] =
     batchDeleteUnorderedOp[F, P](
       table,
       maxBatchWait,
@@ -298,15 +283,13 @@ case class SimpleTable[F[_], P: Encoder](
     * @param maxBatchWait time window to collect items into a batch
     * @param backoffStrategy backoff strategy in case of failure, default can be found at
     *                        [[meteor.Client.BackoffStrategy.default]].
-    * @param F implicit evidence for Concurrent
-    * @param TI implicit evidence for Timer
     * @tparam T returned item's type
     * @return a fs2 Pipe from Either[P, T], represent deletion (Left) or put (Right) to Unit.
     */
   def batchWrite[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(implicit F: Concurrent[F], TI: Timer[F]): Pipe[F, Either[P, T], Unit] =
+  ): Pipe[F, Either[P, T], Unit] =
     batchWriteInorderedOp[F, P, T](table, maxBatchWait, backoffStrategy)(
       jClient
     )

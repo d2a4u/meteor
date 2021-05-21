@@ -42,8 +42,8 @@ import meteor._
 import meteor.api.hi._
 import cats.effect.IO
 
-val client: Client[IO] = ???
-val booksTable = SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), client)
+val jClient: DynamoDbAsyncClient = ???
+val booksTable = SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), jClient)
 val lotr = Book(1, "The Lord of the Rings")
 
 val put = booksTable.get[Book](1, consistentRead = false)

@@ -57,7 +57,8 @@ val clientSrc: Resource[IO, Client[IO]] = Client.resource[IO]
 ```
 
 Internally, a default Java `DynamoDbAsyncClient` is created. Alternatively, you can also inject a
-`DynamoDbAsyncClient` via `Client.apply` method.
+`DynamoDbAsyncClient` via `Client.apply` method. Please note that `meteor`'s `Client` is considered
+low level API since it is very similar to Java API, consider using the high level API below.
 
 #### Table and Secondary Index
 
@@ -67,7 +68,21 @@ DynamoDB actions can be performed against a table or a secondary index of a tabl
 ```scala
 import meteor.api.hi._
 
-SimpleTable[F, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), client)
+val jClientSrc = 
+  Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
+    Sync[F].delay {
+      val cred = DefaultCredentialsProvider.create()
+      DynamoDbAsyncClient.builder()
+        .credentialsProvider(cred)
+        .region(Region.EU_WEST_1)
+        .build()
+    }
+  }
+
+val tableSrc = 
+  jClientSrc.map { jClient =>
+    SimpleTable[F, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), jClient)
+  }
 ```
 
 All supported index types are:
@@ -97,9 +112,24 @@ import meteor.api.hi._
 import cats.effect.{ExitCode, IO, IOApp}
 
 object Main extends IOApp {
+<<<<<<< HEAD
   val dynamoClientSrc = Client.resource[IO]
   val booksTableSrc = dynamoClientSrc.map { client =>
     SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), client)
+=======
+  val jClientSrc = 
+    Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
+      Sync[F].delay {
+        val cred = DefaultCredentialsProvider.create()
+        DynamoDbAsyncClient.builder()
+          .credentialsProvider(cred)
+          .region(Region.EU_WEST_1)
+          .build()
+      }
+    }
+  val booksTableSrc = jClientSrc.map { jClient =>
+    SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), jClient)
+>>>>>>> 5d9c579cead2661152f1e80b2fb0f9b0a86f0348
   }
 
   val lotr = Book(1, "The Lord of the Rings")

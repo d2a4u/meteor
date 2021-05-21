@@ -1,7 +1,7 @@
 package meteor
 package api
 
-import cats.effect.Concurrent
+import cats.effect.Async
 import cats.implicits._
 import meteor.codec.{Decoder, Encoder}
 import meteor.implicits._
@@ -13,12 +13,7 @@ private[meteor] trait DeleteOps
     with CompositeKeysDeleteOps {}
 
 private[meteor] trait CompositeKeysDeleteOps {
-  private[meteor] def deleteOp[
-    F[_]: Concurrent,
-    P: Encoder,
-    S: Encoder,
-    U: Decoder
-  ](
+  private[meteor] def deleteOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -31,9 +26,9 @@ private[meteor] trait CompositeKeysDeleteOps {
           .key(key)
           .returnValues(returnValue)
           .build()
-      (() => jClient.deleteItem(req)).liftF[F].flatMap { resp =>
+      liftFuture(jClient.deleteItem(req)).flatMap { resp =>
         if (resp.hasAttributes) {
-          Concurrent[F].fromEither(
+          Async[F].fromEither(
             resp.attributes().asAttributeValue.as[U]
           ).map(_.some)
         } else {
@@ -45,7 +40,7 @@ private[meteor] trait CompositeKeysDeleteOps {
 }
 
 private[meteor] trait PartitionKeyDeleteOps {
-  private[meteor] def deleteOp[F[_]: Concurrent, P: Encoder, U: Decoder](
+  private[meteor] def deleteOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     returnValue: ReturnValue
@@ -57,9 +52,9 @@ private[meteor] trait PartitionKeyDeleteOps {
           .key(key)
           .returnValues(returnValue)
           .build()
-      (() => jClient.deleteItem(req)).liftF[F].flatMap { resp =>
+      liftFuture(jClient.deleteItem(req)).flatMap { resp =>
         if (resp.hasAttributes) {
-          Concurrent[F].fromEither(
+          Async[F].fromEither(
             resp.attributes().asAttributeValue.as[U]
           ).map(_.some)
         } else {
