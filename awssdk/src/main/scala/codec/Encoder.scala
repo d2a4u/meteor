@@ -11,7 +11,16 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.collection.immutable
 import scala.jdk.CollectionConverters._
 
+/**
+  * Provides an encoding function for a given type, write value of type A as a Java AttributeValue
+  */
 trait Encoder[A] {
+
+  /**
+    * Write a value of type A as a Java AttributeValue
+    * @param a value of type A
+    * @return a Java AttributeValue object
+    */
   def write(a: A): AttributeValue
 }
 
@@ -98,13 +107,11 @@ object Encoder {
 
   implicit val dynamoEncoderForFloat: Encoder[Float] =
     Encoder.instance(float =>
-      AttributeValue.builder().n(float.toString).build()
-    )
+      AttributeValue.builder().n(float.toString).build())
 
   implicit val dynamoEncoderForDouble: Encoder[Double] =
     Encoder.instance(double =>
-      AttributeValue.builder().n(double.toString).build()
-    )
+      AttributeValue.builder().n(double.toString).build())
 
   implicit val dynamoEncoderForBigDecimal: Encoder[BigDecimal] =
     Encoder.instance(bd => AttributeValue.builder().n(bd.toString).build())
@@ -114,8 +121,7 @@ object Encoder {
 
   implicit val dynamoEncoderForShort: Encoder[Short] =
     Encoder.instance(short =>
-      AttributeValue.builder().n(short.toString).build()
-    )
+      AttributeValue.builder().n(short.toString).build())
 
   implicit val dynamoEncoderForByte: Encoder[Byte] =
     Encoder.instance(byte => AttributeValue.builder().n(byte.toString).build())

@@ -13,10 +13,33 @@ import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.jdk.CollectionConverters._
 
+/**
+  * Provides a decoding function for a given type, attempt to read an Java AttributeValue into type A
+  * @tparam A
+  */
 trait Decoder[A] {
+
+  /**
+    * Attempt to read an AttributeValue to a value of type A
+    * @param av Java attribute value object
+    * @return either a value of type A or a decoder error
+    */
   def read(av: AttributeValue): Either[DecoderError, A]
+
+  /**
+    * Attempt to read a Map of String and AttributeValue to a value of type A
+    * @param av Java Map of String and AttributeValue
+    * @return either a value of type A or a decoder error
+    */
   def read(av: java.util.Map[String, AttributeValue]): Either[DecoderError, A] =
     read(AttributeValue.builder().m(av).build())
+
+  /**
+    * Create a new decoder given a transformation from A to either B or a decoder error
+    *
+    * @param f a function returning either a value or an error message
+    * @return a new Decoder of type B
+    */
   def emap[B](f: A => Either[DecoderError, B]): Decoder[B] =
     Decoder.instance { av =>
       this.read(av).flatMap(f)
@@ -53,7 +76,7 @@ object Decoder {
             a: A
           ): Either[DecoderError, B] =
             f(a).read(av) match {
-              case l @ Left(_)     => l.rightCast[B]
+              case l @ Left(_) => l.rightCast[B]
               case Right(Left(a2)) => step(av, a2)
               case Right(Right(b)) => Right(b)
             }
@@ -111,9 +134,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(n.toLong).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForFloat: Decoder[Float] =
@@ -122,9 +143,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(n.toFloat).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForDouble: Decoder[Double] =
@@ -133,9 +152,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(n.toDouble).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForBigDecimal: Decoder[BigDecimal] =
@@ -144,9 +161,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(BigDecimal(n)).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForBigInt: Decoder[BigInt] =
@@ -155,9 +170,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(BigInt(n)).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForShort: Decoder[Short] =
@@ -166,9 +179,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(n.toShort).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForByte: Decoder[Byte] =
@@ -177,9 +188,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(n.toByte).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForInt: Decoder[Int] =
@@ -188,9 +197,7 @@ object Decoder {
         .toRight(DecoderError.invalidTypeFailure(DynamoDbType.N))
         .flatMap(n =>
           Either.catchNonFatal(n.toInt).leftMap(e =>
-            DecoderError(e.getMessage, e.some)
-          )
-        )
+            DecoderError(e.getMessage, e.some)))
     }
 
   implicit val dynamoDecoderForInstant: Decoder[Instant] =

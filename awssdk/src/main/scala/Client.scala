@@ -34,9 +34,19 @@ import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
+/**
+  * A client that can perform AWS DynamoDB table and item actions
+  */
 trait Client[F[_]] {
 
-  /** Get a single value from a table by partition key P.
+  /**
+    * Get a single item of type U from a table by partition key P.
+    * @param table
+    * @param partitionKey
+    * @param consistentRead
+    * @tparam P
+    * @tparam U
+    * @return
     */
   def get[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
