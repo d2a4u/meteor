@@ -14,7 +14,7 @@ class CompositeTableBatchSpec extends ITSpec {
   val backOff = Client.BackoffStrategy.default
 
   it should "round trip batch put and batch get items" in {
-    val samples = List.fill(200)(sample[Range]).distinct.map { range =>
+    val samples = Set.fill(200)(sample[Range]).toList.map { range =>
       sample[TestData].copy(range = range)
     }
     val input = Stream.emits(samples).covary[IO]
@@ -24,7 +24,7 @@ class CompositeTableBatchSpec extends ITSpec {
   }
 
   it should "deduplicate batch get items (within the same batch)" in {
-    val samples = List.fill(50)(sample[Range]).distinct.map { range =>
+    val samples = Set.fill(50)(sample[Range]).toList.map { range =>
       sample[TestData].copy(range = range)
     }
     val input = Stream.emits(samples).covary[IO]
@@ -46,7 +46,7 @@ class CompositeTableBatchSpec extends ITSpec {
   }
 
   it should "batch put items unordered" in {
-    val samples = List.fill(200)(sample[Range]).map { range =>
+    val samples = Set.fill(200)(sample[Range]).toList.map { range =>
       sample[TestData].copy(range = range)
     }
     val input = Stream.emits(samples).covary[IO]
@@ -56,7 +56,7 @@ class CompositeTableBatchSpec extends ITSpec {
   }
 
   it should "batch delete items" in {
-    val samples = List.fill(200)(sample[Range]).map { range =>
+    val samples = Set.fill(200)(sample[Range]).toList.map { range =>
       sample[TestData].copy(range = range)
     }
     val input = Stream.emits(samples).covary[IO]

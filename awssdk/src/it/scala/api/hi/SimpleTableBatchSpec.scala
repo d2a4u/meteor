@@ -14,7 +14,7 @@ class SimpleTableBatchSpec extends ITSpec {
   val backOff = Client.BackoffStrategy.default
 
   it should "round trip batch put and batch get items" in {
-    val samples = List.fill(200)(sample[Id]).map { id =>
+    val samples = Set.fill(200)(sample[Id]).toList.map { id =>
       sample[TestData].copy(id = id)
     }
     val input = Stream.emits(samples).covary[IO]
@@ -24,7 +24,7 @@ class SimpleTableBatchSpec extends ITSpec {
   }
 
   it should "deduplicate batch get items (within the same batch)" in {
-    val samples = List.fill(50)(sample[Id]).map { id =>
+    val samples = Set.fill(50)(sample[Id]).toList.map { id =>
       sample[TestData].copy(id = id)
     }
     val input = Stream.emits(samples).covary[IO]
@@ -45,7 +45,7 @@ class SimpleTableBatchSpec extends ITSpec {
   }
 
   it should "batch put items unordered" in {
-    val samples = List.fill(200)(sample[Id]).map { id =>
+    val samples = Set.fill(200)(sample[Id]).toList.map { id =>
       sample[TestData].copy(id = id)
     }
     val input = Stream.emits(samples).covary[IO]
@@ -55,7 +55,7 @@ class SimpleTableBatchSpec extends ITSpec {
   }
 
   it should "batch delete items" in {
-    val samples = List.fill(200)(sample[Id]).map { id =>
+    val samples = Set.fill(200)(sample[Id]).toList.map { id =>
       sample[TestData].copy(id = id)
     }
     val input = Stream.emits(samples).covary[IO]

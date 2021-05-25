@@ -125,8 +125,7 @@ private[meteor] sealed trait CompositeKeysIndex[P, S] extends Index[P] {
     } yield pk ++ sk
 }
 
-/**
-  * Represent a table which has only partition key
+/** Represent a table which has only partition key
   *
   * @param tableName table's name
   * @param partitionKeyDef partition key's definition
@@ -138,8 +137,7 @@ case class PartitionKeyTable[P](
   partitionKeyDef: KeyDef[P]
 ) extends PartitionKeyIndex[P]
 
-/**
-  * Represent a table which has both partition key and sort key
+/** Represent a table which has both partition key and sort key
   *
   * @param tableName table's name
   * @param partitionKeyDef partition key's definition
@@ -154,8 +152,7 @@ case class CompositeKeysTable[P, S](
   sortKeyDef: KeyDef[S]
 ) extends CompositeKeysIndex[P, S]
 
-/**
-  * Represent a secondary index which has only partition key
+/** Represent a secondary index which has only partition key
   *
   * @param tableName table's name
   * @param indexName secondary index's name
@@ -169,8 +166,7 @@ case class PartitionKeySecondaryIndex[P](
   partitionKeyDef: KeyDef[P]
 ) extends PartitionKeyIndex[P]
 
-/**
-  * Represent a secondary index which has both partition key and sort key
+/** Represent a secondary index which has both partition key and sort key
   *
   * @param tableName table's name
   * @param indexName index's name
@@ -187,8 +183,7 @@ case class CompositeKeysSecondaryIndex[P, S](
   sortKeyDef: KeyDef[S]
 ) extends CompositeKeysIndex[P, S]
 
-/**
-  * Represent sort key query which can be used as part of key condition expression for query action:
+/** Represent sort key query which can be used as part of key condition expression for query action:
   * https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
   */
 sealed trait SortKeyQuery[T]
@@ -205,8 +200,7 @@ object SortKeyQuery {
   def empty[T]: SortKeyQuery[T] = Empty[T]()
 }
 
-/**
-  * Abstraction over DynamoDB expressions, this can be key condition expression, update expression, projection expression etc..
+/** Abstraction over DynamoDB expressions, this can be key condition expression, update expression, projection expression etc..
   * https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.html.
   *
   * It is recommended to avoid DynamoDB's reserved words in expression string by providing expression as
@@ -265,8 +259,7 @@ object Expression {
   )
 }
 
-/**
-  * Represent a DynamoDB's query where a partition key value is required,
+/** Represent a DynamoDB's query where a partition key value is required,
   * `sortKeyQuery` and `filter` are optional.
   *
   * Examples:
