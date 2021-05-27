@@ -208,7 +208,7 @@ object SortKeyQuery {
   * be replaced separately via `attributeNames` and `attributeValues` maps.
   *
   * Example:
-  *
+  * {{{
   * import meteor.Expression
   * import meteor.syntax._
   *
@@ -220,7 +220,7 @@ object SortKeyQuery {
   *     ":my_int" -> 0.asAttributeValue
   *   )
   * )
-  *
+  * }}}
   * @param expression expression as raw String
   * @param attributeNames a map of attribute name placeholders in the raw String above to the actual attribute names in the table
   * @param attributeValues a map of attribute value placeholders in the raw String above to the actual attribute values
@@ -263,6 +263,7 @@ object Expression {
   * `sortKeyQuery` and `filter` are optional.
   *
   * Examples:
+  * {{{
   * // query for an item where partition key == "some-partition-key", sort key == "some-sort-key" but only
   * // return a value if the filter's condition is med ("my_bool_attribute_name" == true)
   * val query: Query[String, String] =
@@ -291,7 +292,7 @@ object Expression {
   *       )
   *     )
   *   )
-  *
+  * }}}
   * @param partitionKey partition key value
   * @param sortKeyQuery sort key query
   * @param filter filter expression

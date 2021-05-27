@@ -112,11 +112,7 @@ import meteor.api.hi._
 import cats.effect.{ExitCode, IO, IOApp}
 
 object Main extends IOApp {
-<<<<<<< HEAD
-  val dynamoClientSrc = Client.resource[IO]
-  val booksTableSrc = dynamoClientSrc.map { client =>
-    SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), client)
-=======
+  
   val jClientSrc = 
     Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
       Sync[F].delay {
@@ -129,7 +125,6 @@ object Main extends IOApp {
     }
   val booksTableSrc = jClientSrc.map { jClient =>
     SimpleTable[IO, Int]("books-table", KeyDef[Int]("id", DynamoDbType.N), jClient)
->>>>>>> 5d9c579cead2661152f1e80b2fb0f9b0a86f0348
   }
 
   val lotr = Book(1, "The Lord of the Rings")
