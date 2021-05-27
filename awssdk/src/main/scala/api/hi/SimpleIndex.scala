@@ -12,12 +12,22 @@ import software.amazon.awssdk.services.dynamodb.model.ReturnValue
 
 import scala.concurrent.duration.FiniteDuration
 
-abstract class SimpleIndex[F[_]: Async, P: Encoder] extends PartitionKeyGetOps {
+private[meteor] sealed abstract class SimpleIndex[F[_]: Async, P: Encoder]
+    extends PartitionKeyGetOps {
   def partitionKeyDef: KeyDef[P]
   def jClient: DynamoDbAsyncClient
 
   def index: PartitionKeyIndex[P]
 
+  /** Retrieve items from a partition key index, can be a secondary index or a table which has only
+    * partition key and no sort key.
+    *
+    * @param query a query to filter items by key condition
+    * @param consistentRead toggle to perform consistent read
+    * @param RT implicit evidence for RaiseThrowable
+    * @tparam T return item's type
+    * @return optional item of type T
+    */
   def retrieve[T: Decoder](
     query: Query[P, Nothing],
     consistentRead: Boolean
@@ -29,6 +39,15 @@ abstract class SimpleIndex[F[_]: Async, P: Encoder] extends PartitionKeyGetOps {
     )(jClient)
 }
 
+/** Represent a secondary index where the index has only partition key and no sort key.
+  *
+  * @param tableName table's name
+  * @param indexName index's name
+  * @param partitionKeyDef partition key definition
+  * @param jClient DynamoDB java async client
+  * @tparam F effect type
+  * @tparam P partition key type
+  */
 case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
   tableName: String,
   indexName: String,
@@ -39,6 +58,14 @@ case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
     PartitionKeySecondaryIndex[P](tableName, indexName, partitionKeyDef)
 }
 
+/** Represent a table where the index has only partition key and no sort key.
+  *
+  * @param tableName table's name
+  * @param partitionKeyDef partition key definition
+  * @param jClient DynamoDB java async client
+  * @tparam F effect type
+  * @tparam P partition key's type
+  */
 case class SimpleTable[F[_]: Async, P: Encoder](
   tableName: String,
   partitionKeyDef: KeyDef[P],
@@ -54,13 +81,25 @@ case class SimpleTable[F[_]: Async, P: Encoder](
 
   val index: PartitionKeyIndex[P] = table
 
+  /** Get a single item by partition key.
+    *
+    * @param partitionKey partition key
+    * @param consistentRead flag to enable strongly consistent read
+    * @tparam T returned item's type
+    * @return an optional item of type T
+    */
   def get[T: Decoder](
     partitionKey: P,
     consistentRead: Boolean
   ): F[Option[T]] =
     getOp[F, P, T](table, partitionKey, consistentRead)(jClient)
 
-  /** Put an item into a table, return ReturnValue.NONE.
+  /** Put an item into a table.
+    *
+    * @param t item to be put
+    * @param condition conditional expression
+    * @tparam T item's type
+    * @return Unit
     */
   def put[T: Encoder](
     t: T,
@@ -68,7 +107,13 @@ case class SimpleTable[F[_]: Async, P: Encoder](
   ): F[Unit] =
     putOp[F, T](table.tableName, t, condition)(jClient)
 
-  /** Put an item into a table, return ReturnValue.ALL_OLD.
+  /** Put an item into a table and return previous value.
+    *
+    * @param t item to be put
+    * @param condition conditional expression
+    * @tparam T item's type
+    * @tparam U returned item's type
+    * @return an option item of type U
     */
   def put[T: Encoder, U: Decoder](
     t: T,
@@ -76,12 +121,21 @@ case class SimpleTable[F[_]: Async, P: Encoder](
   ): F[Option[U]] =
     putOp[F, T, U](table.tableName, t, condition)(jClient)
 
+  /** Delete an item by partition key.
+    *
+    * @param partitionKey partition key
+    * @return Unit
+    */
   def delete(partitionKey: P): F[Unit] =
     deleteOp[F, P, Unit](table, partitionKey, ReturnValue.NONE)(jClient).void
 
-  /** Update an item by partition key P given an update expression
-    * when it fulfills a condition expression.
-    * Return Unit (ReturnValue.NONE).
+  /** Update an item by partition key given an update expression when a condition expression is
+    * fulfilled. Return Unit.
+    *
+    * @param partitionKey partition key
+    * @param update update expression
+    * @param condition conditional expression
+    * @return Unit
     */
   def update(
     partitionKey: P,
@@ -92,9 +146,15 @@ case class SimpleTable[F[_]: Async, P: Encoder](
       jClient
     )
 
-  /** Update an item by partition key P given an update expression
-    * when it fulfills a condition expression.
-    * A Codec of U is required to deserialize return value.
+  /** Update an item by partition key given an update expression when a condition expression is
+    * fulfilled. Return item is customizable via `returnValue` parameter.
+    *
+    * @param partitionKey partition key
+    * @param returnValue flag to define which item to be returned
+    * @param update update expression
+    * @param condition conditional expression
+    * @tparam T returned item's type
+    * @return an optional item of type T
     */
   def update[T: Decoder](
     partitionKey: P,
@@ -106,6 +166,22 @@ case class SimpleTable[F[_]: Async, P: Encoder](
       jClient
     )
 
+  /** Get items by partition key in batch. Max batch size is preset to 100 (maximum batch size
+    * permitted for batch get action), however, it is possible to control the rate of batching with
+    * `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a Pipe in order to
+    * cover broader use cases regardless of input can be fitted into memory or not. Duplicated items
+    * within a batch will be removed. Left over items within a batch will be reprocessed in the next
+    * batch.
+    *
+    * @param consistentRead flag to enable strongly consistent read
+    * @param projection projection expression
+    * @param maxBatchWait time window to collect items into a batch
+    * @param parallelism number of connections that can be open at the same time
+    * @param backoffStrategy backoff strategy in case of failure, default can be found at
+    *                        [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T returned item's type
+    * @return a fs2 Pipe from partition key P to T
+    */
   def batchGet[T: Decoder](
     consistentRead: Boolean,
     projection: Expression,
@@ -122,13 +198,42 @@ case class SimpleTable[F[_]: Async, P: Encoder](
       backoffStrategy
     )(jClient)
 
+  /** Put items in batch, '''in ordered'''. Meaning batches are processed in '''serial''' to avoid
+    * race condition when writing items with the same partition key. If your input doesn't have
+    * this constrain, you can use [[batchPutUnordered]]. Max batch size is preset to 25 (maximum
+    * batch size permitted from batch put actions), however, it is possible to control the rate of
+    * batching with `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a
+    * Pipe in order to cover broader use cases regardless of input can be fitted into memory or not.
+    * Duplicated items within a batch will be removed. Left over items within a batch will be
+    * reprocessed in the next batch.
+    *
+    * @param maxBatchWait time window to collect items into a batch
+    * @param backoffStrategy backoff strategy in case of failure, default can be found at
+    *                        [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T returned item's type
+    * @return a fs2 Pipe from T to Unit
+    */
   def batchPut[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   ): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
-  /** Batch put items into a table where ordering of input items does not matter
+  /** Put items in batch, '''un-ordered'''. Meaning batches are processed in '''parallel''', hence,
+    * if your input has items with the same partition key, this can cause a race condition,
+    * consider using [[batchPut]] instead. Max batch size is preset to 25 (maximum batch
+    * size permitted from batch put actions), however, it is possible to control the rate of
+    * batching with `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a
+    * Pipe in order to cover broader use cases regardless of input can be fitted into memory or not.
+    * Duplicated items within a batch will be removed. Left over items within a batch will be
+    * reprocessed in the next batch.
+    *
+    * @param maxBatchWait time window to collect items into a batch
+    * @param parallelism number of connections that can be open at the same time
+    * @param backoffStrategy backoff strategy in case of failure, default can be found at
+    *                        [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T returned item's type
+    * @return a fs2 Pipe from T to Unit
     */
   def batchPutUnordered[T: Encoder](
     maxBatchWait: FiniteDuration,
@@ -142,6 +247,19 @@ case class SimpleTable[F[_]: Async, P: Encoder](
       backoffStrategy
     )(jClient)
 
+  /** Delete items by partition key in batch. Max batch size is preset to 100 (maximum batch size
+    * permitted for batch get action), however, it is possible to control the rate of batching with
+    * `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a Pipe in order
+    * to cover broader use cases regardless of input can be fitted into memory or not. Duplicated
+    * items within a batch will be removed. Left over items within a batch will be reprocessed in
+    * the next batch.
+    *
+    * @param maxBatchWait time window to collect items into a batch
+    * @param parallelism number of connections that can be open at the same time
+    * @param backoffStrategy backoff strategy in case of failure, default can be found at
+    *                        [[meteor.Client.BackoffStrategy.default]].
+    * @return a fs2 Pipe from composite keys P and S as a tuple to Unit
+    */
   def batchDelete(
     maxBatchWait: FiniteDuration,
     parallelism: Int,
@@ -154,6 +272,20 @@ case class SimpleTable[F[_]: Async, P: Encoder](
       backoffStrategy
     )(jClient)
 
+  /** Write items (put or delete) in batch, '''in ordered'''. Meaning batches are processed in
+    * '''serial''' to avoid race condition when writing items with the same partition key. Max
+    * batch size is preset to 25 (maximum batch size permitted from batch write actions), however,
+    * it is possible to control the rate of batching with `maxBatchWait` parameter. This uses fs2
+    * .groupWithin internally. This returns a Pipe in order to cover broader use cases regardless of
+    * input can be fitted into memory or not. Duplicated items within a batch will be removed. Left
+    * over items within a batch will be reprocessed in the next batch.
+    *
+    * @param maxBatchWait time window to collect items into a batch
+    * @param backoffStrategy backoff strategy in case of failure, default can be found at
+    *                        [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T returned item's type
+    * @return a fs2 Pipe from Either[P, T], represent deletion (Left) or put (Right) to Unit.
+    */
   def batchWrite[T: Encoder](
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy

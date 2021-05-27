@@ -11,10 +11,12 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.jdk.CollectionConverters._
 
-trait UpdateOps extends PartitionKeyUpdateOps with CompositeKeysUpdateOps {}
+private[meteor] trait UpdateOps
+    extends PartitionKeyUpdateOps
+    with CompositeKeysUpdateOps {}
 
-trait PartitionKeyUpdateOps extends SharedUpdateOps {
-  def updateOp[F[_]: Async, P: Encoder, U: Decoder](
+private[meteor] trait PartitionKeyUpdateOps extends SharedUpdateOps {
+  private[meteor] def updateOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
@@ -34,7 +36,7 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Async, P: Encoder, U: Decoder](
+  private[meteor] def updateOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
@@ -55,7 +57,7 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Async, P: Encoder](
+  private[meteor] def updateOp[F[_]: Async, P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression
@@ -74,7 +76,7 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Async, P: Encoder](
+  private[meteor] def updateOp[F[_]: Async, P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     update: Expression,
@@ -96,8 +98,8 @@ trait PartitionKeyUpdateOps extends SharedUpdateOps {
 
 }
 
-trait CompositeKeysUpdateOps extends SharedUpdateOps {
-  def updateOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
+private[meteor] trait CompositeKeysUpdateOps extends SharedUpdateOps {
+  private[meteor] def updateOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -118,7 +120,7 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
+  private[meteor] def updateOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -140,7 +142,7 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Async, P: Encoder, S: Encoder](
+  private[meteor] def updateOp[F[_]: Async, P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -160,7 +162,7 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
     }
   }
 
-  def updateOp[F[_]: Async, P: Encoder, S: Encoder](
+  private[meteor] def updateOp[F[_]: Async, P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -183,8 +185,8 @@ trait CompositeKeysUpdateOps extends SharedUpdateOps {
 
 }
 
-trait SharedUpdateOps {
-  def sendUpdateItem[F[_]: Async](req: UpdateItemRequest)(
+private[meteor] trait SharedUpdateOps {
+  private[meteor] def sendUpdateItem[F[_]: Async](req: UpdateItemRequest)(
     jClient: DynamoDbAsyncClient
   ): F[Unit] =
     liftFuture(jClient.updateItem(req)).adaptError {
@@ -192,7 +194,7 @@ trait SharedUpdateOps {
         ConditionalCheckFailed(err.getMessage)
     }.void
 
-  def sendUpdateItem[F[_]: Async, U: Decoder](
+  private[meteor] def sendUpdateItem[F[_]: Async, U: Decoder](
     req: UpdateItemRequest
   )(jClient: DynamoDbAsyncClient): F[Option[U]] =
     liftFuture(jClient.updateItem(req)).flatMap { resp =>
@@ -207,7 +209,7 @@ trait SharedUpdateOps {
         ConditionalCheckFailed(err.getMessage)
     }
 
-  def mkUpdateRequestBuilder(
+  private[meteor] def mkUpdateRequestBuilder(
     tableName: String,
     update: Expression,
     condition: Expression,
