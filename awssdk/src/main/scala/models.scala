@@ -303,7 +303,8 @@ case class Query[P: Encoder, S: Encoder](
   sortKeyQuery: SortKeyQuery[S],
   filter: Expression
 ) {
-  def keysCondition(index: CompositeKeysIndex[P, S]): Expression = {
+  private[meteor] def keysCondition(index: CompositeKeysIndex[P, S])
+    : Expression = {
     val partitionKeyExpression =
       mkPartitionKeyExpression(index.partitionKeyDef.attributeName)
 
@@ -313,7 +314,7 @@ case class Query[P: Encoder, S: Encoder](
     Monoid.maybeCombine(partitionKeyExpression, optSortKeyExpression)
   }
 
-  def keyCondition(table: Index[P]): Expression =
+  private[meteor] def keyCondition(table: Index[P]): Expression =
     mkPartitionKeyExpression(table.partitionKeyDef.attributeName)
 
   private def mkPartitionKeyExpression(partitionKeyAttributeName: String) = {
@@ -410,6 +411,12 @@ object Query {
     sortKeyQuery: SortKeyQuery[S]
   ): Query[P, S] = Query(partitionKey, sortKeyQuery, Expression.empty)
 
+  /** Create a Query where the table doesn't have a sort key.
+    *
+    * @param partitionKey partition key
+    * @param filter filter expression
+    * @return a query
+    */
   def apply[P: Encoder](
     partitionKey: P,
     filter: Expression
@@ -417,6 +424,8 @@ object Query {
     Query[P, Nothing](partitionKey, SortKeyQuery.empty[Nothing], filter)
 }
 
+/** Represent DynamoDB primitive data types, including BOOL, B, BS, L, M, N, NS, NULL, S and SS.
+  */
 trait DynamoDbType {
   def toScalarAttributeType: ScalarAttributeType =
     this match {

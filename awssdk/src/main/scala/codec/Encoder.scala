@@ -25,6 +25,9 @@ trait Encoder[A] {
 object Encoder {
   def apply[A](implicit dd: Encoder[A]): Encoder[A] = dd
 
+  /** Create a new instance of Encoder for type A. Helper methods and more examples can be found in
+    * [[meteor.syntax]].
+    */
   def instance[A](f: A => AttributeValue): Encoder[A] = (a: A) => f(a)
 
   def const[A](key: String, value: String): Encoder[A] =

@@ -47,6 +47,9 @@ object Decoder {
 
   def apply[A](implicit dd: Decoder[A]): Decoder[A] = dd
 
+  /** Create a new instance of Decoder for type A. Helper methods and more examples can be found in
+    * [[meteor.syntax]].
+    */
   def instance[A](f: AttributeValue => Either[DecoderError, A]): Decoder[A] =
     (av: AttributeValue) => f(av)
 
