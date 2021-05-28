@@ -8,10 +8,12 @@ import meteor.implicits._
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 
-trait DeleteOps extends PartitionKeyDeleteOps with CompositeKeysDeleteOps {}
+private[meteor] trait DeleteOps
+    extends PartitionKeyDeleteOps
+    with CompositeKeysDeleteOps {}
 
-trait CompositeKeysDeleteOps {
-  def deleteOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
+private[meteor] trait CompositeKeysDeleteOps {
+  private[meteor] def deleteOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -37,8 +39,8 @@ trait CompositeKeysDeleteOps {
   }
 }
 
-trait PartitionKeyDeleteOps {
-  def deleteOp[F[_]: Async, P: Encoder, U: Decoder](
+private[meteor] trait PartitionKeyDeleteOps {
+  private[meteor] def deleteOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     returnValue: ReturnValue
