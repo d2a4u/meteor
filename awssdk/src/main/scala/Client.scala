@@ -34,9 +34,14 @@ import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
+/** Low level client that can perform AWS DynamoDB table and item actions.
+  * It provides methods that resemble DynamoDB's API, consider using high level
+  * API tables from [[meteor.api.hi]] package instead. This is still useful to:
+  * create, delete and scan table.
+  */
 trait Client[F[_]] {
 
-  /** Get a single value from a table by partition key P.
+  /** Get a single item of type U from a table by partition key P.
     */
   def get[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],

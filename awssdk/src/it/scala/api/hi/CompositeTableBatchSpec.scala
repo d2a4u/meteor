@@ -46,7 +46,7 @@ class CompositeTableBatchSpec extends ITSpec {
   }
 
   it should "batch put items unordered" in {
-    val samples = List.fill(200)(sample[Range]).map { range =>
+    val samples = List.fill(200)(sample[Range]).distinct.map { range =>
       sample[TestData].copy(range = range)
     }
     val input = Stream.emits(samples).covary[IO]
@@ -56,7 +56,7 @@ class CompositeTableBatchSpec extends ITSpec {
   }
 
   it should "batch delete items" in {
-    val samples = List.fill(200)(sample[Range]).map { range =>
+    val samples = List.fill(200)(sample[Range]).distinct.map { range =>
       sample[TestData].copy(range = range)
     }
     val input = Stream.emits(samples).covary[IO]
