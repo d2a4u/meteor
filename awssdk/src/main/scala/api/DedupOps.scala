@@ -5,8 +5,8 @@ import cats.MonadThrow
 import cats.implicits._
 import fs2.Chunk
 
-trait DedupOps {
-  def dedupInOrdered[F[_]: MonadThrow, T, U, V](
+private[meteor] trait DedupOps {
+  private[meteor] def dedupInOrdered[F[_]: MonadThrow, T, U, V](
     input: Chunk[T]
   )(mkKey: T => F[U])(transform: T => F[V]): F[List[V]] = {
     val iterator = input.reverseIterator
@@ -31,7 +31,7 @@ trait DedupOps {
     dedupInternal(Set.empty)(List.empty)
   }
 
-  def dedupInOrdered[F[_]: MonadThrow, T, U](
+  private[meteor] def dedupInOrdered[F[_]: MonadThrow, T, U](
     input: Chunk[T]
   )(mkKey: T => F[U]): F[List[U]] = {
     val iterator = input.reverseIterator
@@ -56,4 +56,4 @@ trait DedupOps {
   }
 }
 
-object DedupOps extends DedupOps
+private[meteor] object DedupOps extends DedupOps

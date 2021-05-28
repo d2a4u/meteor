@@ -17,14 +17,14 @@ import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.compat.java8.DurationConverters._
 
-trait BatchWriteOps
+private[meteor] trait BatchWriteOps
     extends PartitionKeyBatchWriteOps
     with CompositeKeysBatchWriteOps {}
 
-trait SharedBatchWriteOps extends DedupOps {
-  val MaxBatchWriteSize = 25
+private[meteor] trait SharedBatchWriteOps extends DedupOps {
+  private[meteor] val MaxBatchWriteSize = 25
 
-  def batchPutInorderedOp[F[_]: Async, I: Encoder](
+  private[meteor] def batchPutInorderedOp[F[_]: Async, I: Encoder](
     table: Index[_],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
@@ -37,7 +37,7 @@ trait SharedBatchWriteOps extends DedupOps {
     }
   }.andThen(_.drain)
 
-  def batchPutUnorderedOp[F[_]: Async, I: Encoder](
+  private[meteor] def batchPutUnorderedOp[F[_]: Async, I: Encoder](
     tableName: String,
     maxBatchWait: FiniteDuration,
     parallelism: Int,
@@ -59,7 +59,7 @@ trait SharedBatchWriteOps extends DedupOps {
     }.map(sendHandleLeftOver(_, backoffStrategy)(jClient)).parJoin(parallelism)
   }.andThen(_.drain)
 
-  def sendHandleLeftOver[F[_]: Async](
+  private[meteor] def sendHandleLeftOver[F[_]: Async](
     req: BatchWriteItemRequest,
     backoffStrategy: BackoffStrategy,
     retried: Int = 0
@@ -88,7 +88,7 @@ trait SharedBatchWriteOps extends DedupOps {
       }
     }
 
-  def mkPutRequestInOrdered[
+  private[meteor] def mkPutRequestInOrdered[
     F[_]: Async,
     I: Encoder
   ](
@@ -123,7 +123,7 @@ trait SharedBatchWriteOps extends DedupOps {
     }
 }
 
-trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
+private[meteor] trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
   private def mkDeleteRequestOutOrdered[
     F[_]: Async,
     P: Encoder,
@@ -207,7 +207,11 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
       }
     }
 
-  def batchDeleteUnorderedOp[F[_]: Async, P: Encoder, S: Encoder](
+  private[meteor] def batchDeleteUnorderedOp[
+    F[_]: Async,
+    P: Encoder,
+    S: Encoder
+  ](
     table: CompositeKeysTable[P, S],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
@@ -224,7 +228,7 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
       }.parJoin(parallelism)
   }.andThen(_.drain)
 
-  def batchWriteInorderedOp[
+  private[meteor] def batchWriteInorderedOp[
     F[_]: Async,
     P: Encoder,
     S: Encoder,
@@ -244,7 +248,7 @@ trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
   }.andThen(_.drain)
 }
 
-trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
+private[meteor] trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
 
   private def mkDeleteRequestOutOrdered[F[_]: Async, P: Encoder](
     table: PartitionKeyTable[P],
@@ -317,7 +321,7 @@ trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
       }
     }
 
-  def batchDeleteUnorderedOp[F[_]: Async, P: Encoder](
+  private[meteor] def batchDeleteUnorderedOp[F[_]: Async, P: Encoder](
     table: PartitionKeyTable[P],
     maxBatchWait: FiniteDuration,
     parallelism: Int,
@@ -329,7 +333,11 @@ trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
     }.parJoin(parallelism)
   }.andThen(_.drain)
 
-  def batchWriteInorderedOp[F[_]: Async, DP: Encoder, P: Encoder](
+  private[meteor] def batchWriteInorderedOp[
+    F[_]: Async,
+    DP: Encoder,
+    P: Encoder
+  ](
     table: PartitionKeyTable[DP],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
@@ -344,4 +352,4 @@ trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
   }.andThen(_.drain)
 }
 
-object BatchWriteOps extends BatchWriteOps
+private[meteor] object BatchWriteOps extends BatchWriteOps
