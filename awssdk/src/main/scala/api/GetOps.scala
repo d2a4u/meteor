@@ -13,10 +13,12 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.jdk.CollectionConverters._
 
-trait GetOps extends PartitionKeyGetOps with CompositeKeysGetOps {}
+private[meteor] trait GetOps
+    extends PartitionKeyGetOps
+    with CompositeKeysGetOps {}
 
-trait PartitionKeyGetOps extends SharedGetOps {
-  def getOp[F[_]: Async, P: Encoder, U: Decoder](
+private[meteor] trait PartitionKeyGetOps extends SharedGetOps {
+  private[meteor] def getOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
     consistentRead: Boolean
@@ -27,7 +29,7 @@ trait PartitionKeyGetOps extends SharedGetOps {
   }
 
   // the different between this and getOp is that filter expression is done on server side
-  def retrieveOp[
+  private[meteor] def retrieveOp[
     F[_]: Async: RaiseThrowable,
     P: Encoder,
     T: Decoder
@@ -46,8 +48,8 @@ trait PartitionKeyGetOps extends SharedGetOps {
   }
 }
 
-trait CompositeKeysGetOps extends SharedGetOps {
-  def getOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
+private[meteor] trait CompositeKeysGetOps extends SharedGetOps {
+  private[meteor] def getOp[F[_]: Async, P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
@@ -58,7 +60,7 @@ trait CompositeKeysGetOps extends SharedGetOps {
     }
   }
 
-  def retrieveOp[
+  private[meteor] def retrieveOp[
     F[_]: Async: RaiseThrowable,
     P: Encoder,
     T: Decoder
@@ -78,7 +80,7 @@ trait CompositeKeysGetOps extends SharedGetOps {
     ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient))
   }
 
-  def retrieveOp[
+  private[meteor] def retrieveOp[
     F[_]: Async: RaiseThrowable,
     P: Encoder,
     S: Encoder,
@@ -99,8 +101,8 @@ trait CompositeKeysGetOps extends SharedGetOps {
   }
 }
 
-trait SharedGetOps {
-  def sendQueryRequest[F[_]: Async: RaiseThrowable, U: Decoder](
+private[meteor] trait SharedGetOps {
+  private[meteor] def sendQueryRequest[F[_]: Async: RaiseThrowable, U: Decoder](
     builder: QueryRequest.Builder
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] = {
     def doQuery(
@@ -129,7 +131,7 @@ trait SharedGetOps {
     } yield result
   }
 
-  def sendGetRequest[F[_]: Async, U: Decoder](
+  private[meteor] def sendGetRequest[F[_]: Async, U: Decoder](
     tableName: String,
     key: java.util.Map[String, AttributeValue],
     consistentRead: Boolean
@@ -149,7 +151,7 @@ trait SharedGetOps {
     }
   }
 
-  def mkQueryRequestBuilder[F[_]: ApplicativeThrow, P](
+  private[meteor] def mkQueryRequestBuilder[F[_]: ApplicativeThrow, P](
     index: Index[P],
     keyExpression: Expression,
     filterExpression: Expression,

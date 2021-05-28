@@ -112,6 +112,7 @@ import meteor.api.hi._
 import cats.effect.{ExitCode, IO, IOApp}
 
 object Main extends IOApp {
+  
   val jClientSrc = 
     Resource.fromAutoCloseable[F, DynamoDbAsyncClient] {
       Sync[F].delay {
