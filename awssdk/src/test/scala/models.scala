@@ -1,5 +1,6 @@
 package meteor
 
+import meteor.syntax._
 import meteor.codec.{Codec, Decoder, Encoder}
 import org.scalacheck.{Arbitrary, Gen}
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
@@ -34,25 +35,23 @@ case class TestData(
 )
 object TestData {
   implicit val decoder: Decoder[TestData] = Decoder.instance { av =>
-    val obj = av.m()
     for {
-      id <- Decoder[String].read(obj.get("id"))
-      range <- Decoder[String].read(obj.get("range"))
-      str <- Decoder[String].read(obj.get("str"))
-      int <- Decoder[Int].read(obj.get("int"))
-      bool <- Decoder[Boolean].read(obj.get("bool"))
+      id <- av.getAs[String]("id")
+      range <- av.getAs[String]("range")
+      str <- av.getAs[String]("str")
+      int <- av.getAs[Int]("int")
+      bool <- av.getAs[Boolean]("bool")
     } yield TestData(Id(id), Range(range), str, int, bool)
   }
 
   implicit val encoder: Encoder[TestData] = Encoder.instance { t =>
-    val jMap = Map(
-      "id" -> Encoder[String].write(t.id.value),
-      "range" -> Encoder[String].write(t.range.value),
-      "str" -> Encoder[String].write(t.str),
-      "int" -> Encoder[Int].write(t.int),
-      "bool" -> Encoder[Boolean].write(t.bool)
-    ).asJava
-    AttributeValue.builder().m(jMap).build()
+    Map(
+      "id" -> t.id.value.asAttributeValue,
+      "range" -> t.range.value.asAttributeValue,
+      "str" -> t.str.asAttributeValue,
+      "int" -> t.int.asAttributeValue,
+      "bool" -> t.bool.asAttributeValue
+    ).asAttributeValue
   }
 
   implicit val genTestData: Gen[TestData] =

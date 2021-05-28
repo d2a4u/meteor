@@ -13,9 +13,18 @@ weight: 900
 toc: true
 ---
 
-`meteor` is a wrapper around Java AWS SDK v2 library, provides higher level
-API over standard DynamoDB's operations such as batch write or scan table 
-as `fs2` Stream, auto processes left over items and many other features.
+`meteor` is a wrapper around Java AWS SDK v2 library, provides higher level API over standard 
+DynamoDB's actions. 
+
+## Features
+
+* wraps AWS Java SDK V2 CRUD actions
+* stream batch actions or scan table as `fs2` Stream
+* auto processes left over items
+* auto remove duplication in batch actions
+* support DynamoDB's single table design
+* provides codec as a simple abstraction and syntax on top of `AttributeValue`
+* support multiple codec libraries including `Dynosaur` and `Scanamo`
 
 ## Installation
 
