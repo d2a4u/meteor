@@ -1,28 +1,31 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val catsVersion = "2.6.0"
-val catsEffectVersion = "3.1.0"
-val fs2Version = "3.0.3"
+val catsVersion = "2.6.1"
+val catsEffectVersion = "3.1.1"
+val fs2Version = "3.0.6"
 
-lazy val dependencies = Seq(
+lazy val catsDependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
-  "org.typelevel" %% "cats-effect" % catsEffectVersion,
+  "org.typelevel" %% "cats-effect" % catsEffectVersion
+)
+
+lazy val dependencies = catsDependencies ++ Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.2",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.5.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.0",
-  "software.amazon.awssdk" % "dynamodb" % "2.16.72"
+  "software.amazon.awssdk" % "dynamodb" % "2.17.3"
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.8",
+  "org.scalatest" %% "scalatest" % "3.2.9",
   "org.scalacheck" %% "scalacheck" % "1.15.4",
   "org.scalatestplus" %% "scalacheck-1-15" % "3.2.6.0"
 )
 
 lazy val ItTest = config("it").extend(Test)
 
-lazy val scalaVer = "2.13.5"
+lazy val scalaVer = "2.13.6"
 
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
@@ -55,7 +58,7 @@ lazy val commonSettings = Seq(
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
-    "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
+    "org.typelevel" %% "kind-projector" % "0.13.0" cross CrossVersion.full
   ),
   scalacOptions := Seq(
     "-unchecked",
@@ -66,7 +69,10 @@ lazy val commonSettings = Seq(
     "-language:higherKinds"
   ),
   Test / scalacOptions ~= filterConsoleScalacOptions,
-  Compile / scalacOptions ~= filterConsoleScalacOptions
+  Compile / scalacOptions ~= filterConsoleScalacOptions,
+  Test / testOptions += Tests.Argument(
+    "-oD"
+  ) // enabled time measurement for each test
 )
 
 lazy val root = project
@@ -100,12 +106,6 @@ lazy val awssdk = project
 lazy val dynosaur = project
   .in(file("dynosaur"))
   .settings(
-    inConfig(Test)(Defaults.testSettings),
-    Test / testOptions += Tests.Argument(
-      "-oD"
-    ) // enabled time measurement for each test
-  )
-  .settings(
     name := "meteor-dynosaur",
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
@@ -117,12 +117,6 @@ lazy val dynosaur = project
 
 lazy val scanamo = project
   .in(file("scanamo"))
-  .settings(
-    inConfig(Test)(Defaults.testSettings),
-    Test / testOptions += Tests.Argument(
-      "-oD"
-    ) // enabled time measurement for each test
-  )
   .settings(
     name := "meteor-scanamo",
     libraryDependencies ++= dependencies ++ testDependencies.map(
