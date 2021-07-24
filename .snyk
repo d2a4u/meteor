@@ -1,0 +1,6 @@
+version: v1.5.0
+ignore:
+  'SNYK-JAVA-COMFASTERXMLJACKSONCORE-1052449':
+    - '* > com.fasterxml.jackson.core:jackson-databind':
+      reason: 'No remediation available'
+      expires: '2022-01-01T00:00:00.000Z'
