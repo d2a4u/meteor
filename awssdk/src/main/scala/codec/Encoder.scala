@@ -3,9 +3,9 @@ package codec
 
 import java.{util => ju}
 import java.time.Instant
-
 import cats._
 import cats.implicits._
+import software.amazon.awssdk.core.SdkBytes
 import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.collection.immutable
@@ -62,6 +62,22 @@ object Encoder {
     Encoder.instance[Nothing] { _ =>
       AttributeValue.builder().build()
     }
+
+  implicit def dynamoEncoderForFoldableByteArray[F[_]: Foldable]
+    : Encoder[F[Array[Byte]]] =
+    Encoder.instance { byteArrays =>
+      val bs = byteArrays.foldLeft(List.empty[SdkBytes]) { (acc, elem) =>
+        acc :+ SdkBytes.fromByteArray(elem)
+      }
+      AttributeValue.builder().bs(bs: _*).build()
+    }
+
+  implicit val dynamoEncoderForSeqByteArray
+    : Encoder[immutable.Seq[Array[Byte]]] =
+    dynamoEncoderForFoldableByteArray[immutable.Seq]
+
+  implicit val dynamoEncoderForListByteArray: Encoder[List[Array[Byte]]] =
+    dynamoEncoderForFoldableByteArray[List]
 
   /*
    * It is intentional to not have a Decoder[Option[A]] instance
@@ -146,4 +162,9 @@ object Encoder {
   implicit def dynamoEncoderForJavaUtilMap[A: Encoder]
     : Encoder[ju.Map[String, A]] =
     dynamoEncoderForMap[A].contramap[ju.Map[String, A]](_.asScala.toMap)
+
+  implicit val dynamoEncoderForByteArray: Encoder[Array[Byte]] =
+    Encoder.instance(bytes =>
+      AttributeValue.builder().b(SdkBytes.fromByteArray(bytes)).build()
+    )
 }
