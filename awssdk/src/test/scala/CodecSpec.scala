@@ -1,5 +1,7 @@
 package meteor
 
+import cats._
+import cats.implicits._
 import meteor.Arbitraries._
 import meteor.codec.{Codec, Decoder, Encoder}
 import meteor.syntax._
@@ -72,6 +74,22 @@ class CodecSpec
       str: Map[String, String]
     ) =>
       roundTrip(str) shouldEqual Right(str)
+  }
+
+  it should "successful round trip for Array[Byte]" in forAll {
+    bytes: Array[Byte] =>
+      roundTrip[Array[Byte]](bytes) match {
+        case Right(b) => b should contain theSameElementsAs bytes
+        case _        => fail()
+      }
+  }
+
+  it should "successful round trip for Seq[Array[Byte]]" in forAll {
+    bytes: List[Array[Byte]] =>
+      roundTrip[immutable.List[Array[Byte]]](bytes) match {
+        case Right(b)  => b should contain theSameElementsAs bytes
+        case Left(err) => fail(err)
+      }
   }
 
   def roundTrip[T: Codec](t: T): Either[DecoderError, T] = {
