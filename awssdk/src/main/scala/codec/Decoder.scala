@@ -252,4 +252,27 @@ object Decoder {
     }
 
   implicit val dynamoDecoderForUnit: Decoder[Unit] = const(())
+
+  implicit val dynamoDecoderForByteArray: Decoder[Array[Byte]] =
+    Decoder.instance {
+      av =>
+        Option(av.b()).map(_.asByteArray()).toRight(
+          DecoderError.invalidTypeFailure(DynamoDbType.B)
+        )
+    }
+
+  implicit val dynamoDecoderForSeqByteArray
+    : Decoder[immutable.Seq[Array[Byte]]] = {
+    Decoder.instance {
+      av =>
+        Option(av.bs()).map { bs =>
+          bs.asScala.toList.map(_.asByteArray())
+        }.toRight(
+          DecoderError.invalidTypeFailure(DynamoDbType.BS)
+        )
+    }
+  }
+
+  implicit val dynamoDecoderForListByteArray: Decoder[List[Array[Byte]]] =
+    dynamoDecoderForSeqByteArray.map(_.toList)
 }
