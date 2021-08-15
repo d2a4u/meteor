@@ -58,10 +58,10 @@ object TestData {
     for {
       id <- implicitly[Gen[Id]]
       range <- implicitly[Gen[Range]]
-      str <- Gen.asciiPrintableStr
+      str <- Gen.nonEmptyListOf(Gen.asciiPrintableChar)
       int <- Gen.chooseNum(Int.MinValue, Int.MaxValue)
       bool <- Gen.oneOf(Seq(true, false))
-    } yield TestData(id, range, str, int, bool)
+    } yield TestData(id, range, str.mkString, int, bool)
 
   implicit val arbTestData: Arbitrary[TestData] = Arbitrary(genTestData)
 }
