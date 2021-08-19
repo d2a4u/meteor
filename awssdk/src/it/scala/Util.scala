@@ -281,7 +281,8 @@ private[meteor] object Util {
       new AwsCredentials {
         override def accessKeyId(): String = "DUMMY"
         override def secretAccessKey(): String = "DUMMY"
-      })
+      }
+    )
 
   def localDynamo: URI = URI.create("http://localhost:8000")
 
