@@ -1,15 +1,40 @@
 package meteor
 
+import fs2._
 import java.time.Instant
-
 import cats.implicits._
 import cats.effect.IO
 import meteor.Util._
 import meteor.codec.Encoder
 
+import scala.concurrent.duration.DurationInt
+
 class RetrieveOpsSpec extends ITSpec {
 
   behavior.of("retrieve operation")
+
+  it should "return no items if the partition key doesn't exist" in forAll {
+    test: TestData =>
+      val partitionKey = Id("def")
+      val input =
+        List(
+          test.copy(id = partitionKey, range = Range("a")),
+          test.copy(id = partitionKey, range = Range("b"))
+        )
+      val result = compositeKeysTable[IO].use[List[TestData]] {
+        case (client, table) =>
+          val retrieval = client.retrieve[Id, TestData](
+            table,
+            Id("doesntexist"),
+            consistentRead = false,
+            Int.MaxValue
+          ).compile.toList
+          input.traverse(i =>
+            client.put[TestData](table.tableName, i)
+          ).void >> retrieval
+      }.unsafeToFuture().futureValue
+      result shouldBe empty
+  }
 
   it should "return multiple items of the same partition key" in forAll {
     test: TestData =>
@@ -33,6 +58,30 @@ class RetrieveOpsSpec extends ITSpec {
             _.size == input.length
           )
       }.unsafeToFuture().futureValue should contain theSameElementsAs input
+  }
+
+  it should "return large number of items of the same partition key" in {
+    val numberOfItems = 10000
+    val test = sample[TestData]
+    val partitionKey = Id("def")
+    val input = Stream.range(1, numberOfItems).map { i =>
+      test.copy(id = partitionKey, range = Range(i.toString))
+    }.covary[IO]
+
+    compositeKeysTable[IO].use[List[TestData]] {
+      case (client, table) =>
+        val retrieval = client.retrieve[Id, TestData](
+          table,
+          partitionKey,
+          consistentRead = false,
+          Int.MaxValue
+        ).compile.toList
+        client.batchPut[TestData](
+          table,
+          100.millis,
+          Client.BackoffStrategy.default
+        ).apply(input).compile.drain >> retrieval
+    }.unsafeToFuture().futureValue.length shouldBe numberOfItems - 1
   }
 
   it should "exact item by EqualTo key expression" in forAll {

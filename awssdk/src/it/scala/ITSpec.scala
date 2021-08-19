@@ -14,7 +14,7 @@ trait ITSpec
     with ScalaFutures
     with ScalaCheckDrivenPropertyChecks {
   implicit val pc: PatienceConfig =
-    PatienceConfig(scaled(5.minutes), 500.millis)
+    PatienceConfig(scaled(10.minutes), 500.millis)
 
   implicit val ioRuntime: IORuntime = IORuntime.global
 }
