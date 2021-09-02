@@ -44,7 +44,7 @@ class SimpleTableSpec extends ITSpec {
       }
     ).attempt.unsafeToFuture().futureValue match {
       case Left(_: ConditionalCheckFailed) => succeed
-      case _ => fail()
+      case _                               => fail()
     }
   }
 
@@ -130,7 +130,7 @@ class SimpleTableSpec extends ITSpec {
       write
     ).attempt.unsafeToFuture().futureValue match {
       case Left(_: ConditionalCheckFailed) => succeed
-      case _ => fail()
+      case _                               => fail()
     }
   }
 
@@ -196,7 +196,7 @@ class SimpleTableSpec extends ITSpec {
 
     testRoundTrip(data, write).attempt.unsafeToFuture().futureValue match {
       case Left(_: ConditionalCheckFailed) => succeed
-      case _ => fail()
+      case _                               => fail()
     }
   }
 
