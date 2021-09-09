@@ -34,9 +34,9 @@ import scala.collection.immutable.Iterable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
-/** Low level client that can perform AWS DynamoDB table and item actions.
-  * It provides methods that resemble DynamoDB's API, consider using high level
-  * API tables from [[meteor.api.hi]] package instead. This is still useful to:
+/** Low level client that can perform AWS DynamoDB table and item actions. It
+  * provides methods that resemble DynamoDB's API, consider using high level API
+  * tables from [[meteor.api.hi]] package instead. This is still useful to:
   * create, delete and scan table.
   */
 trait Client[F[_]] {
@@ -101,7 +101,8 @@ trait Client[F[_]] {
     t: T
   ): F[Option[U]]
 
-  /** Put an item into a table with a condition expression, return Unit (ReturnValue.NONE).
+  /** Put an item into a table with a condition expression, return Unit
+    * (ReturnValue.NONE).
     */
   def put[T: Encoder](
     tableName: String,
@@ -109,7 +110,8 @@ trait Client[F[_]] {
     condition: Expression
   ): F[Unit]
 
-  /** Put an item into a table with a condition expression, return ReturnValue.ALL_OLD.
+  /** Put an item into a table with a condition expression, return
+    * ReturnValue.ALL_OLD.
     */
   def put[T: Encoder, U: Decoder](
     tableName: String,
@@ -149,8 +151,8 @@ trait Client[F[_]] {
     parallelism: Int
   ): fs2.Stream[F, U]
 
-  /** Update an item by partition key P given an update expression.
-    * A Codec of U is required to deserialize return value.
+  /** Update an item by partition key P given an update expression. A Codec of U
+    * is required to deserialize return value.
     */
   def update[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
@@ -159,9 +161,9 @@ trait Client[F[_]] {
     returnValue: ReturnValue
   ): F[Option[U]]
 
-  /** Update an item by partition key P given an update expression
-    * when it fulfills a condition expression.
-    * A Codec of U is required to deserialize return value.
+  /** Update an item by partition key P given an update expression when it
+    * fulfills a condition expression. A Codec of U is required to deserialize
+    * return value.
     */
   def update[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
@@ -171,8 +173,8 @@ trait Client[F[_]] {
     returnValue: ReturnValue
   ): F[Option[U]]
 
-  /** Update an item by partition key P given an update expression.
-    * Return Unit (ReturnValue.NONE).
+  /** Update an item by partition key P given an update expression. Return Unit
+    * (ReturnValue.NONE).
     */
   def update[P: Encoder](
     table: PartitionKeyTable[P],
@@ -180,9 +182,8 @@ trait Client[F[_]] {
     update: Expression
   ): F[Unit]
 
-  /** Update an item by partition key P given an update expression
-    * when it fulfills a condition expression.
-    * Return Unit (ReturnValue.NONE).
+  /** Update an item by partition key P given an update expression when it
+    * fulfills a condition expression. Return Unit (ReturnValue.NONE).
     */
   def update[P: Encoder](
     table: PartitionKeyTable[P],
@@ -191,8 +192,8 @@ trait Client[F[_]] {
     condition: Expression
   ): F[Unit]
 
-  /** Update an item by partition key P and a sort key S, given an update expression.
-    * A Codec of U is required to deserialize return value.
+  /** Update an item by partition key P and a sort key S, given an update
+    * expression. A Codec of U is required to deserialize return value.
     */
   def update[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
@@ -202,9 +203,9 @@ trait Client[F[_]] {
     returnValue: ReturnValue
   ): F[Option[U]]
 
-  /** Update an item by partition key P and a sort key S, given an update expression
-    * when it fulfills a condition expression.
-    * A Codec of U is required to deserialize return value.
+  /** Update an item by partition key P and a sort key S, given an update
+    * expression when it fulfills a condition expression. A Codec of U is
+    * required to deserialize return value.
     */
   def update[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
@@ -215,8 +216,8 @@ trait Client[F[_]] {
     returnValue: ReturnValue
   ): F[Option[U]]
 
-  /** Update an item by partition key P and a sort key S, given an update expression.
-    * Return Unit (ReturnValue.NONE).
+  /** Update an item by partition key P and a sort key S, given an update
+    * expression. Return Unit (ReturnValue.NONE).
     */
   def update[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
@@ -225,9 +226,9 @@ trait Client[F[_]] {
     update: Expression
   ): F[Unit]
 
-  /** Update an item by partition key P and a sort key S, given an update expression
-    * when it fulfills a condition expression.
-    * Return Unit (ReturnValue.NONE).
+  /** Update an item by partition key P and a sort key S, given an update
+    * expression when it fulfills a condition expression. Return Unit
+    * (ReturnValue.NONE).
     */
   def update[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
@@ -239,7 +240,8 @@ trait Client[F[_]] {
 
   /** Batch get items from multiple tables.
     *
-    * Parallelism should match maximum connections of the underline http client, default is 50:
+    * Parallelism should match maximum connections of the underline http client,
+    * default is 50:
     * https://github.com/aws/aws-sdk-java-v2/blob/35267ca707c3fb5cdf7e3e98758a8ef969269183/http-client-spi/src/main/java/software/amazon/awssdk/http/SdkHttpConfigurationOption.java#L121
     */
   def batchGet(
@@ -248,8 +250,8 @@ trait Client[F[_]] {
     backoffStrategy: BackoffStrategy
   ): F[Map[String, Iterable[AttributeValue]]]
 
-  /** Batch get items from a table by partition key P.
-    * A Codec of U is required to deserialize return value based on projection expression.
+  /** Batch get items from a table by partition key P. A Codec of U is required
+    * to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
@@ -260,8 +262,8 @@ trait Client[F[_]] {
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
-  /** Batch get items from a table primary keys P and S.
-    * A Codec of U is required to deserialize return value based on projection expression.
+  /** Batch get items from a table primary keys P and S. A Codec of U is
+    * required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
@@ -272,8 +274,8 @@ trait Client[F[_]] {
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
-  /** Batch get items from a table by partition keys P.
-    * A Codec of U is required to deserialize return value based on projection expression.
+  /** Batch get items from a table by partition keys P. A Codec of U is required
+    * to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
@@ -284,8 +286,8 @@ trait Client[F[_]] {
     backoffStrategy: BackoffStrategy
   ): Pipe[F, P, U]
 
-  /** Batch get items from a table by primary keys P and S.
-    * A Codec of U is required to deserialize return value based on projection expression.
+  /** Batch get items from a table by primary keys P and S. A Codec of U is
+    * required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
@@ -296,8 +298,8 @@ trait Client[F[_]] {
     backoffStrategy: BackoffStrategy
   ): Pipe[F, (P, S), U]
 
-  /** Batch get items from a table by partition keys P.
-    * A Codec of U is required to deserialize return value based on projection expression.
+  /** Batch get items from a table by partition keys P. A Codec of U is required
+    * to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
@@ -307,8 +309,8 @@ trait Client[F[_]] {
     backoffStrategy: BackoffStrategy
   ): F[Iterable[U]]
 
-  /** Batch get items from a table by primary keys P and S.
-    * A Codec of U is required to deserialize return value based on projection expression.
+  /** Batch get items from a table by primary keys P and S. A Codec of U is
+    * required to deserialize return value based on projection expression.
     */
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
@@ -322,9 +324,9 @@ trait Client[F[_]] {
     *
     * Deduplication logic within a batch is:
     *
-    * within a batch, only send the the last item and discard all previous duplicated items with the
-    * same key. Order from upstream is preserved to ensure that only putting the last version of T
-    * within a batch.
+    * within a batch, only send the the last item and discard all previous
+    * duplicated items with the same key. Order from upstream is preserved to
+    * ensure that only putting the last version of T within a batch.
     */
   def batchPut[T: Encoder](
     table: Index[_],
@@ -336,9 +338,9 @@ trait Client[F[_]] {
     *
     * Deduplication logic within a batch is:
     *
-    * within a batch, only send the the last item and discard all previous duplicated items with the
-    * same key. Order from upstream is preserved to ensure that only putting the last version of T
-    * within a batch.
+    * within a batch, only send the the last item and discard all previous
+    * duplicated items with the same key. Order from upstream is preserved to
+    * ensure that only putting the last version of T within a batch.
     */
   def batchPut[T: Encoder](
     table: Index[_],
@@ -359,7 +361,8 @@ trait Client[F[_]] {
     *
     * Deduplication logic within a batch is:
     *
-    * within a batch, only send deletion request for one P key and discard all duplicates.
+    * within a batch, only send deletion request for one P key and discard all
+    * duplicates.
     */
   def batchDelete[P: Encoder](
     table: PartitionKeyTable[P],
@@ -368,11 +371,13 @@ trait Client[F[_]] {
     backoffStrategy: BackoffStrategy
   ): Pipe[F, P, Unit]
 
-  /** Batch delete items from a table by a Stream of partition key P and sort key S.
+  /** Batch delete items from a table by a Stream of partition key P and sort
+    * key S.
     *
     * Deduplication logic within a batch is:
     *
-    * within a batch, only send deletion request for one (P, S) key pair and discard all duplicates.
+    * within a batch, only send deletion request for one (P, S) key pair and
+    * discard all duplicates.
     */
   def batchDelete[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
@@ -383,16 +388,14 @@ trait Client[F[_]] {
 
   /** Batch write to a table by a Stream of either DP (delete) or P (put).
     *
-    * DP: partition key's type
-    * P: item being put's type
+    * DP: partition key's type P: item being put's type
     *
     * Deduplication logic within a batch is:
     *
-    * Group all DP and P items by key, preserve ordering from upstream.
-    * If the last item for that key is a delete, then only perform deletion,
-    * discard all other actions on that key.
-    * If the last item for that key is a put, then only perform put,
-    * discard all other actions on that key.
+    * Group all DP and P items by key, preserve ordering from upstream. If the
+    * last item for that key is a delete, then only perform deletion, discard
+    * all other actions on that key. If the last item for that key is a put,
+    * then only perform put, discard all other actions on that key.
     */
   def batchWrite[DP: Encoder, P: Encoder](
     table: PartitionKeyTable[DP],
@@ -402,17 +405,14 @@ trait Client[F[_]] {
 
   /** Batch write to a table by a Stream of either (DP, DS) (delete) or P (put).
     *
-    * DP: partition key's type
-    * DS: sort key's type
-    * P: item being put's type
+    * DP: partition key's type DS: sort key's type P: item being put's type
     *
     * Deduplication logic within a batch is:
     *
-    * Group all (DP, DS) and P items by key, preserve ordering from upstream.
-    * If the last item for that key is a delete, then only perform deletion,
-    * discard all other actions on that key.
-    * If the last item for that key is a put, then only perform put,
-    * discard all other actions on that key.
+    * Group all (DP, DS) and P items by key, preserve ordering from upstream. If
+    * the last item for that key is a delete, then only perform deletion,
+    * discard all other actions on that key. If the last item for that key is a
+    * put, then only perform put, discard all other actions on that key.
     */
   def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
     table: CompositeKeysTable[DP, DS],
