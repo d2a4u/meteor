@@ -55,7 +55,7 @@ lazy val commonSettings = Seq(
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
-    "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
+    "org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full
   ),
   scalacOptions := Seq(
     "-unchecked",
