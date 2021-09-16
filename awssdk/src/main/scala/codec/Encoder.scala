@@ -11,13 +11,16 @@ import software.amazon.awssdk.services.dynamodb.model._
 import scala.collection.immutable
 import scala.jdk.CollectionConverters._
 
-/** Provides an encoding function for a given type, write value of type A as a Java AttributeValue
+/** Provides an encoding function for a given type, write value of type A as a
+  * Java AttributeValue
   */
 trait Encoder[A] {
 
   /** Write a value of type A as a Java AttributeValue
-    * @param a value of type A
-    * @return a Java AttributeValue object
+    * @param a
+    *   value of type A
+    * @return
+    *   a Java AttributeValue object
     */
   def write(a: A): AttributeValue
 }
@@ -25,8 +28,8 @@ trait Encoder[A] {
 object Encoder {
   def apply[A](implicit dd: Encoder[A]): Encoder[A] = dd
 
-  /** Create a new instance of Encoder for type A. Helper methods and more examples can be found in
-    * [[meteor.syntax]].
+  /** Create a new instance of Encoder for type A. Helper methods and more
+    * examples can be found in [[meteor.syntax]].
     */
   def instance[A](f: A => AttributeValue): Encoder[A] = (a: A) => f(a)
 

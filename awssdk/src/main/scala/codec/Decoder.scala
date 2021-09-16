@@ -13,28 +13,36 @@ import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.jdk.CollectionConverters._
 
-/** Provides a decoding function for a given type, attempt to read an Java AttributeValue into type A
+/** Provides a decoding function for a given type, attempt to read an Java
+  * AttributeValue into type A
   * @tparam A
   */
 trait Decoder[A] {
 
   /** Attempt to read an AttributeValue to a value of type A
-    * @param av Java attribute value object
-    * @return either a value of type A or a decoder error
+    * @param av
+    *   Java attribute value object
+    * @return
+    *   either a value of type A or a decoder error
     */
   def read(av: AttributeValue): Either[DecoderError, A]
 
   /** Attempt to read a Map of String and AttributeValue to a value of type A
-    * @param av Java Map of String and AttributeValue
-    * @return either a value of type A or a decoder error
+    * @param av
+    *   Java Map of String and AttributeValue
+    * @return
+    *   either a value of type A or a decoder error
     */
   def read(av: java.util.Map[String, AttributeValue]): Either[DecoderError, A] =
     read(AttributeValue.builder().m(av).build())
 
-  /** Create a new decoder given a transformation from A to either B or a decoder error
+  /** Create a new decoder given a transformation from A to either B or a
+    * decoder error
     *
-    * @param f a function returning either a value or an error message
-    * @return a new Decoder of type B
+    * @param f
+    *   a function returning either a value or an error message
+    * @return
+    *   a new Decoder of type B
     */
   def emap[B](f: A => Either[DecoderError, B]): Decoder[B] =
     Decoder.instance { av =>
@@ -47,8 +55,8 @@ object Decoder {
 
   def apply[A](implicit dd: Decoder[A]): Decoder[A] = dd
 
-  /** Create a new instance of Decoder for type A. Helper methods and more examples can be found in
-    * [[meteor.syntax]].
+  /** Create a new instance of Decoder for type A. Helper methods and more
+    * examples can be found in [[meteor.syntax]].
     */
   def instance[A](f: AttributeValue => Either[DecoderError, A]): Decoder[A] =
     (av: AttributeValue) => f(av)
