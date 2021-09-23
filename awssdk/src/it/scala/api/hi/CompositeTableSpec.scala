@@ -44,7 +44,7 @@ class CompositeTableSpec extends ITSpec {
       }
     ).attempt.unsafeToFuture().futureValue match {
       case Left(_: ConditionalCheckFailed) => succeed
-      case _ => fail()
+      case _                               => fail()
     }
   }
 
@@ -134,7 +134,7 @@ class CompositeTableSpec extends ITSpec {
       write
     ).attempt.unsafeToFuture().futureValue match {
       case Left(_: ConditionalCheckFailed) => succeed
-      case _ => fail()
+      case _                               => fail()
     }
   }
 
@@ -203,7 +203,7 @@ class CompositeTableSpec extends ITSpec {
 
     testRoundTrip(data, write).attempt.unsafeToFuture().futureValue match {
       case Left(_: ConditionalCheckFailed) => succeed
-      case _ => fail()
+      case _                               => fail()
     }
   }
 

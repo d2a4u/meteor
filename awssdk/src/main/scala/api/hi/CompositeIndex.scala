@@ -23,15 +23,21 @@ private[meteor] sealed abstract class CompositeIndex[
 
   def index: CompositeKeysIndex[P, S]
 
-  /** Retrieve items from a composite index, can be a secondary index or a table which has composite
-    * keys (partition key and sort key).
+  /** Retrieve items from a composite index, can be a secondary index or a table
+    * which has composite keys (partition key and sort key).
     *
-    * @param query a query to filter items by key condition
-    * @param consistentRead toggle to perform consistent read
-    * @param limit limit the number of items to be returned
-    * @param RT implicit evidence for RaiseThrowable
-    * @tparam T return item's type
-    * @return a fs2 Stream of items
+    * @param query
+    *   a query to filter items by key condition
+    * @param consistentRead
+    *   toggle to perform consistent read
+    * @param limit
+    *   limit the number of items to be returned
+    * @param RT
+    *   implicit evidence for RaiseThrowable
+    * @tparam T
+    *   return item's type
+    * @return
+    *   a fs2 Stream of items
     */
   def retrieve[T: Decoder](
     query: Query[P, S],
@@ -46,16 +52,25 @@ private[meteor] sealed abstract class CompositeIndex[
     )(jClient)
 }
 
-/** Represent a secondary index where the index has composite keys (partition key and sort key).
+/** Represent a secondary index where the index has composite keys (partition
+  * key and sort key).
   *
-  * @param tableName table's name
-  * @param indexName index's name
-  * @param partitionKeyDef partition key definition
-  * @param sortKeyDef sort key definition
-  * @param jClient DynamoDB java async client
-  * @tparam F effect type
-  * @tparam P partition key type
-  * @tparam S sort key type
+  * @param tableName
+  *   table's name
+  * @param indexName
+  *   index's name
+  * @param partitionKeyDef
+  *   partition key definition
+  * @param sortKeyDef
+  *   sort key definition
+  * @param jClient
+  *   DynamoDB java async client
+  * @tparam F
+  *   effect type
+  * @tparam P
+  *   partition key type
+  * @tparam S
+  *   sort key type
   */
 case class SecondaryCompositeIndex[F[_]: Async, P: Encoder, S: Encoder](
   tableName: String,
@@ -72,16 +87,22 @@ case class SecondaryCompositeIndex[F[_]: Async, P: Encoder, S: Encoder](
       sortKeyDef
     )
 
-  /** Retrieve all items with the same partition key as a fs2 Stream. The number of returned items
-    * can be limited. A Stream is returned instead of a list because the number of returned items
-    * can be very large. This always performs eventually consistent reads as strong consistent is
-    * not supported for secondary index.
+  /** Retrieve all items with the same partition key as a fs2 Stream. The number
+    * of returned items can be limited. A Stream is returned instead of a list
+    * because the number of returned items can be very large. This always
+    * performs eventually consistent reads as strong consistent is not supported
+    * for secondary index.
     *
-    * @param partitionKey partition key
-    * @param limit number of items to be returned
-    * @param RT implicit evidence for RaiseThrowable
-    * @tparam T returned item's type
-    * @return a fs2 Stream of items
+    * @param partitionKey
+    *   partition key
+    * @param limit
+    *   number of items to be returned
+    * @param RT
+    *   implicit evidence for RaiseThrowable
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   a fs2 Stream of items
     */
   def retrieve[T: Decoder](
     partitionKey: P,
@@ -95,14 +116,21 @@ case class SecondaryCompositeIndex[F[_]: Async, P: Encoder, S: Encoder](
     )(jClient)
 }
 
-/** Represent a table where the index is composite keys (partition key and sort key).
+/** Represent a table where the index is composite keys (partition key and sort
+  * key).
   *
-  * @param tableName table's name
-  * @param partitionKeyDef partition key definition
-  * @param sortKeyDef sort key definition
-  * @param jClient DynamoDB java async client
-  * @tparam P partition key's type
-  * @tparam S sort key's type
+  * @param tableName
+  *   table's name
+  * @param partitionKeyDef
+  *   partition key definition
+  * @param sortKeyDef
+  *   sort key definition
+  * @param jClient
+  *   DynamoDB java async client
+  * @tparam P
+  *   partition key's type
+  * @tparam S
+  *   sort key's type
   */
 case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
   tableName: String,
@@ -122,11 +150,16 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
 
   /** Get a single item by composite keys.
     *
-    * @param partitionKey partition key
-    * @param sortKey sort key
-    * @param consistentRead flag to enable strongly consistent read
-    * @tparam T returned item's type
-    * @return an optional item of type T
+    * @param partitionKey
+    *   partition key
+    * @param sortKey
+    *   sort key
+    * @param consistentRead
+    *   flag to enable strongly consistent read
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   an optional item of type T
     */
   def get[T: Decoder](
     partitionKey: P,
@@ -137,10 +170,14 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
 
   /** Put an item into a table.
     *
-    * @param t item to be put
-    * @param condition conditional expression
-    * @tparam T item's type
-    * @return Unit
+    * @param t
+    *   item to be put
+    * @param condition
+    *   conditional expression
+    * @tparam T
+    *   item's type
+    * @return
+    *   Unit
     */
   def put[T: Encoder](
     t: T,
@@ -150,11 +187,16 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
 
   /** Put an item into a table and return previous value.
     *
-    * @param t item to be put
-    * @param condition conditional expression
-    * @tparam T item's type
-    * @tparam U returned item's type
-    * @return an option item of type U
+    * @param t
+    *   item to be put
+    * @param condition
+    *   conditional expression
+    * @tparam T
+    *   item's type
+    * @tparam U
+    *   returned item's type
+    * @return
+    *   an option item of type U
     */
   def put[T: Encoder, U: Decoder](
     t: T,
@@ -164,23 +206,31 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
 
   /** Delete an item by composite keys.
     *
-    * @param partitionKey partition key
-    * @param sortKey sort key
-    * @return Unit
+    * @param partitionKey
+    *   partition key
+    * @param sortKey
+    *   sort key
+    * @return
+    *   Unit
     */
   def delete(partitionKey: P, sortKey: S): F[Unit] =
     deleteOp[F, P, S, Unit](table, partitionKey, sortKey, ReturnValue.NONE)(
       jClient
     ).void
 
-  /** Update an item by composite keys given an update expression when a condition expression is
-    * fulfilled. Return Unit.
+  /** Update an item by composite keys given an update expression when a
+    * condition expression is fulfilled. Return Unit.
     *
-    * @param partitionKey partition key
-    * @param sortKey sort key
-    * @param update update expression
-    * @param condition conditional expression
-    * @return Unit
+    * @param partitionKey
+    *   partition key
+    * @param sortKey
+    *   sort key
+    * @param update
+    *   update expression
+    * @param condition
+    *   conditional expression
+    * @return
+    *   Unit
     */
   def update(
     partitionKey: P,
@@ -192,16 +242,24 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       jClient
     )
 
-  /** Update an item by composite keys given an update expression when a condition expression is
-    * fulfilled. Return item is customizable via `returnValue` parameter.
+  /** Update an item by composite keys given an update expression when a
+    * condition expression is fulfilled. Return item is customizable via
+    * `returnValue` parameter.
     *
-    * @param partitionKey partition key
-    * @param sortKey sort key
-    * @param returnValue flag to define which item to be returned
-    * @param update update expression
-    * @param condition conditional expression
-    * @tparam T returned item's type
-    * @return an optional item of type T
+    * @param partitionKey
+    *   partition key
+    * @param sortKey
+    *   sort key
+    * @param returnValue
+    *   flag to define which item to be returned
+    * @param update
+    *   update expression
+    * @param condition
+    *   conditional expression
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   an optional item of type T
     */
   def update[T: Decoder](
     partitionKey: P,
@@ -221,16 +279,22 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       jClient
     )
 
-  /** Retrieve all items with the same partition key as a fs2 Stream. The number of returned items
-    * can be limited. A Stream is returned instead of a list because the number of returned items
-    * can be very large.
+  /** Retrieve all items with the same partition key as a fs2 Stream. The number
+    * of returned items can be limited. A Stream is returned instead of a list
+    * because the number of returned items can be very large.
     *
-    * @param partitionKey partition key
-    * @param consistentRead flag to enable strongly consistent read
-    * @param limit number of items to be returned
-    * @param RT implicit evidence for RaiseThrowable
-    * @tparam T returned item's type
-    * @return a fs2 Stream of items
+    * @param partitionKey
+    *   partition key
+    * @param consistentRead
+    *   flag to enable strongly consistent read
+    * @param limit
+    *   number of items to be returned
+    * @param RT
+    *   implicit evidence for RaiseThrowable
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   a fs2 Stream of items
     */
   def retrieve[T: Decoder](
     partitionKey: P,
@@ -244,21 +308,29 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       limit
     )(jClient)
 
-  /** Get items by composite keys in batch. Max batch size is preset to 100 (maximum batch size
-    * permitted for batch get action), however, it is possible to control the rate of batching with
-    * `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a Pipe in order to
-    * cover broader use cases regardless of input can be fitted into memory or not. Duplicated items
-    * within a batch will be removed. Left over items within a batch will be reprocessed in the next
-    * batch.
+  /** Get items by composite keys in batch. Max batch size is preset to 100
+    * (maximum batch size permitted for batch get action), however, it is
+    * possible to control the rate of batching with `maxBatchWait` parameter.
+    * This uses fs2 .groupWithin internally. This returns a Pipe in order to
+    * cover broader use cases regardless of input can be fitted into memory or
+    * not. Duplicated items within a batch will be removed. Left over items
+    * within a batch will be reprocessed in the next batch.
     *
-    * @param consistentRead flag to enable strongly consistent read
-    * @param projection projection expression
-    * @param maxBatchWait time window to collect items into a batch
-    * @param parallelism number of connections that can be open at the same time
-    * @param backoffStrategy backoff strategy in case of failure, default can be found at
-    *                        [[meteor.Client.BackoffStrategy.default]].
-    * @tparam T returned item's type
-    * @return a fs2 Pipe from composite keys P and S as a tuple to T
+    * @param consistentRead
+    *   flag to enable strongly consistent read
+    * @param projection
+    *   projection expression
+    * @param maxBatchWait
+    *   time window to collect items into a batch
+    * @param parallelism
+    *   number of connections that can be open at the same time
+    * @param backoffStrategy
+    *   backoff strategy in case of failure, default can be found at
+    *   [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   a fs2 Pipe from composite keys P and S as a tuple to T
     */
   def batchGet[T: Decoder](
     consistentRead: Boolean,
@@ -276,20 +348,26 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       backoffStrategy
     )(jClient)
 
-  /** Put items in batch, '''in ordered'''. Meaning batches are processed in '''serial''' to avoid
-    * race condition when writing items with the same composite keys. If your input doesn't have
-    * this constrain, you can use [[batchPutUnordered]]. Max batch size is preset to 25 (maximum
-    * batch size permitted from batch put actions), however, it is possible to control the rate of
-    * batching with `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a
-    * Pipe in order to cover broader use cases regardless of input can be fitted into memory or not.
-    * Duplicated items within a batch will be removed. Left over items within a batch will be
+  /** Put items in batch, '''in ordered'''. Meaning batches are processed in
+    * '''serial''' to avoid race condition when writing items with the same
+    * composite keys. If your input doesn't have this constrain, you can use
+    * [[batchPutUnordered]]. Max batch size is preset to 25 (maximum batch size
+    * permitted from batch put actions), however, it is possible to control the
+    * rate of batching with `maxBatchWait` parameter. This uses fs2 .groupWithin
+    * internally. This returns a Pipe in order to cover broader use cases
+    * regardless of input can be fitted into memory or not. Duplicated items
+    * within a batch will be removed. Left over items within a batch will be
     * reprocessed in the next batch.
     *
-    * @param maxBatchWait time window to collect items into a batch
-    * @param backoffStrategy backoff strategy in case of failure, default can be found at
-    *                        [[meteor.Client.BackoffStrategy.default]].
-    * @tparam T returned item's type
-    * @return a fs2 Pipe from T to Unit
+    * @param maxBatchWait
+    *   time window to collect items into a batch
+    * @param backoffStrategy
+    *   backoff strategy in case of failure, default can be found at
+    *   [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   a fs2 Pipe from T to Unit
     */
   def batchPut[T: Encoder](
     maxBatchWait: FiniteDuration,
@@ -297,21 +375,28 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
   ): Pipe[F, T, Unit] =
     batchPutInorderedOp[F, T](table, maxBatchWait, backoffStrategy)(jClient)
 
-  /** Put items in batch, '''un-ordered'''. Meaning batches are processed in '''parallel''', hence,
-    * if your input has items with the same composite keys, this can cause a race condition,
-    * consider using [[batchPut]] instead. Max batch size is preset to 25 (maximum batch
-    * size permitted from batch put actions), however, it is possible to control the rate of
-    * batching with `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a
-    * Pipe in order to cover broader use cases regardless of input can be fitted into memory or not.
-    * Duplicated items within a batch will be removed. Left over items within a batch will be
+  /** Put items in batch, '''un-ordered'''. Meaning batches are processed in
+    * '''parallel''', hence, if your input has items with the same composite
+    * keys, this can cause a race condition, consider using [[batchPut]]
+    * instead. Max batch size is preset to 25 (maximum batch size permitted from
+    * batch put actions), however, it is possible to control the rate of
+    * batching with `maxBatchWait` parameter. This uses fs2 .groupWithin
+    * internally. This returns a Pipe in order to cover broader use cases
+    * regardless of input can be fitted into memory or not. Duplicated items
+    * within a batch will be removed. Left over items within a batch will be
     * reprocessed in the next batch.
     *
-    * @param maxBatchWait time window to collect items into a batch
-    * @param parallelism number of connections that can be open at the same time
-    * @param backoffStrategy backoff strategy in case of failure, default can be found at
-    *                        [[meteor.Client.BackoffStrategy.default]].
-    * @tparam T returned item's type
-    * @return a fs2 Pipe from T to Unit
+    * @param maxBatchWait
+    *   time window to collect items into a batch
+    * @param parallelism
+    *   number of connections that can be open at the same time
+    * @param backoffStrategy
+    *   backoff strategy in case of failure, default can be found at
+    *   [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   a fs2 Pipe from T to Unit
     */
   def batchPutUnordered[T: Encoder](
     maxBatchWait: FiniteDuration,
@@ -325,18 +410,23 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       backoffStrategy
     )(jClient)
 
-  /** Delete items by composite keys in batch. Max batch size is preset to 100 (maximum batch size
-    * permitted for batch get action), however, it is possible to control the rate of batching with
-    * `maxBatchWait` parameter. This uses fs2 .groupWithin internally. This returns a Pipe in order
-    * to cover broader use cases regardless of input can be fitted into memory or not. Duplicated
-    * items within a batch will be removed. Left over items within a batch will be reprocessed in
-    * the next batch.
+  /** Delete items by composite keys in batch. Max batch size is preset to 100
+    * (maximum batch size permitted for batch get action), however, it is
+    * possible to control the rate of batching with `maxBatchWait` parameter.
+    * This uses fs2 .groupWithin internally. This returns a Pipe in order to
+    * cover broader use cases regardless of input can be fitted into memory or
+    * not. Duplicated items within a batch will be removed. Left over items
+    * within a batch will be reprocessed in the next batch.
     *
-    * @param maxBatchWait time window to collect items into a batch
-    * @param parallelism number of connections that can be open at the same time
-    * @param backoffStrategy backoff strategy in case of failure, default can be found at
-    *                        [[meteor.Client.BackoffStrategy.default]].
-    * @return a fs2 Pipe from composite keys P and S as a tuple to Unit
+    * @param maxBatchWait
+    *   time window to collect items into a batch
+    * @param parallelism
+    *   number of connections that can be open at the same time
+    * @param backoffStrategy
+    *   backoff strategy in case of failure, default can be found at
+    *   [[meteor.Client.BackoffStrategy.default]].
+    * @return
+    *   a fs2 Pipe from composite keys P and S as a tuple to Unit
     */
   def batchDelete(
     maxBatchWait: FiniteDuration,
@@ -350,19 +440,26 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       backoffStrategy
     )(jClient)
 
-  /** Write items (put or delete) in batch, '''in ordered'''. Meaning batches are processed in
-    * '''serial''' to avoid race condition when writing items with the same composite keys. Max
-    * batch size is preset to 25 (maximum batch size permitted from batch write actions), however,
-    * it is possible to control the rate of batching with `maxBatchWait` parameter. This uses fs2
-    * .groupWithin internally. This returns a Pipe in order to cover broader use cases regardless of
-    * input can be fitted into memory or not. Duplicated items within a batch will be removed. Left
-    * over items within a batch will be reprocessed in the next batch.
+  /** Write items (put or delete) in batch, '''in ordered'''. Meaning batches
+    * are processed in '''serial''' to avoid race condition when writing items
+    * with the same composite keys. Max batch size is preset to 25 (maximum
+    * batch size permitted from batch write actions), however, it is possible to
+    * control the rate of batching with `maxBatchWait` parameter. This uses fs2
+    * .groupWithin internally. This returns a Pipe in order to cover broader use
+    * cases regardless of input can be fitted into memory or not. Duplicated
+    * items within a batch will be removed. Left over items within a batch will
+    * be reprocessed in the next batch.
     *
-    * @param maxBatchWait time window to collect items into a batch
-    * @param backoffStrategy backoff strategy in case of failure, default can be found at
-    *                        [[meteor.Client.BackoffStrategy.default]].
-    * @tparam T returned item's type
-    * @return a fs2 Pipe from Either[(P, S), T], represent deletion (Left) or put (Right) to Unit.
+    * @param maxBatchWait
+    *   time window to collect items into a batch
+    * @param backoffStrategy
+    *   backoff strategy in case of failure, default can be found at
+    *   [[meteor.Client.BackoffStrategy.default]].
+    * @tparam T
+    *   returned item's type
+    * @return
+    *   a fs2 Pipe from Either[(P, S), T], represent deletion (Left) or put
+    *   (Right) to Unit.
     */
   def batchWrite[T: Encoder](
     maxBatchWait: FiniteDuration,
