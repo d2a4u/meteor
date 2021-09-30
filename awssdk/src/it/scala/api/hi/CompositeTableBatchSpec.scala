@@ -30,7 +30,8 @@ class CompositeTableBatchSpec extends ITSpec {
     val input = Stream.emits(samples).covary[IO]
     val keys =
       Stream.emits(samples.map(i => (i.id, i.range)) ++ samples.map(i =>
-        (i.id, i.range))).covary[IO]
+        (i.id, i.range)
+      )).covary[IO]
 
     roundTrip(input, keys, samples)
   }

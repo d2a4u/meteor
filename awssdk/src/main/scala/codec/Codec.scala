@@ -13,8 +13,8 @@ trait Codec[A] extends Decoder[A] with Encoder[A]
 object Codec {
   def apply[A](implicit codec: Codec[A]): Codec[A] = codec
 
-  /** Returns a new [[Codec]] for the specified type given an [[Encoder]] and a [[Decoder]] in scope
-    * for the type.
+  /** Returns a new [[Codec]] for the specified type given an [[Encoder]] and a
+    * [[Decoder]] in scope for the type.
     */
   implicit def dynamoCodecFromEncoderAndDecoder[A](
     implicit encoder: Encoder[A],
@@ -27,7 +27,8 @@ object Codec {
         decoder.read(av)
     }
 
-  /** Returns a new [[Codec]] of type B given isomorphic functions of A to B and B to A
+  /** Returns a new [[Codec]] of type B given isomorphic functions of A to B and
+    * B to A
     */
   def iso[A: Codec, B](fa: A => B)(fb: B => A): Codec[B] =
     new Codec[B] {

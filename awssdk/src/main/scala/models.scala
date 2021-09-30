@@ -16,9 +16,12 @@ import scala.jdk.CollectionConverters._
 
 /** Key's definition, a representation of DynamoDB's key.
   *
-  * @param attributeName attribute's name
-  * @param attributeType attribute's type
-  * @tparam K key's type
+  * @param attributeName
+  *   attribute's name
+  * @param attributeType
+  *   attribute's type
+  * @tparam K
+  *   key's type
   */
 case class KeyDef[K](
   attributeName: String,
@@ -127,9 +130,12 @@ private[meteor] sealed trait CompositeKeysIndex[P, S] extends Index[P] {
 
 /** Represent a table which has only partition key
   *
-  * @param tableName table's name
-  * @param partitionKeyDef partition key's definition
-  * @tparam P partition key's type
+  * @param tableName
+  *   table's name
+  * @param partitionKeyDef
+  *   partition key's definition
+  * @tparam P
+  *   partition key's type
   */
 @deprecated("use meteor.api.hi.SimpleTable instead", "2021-05-24")
 case class PartitionKeyTable[P](
@@ -139,11 +145,16 @@ case class PartitionKeyTable[P](
 
 /** Represent a table which has both partition key and sort key
   *
-  * @param tableName table's name
-  * @param partitionKeyDef partition key's definition
-  * @param sortKeyDef sort key's definition
-  * @tparam P partition key's type
-  * @tparam S sort key's type
+  * @param tableName
+  *   table's name
+  * @param partitionKeyDef
+  *   partition key's definition
+  * @param sortKeyDef
+  *   sort key's definition
+  * @tparam P
+  *   partition key's type
+  * @tparam S
+  *   sort key's type
   */
 @deprecated("use meteor.api.hi.CompositeTable instead", "2021-05-24")
 case class CompositeKeysTable[P, S](
@@ -154,10 +165,14 @@ case class CompositeKeysTable[P, S](
 
 /** Represent a secondary index which has only partition key
   *
-  * @param tableName table's name
-  * @param indexName secondary index's name
-  * @param partitionKeyDef partition key's definition
-  * @tparam P partition key's type
+  * @param tableName
+  *   table's name
+  * @param indexName
+  *   secondary index's name
+  * @param partitionKeyDef
+  *   partition key's definition
+  * @tparam P
+  *   partition key's type
   */
 @deprecated("use meteor.api.hi.SecondarySimpleIndex instead", "2021-05-24")
 case class PartitionKeySecondaryIndex[P](
@@ -168,12 +183,18 @@ case class PartitionKeySecondaryIndex[P](
 
 /** Represent a secondary index which has both partition key and sort key
   *
-  * @param tableName table's name
-  * @param indexName index's name
-  * @param partitionKeyDef partition key's definition
-  * @param sortKeyDef sort key's  definition
-  * @tparam P partition key's type
-  * @tparam S sort key's type
+  * @param tableName
+  *   table's name
+  * @param indexName
+  *   index's name
+  * @param partitionKeyDef
+  *   partition key's definition
+  * @param sortKeyDef
+  *   sort key's definition
+  * @tparam P
+  *   partition key's type
+  * @tparam S
+  *   sort key's type
   */
 @deprecated("use meteor.api.hi.SecondaryCompositeIndex instead", "2021-05-24")
 case class CompositeKeysSecondaryIndex[P, S](
@@ -183,7 +204,8 @@ case class CompositeKeysSecondaryIndex[P, S](
   sortKeyDef: KeyDef[S]
 ) extends CompositeKeysIndex[P, S]
 
-/** Represent sort key query which can be used as part of key condition expression for query action:
+/** Represent sort key query which can be used as part of key condition
+  * expression for query action:
   * https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_Query.html#DDB-Query-request-KeyConditionExpression
   */
 sealed trait SortKeyQuery[T]
@@ -200,12 +222,14 @@ object SortKeyQuery {
   def empty[T]: SortKeyQuery[T] = Empty[T]()
 }
 
-/** Abstraction over DynamoDB expressions, this can be key condition expression, update expression, projection expression etc..
+/** Abstraction over DynamoDB expressions, this can be key condition expression,
+  * update expression, projection expression etc..
   * https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.html.
   *
-  * It is recommended to avoid DynamoDB's reserved words in expression string by providing expression as
-  * raw String with attribute names and values as placeholders only. Attribute names and values can then
-  * be replaced separately via `attributeNames` and `attributeValues` maps.
+  * It is recommended to avoid DynamoDB's reserved words in expression string by
+  * providing expression as raw String with attribute names and values as
+  * placeholders only. Attribute names and values can then be replaced
+  * separately via `attributeNames` and `attributeValues` maps.
   *
   * Example:
   * {{{
@@ -221,9 +245,14 @@ object SortKeyQuery {
   *   )
   * )
   * }}}
-  * @param expression expression as raw String
-  * @param attributeNames a map of attribute name placeholders in the raw String above to the actual attribute names in the table
-  * @param attributeValues a map of attribute value placeholders in the raw String above to the actual attribute values
+  * @param expression
+  *   expression as raw String
+  * @param attributeNames
+  *   a map of attribute name placeholders in the raw String above to the actual
+  *   attribute names in the table
+  * @param attributeValues
+  *   a map of attribute value placeholders in the raw String above to the
+  *   actual attribute values
   */
 case class Expression(
   expression: String,
@@ -293,11 +322,16 @@ object Expression {
   *     )
   *   )
   * }}}
-  * @param partitionKey partition key value
-  * @param sortKeyQuery sort key query
-  * @param filter filter expression
-  * @tparam P parition key's type
-  * @tparam S sort key's type (`Nothing` type for table without sort key)
+  * @param partitionKey
+  *   partition key value
+  * @param sortKeyQuery
+  *   sort key query
+  * @param filter
+  *   filter expression
+  * @tparam P
+  *   parition key's type
+  * @tparam S
+  *   sort key's type (`Nothing` type for table without sort key)
   */
 case class Query[P: Encoder, S: Encoder](
   partitionKey: P,
@@ -414,9 +448,12 @@ object Query {
 
   /** Create a Query where the table doesn't have a sort key.
     *
-    * @param partitionKey partition key
-    * @param filter filter expression
-    * @return a query
+    * @param partitionKey
+    *   partition key
+    * @param filter
+    *   filter expression
+    * @return
+    *   a query
     */
   def apply[P: Encoder](
     partitionKey: P,
@@ -425,7 +462,8 @@ object Query {
     Query[P, Nothing](partitionKey, SortKeyQuery.empty[Nothing], filter)
 }
 
-/** Represent DynamoDB primitive data types, including BOOL, B, BS, L, M, N, NS, NULL, S and SS.
+/** Represent DynamoDB primitive data types, including BOOL, B, BS, L, M, N, NS,
+  * NULL, S and SS.
   */
 trait DynamoDbType {
   def toScalarAttributeType: ScalarAttributeType =
