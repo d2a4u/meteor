@@ -42,7 +42,7 @@ class ConversionsSpec
     round1.isRight && round1 == round2
   }
 
-  //TODO: test for Array[Byte]
+  // TODO: test for Array[Byte]
   it should "cross read/write from Schema to Codec for Int" in forAll {
     int: Int =>
       roundTrip(int) shouldBe true
