@@ -17,6 +17,7 @@ private[meteor] trait CompositeKeysDeleteOps {
     table: CompositeKeysTable[P, S],
     partitionKey: P,
     sortKey: S,
+    condition: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     table.mkKey[F](partitionKey, sortKey).flatMap { key =>
@@ -25,6 +26,7 @@ private[meteor] trait CompositeKeysDeleteOps {
           .tableName(table.tableName)
           .key(key)
           .returnValues(returnValue)
+          .condition(condition)
           .build()
       liftFuture(jClient.deleteItem(req)).flatMap { resp =>
         if (resp.hasAttributes) {
@@ -43,6 +45,7 @@ private[meteor] trait PartitionKeyDeleteOps {
   private[meteor] def deleteOp[F[_]: Async, P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
+    condition: Expression,
     returnValue: ReturnValue
   )(jClient: DynamoDbAsyncClient): F[Option[U]] = {
     table.mkKey[F](partitionKey).flatMap { key =>
@@ -51,6 +54,7 @@ private[meteor] trait PartitionKeyDeleteOps {
           .tableName(table.tableName)
           .key(key)
           .returnValues(returnValue)
+          .condition(condition)
           .build()
       liftFuture(jClient.deleteItem(req)).flatMap { resp =>
         if (resp.hasAttributes) {

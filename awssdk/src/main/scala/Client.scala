@@ -122,14 +122,16 @@ trait Client[F[_]] {
   def delete[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
-    sortKey: S
+    sortKey: S,
+    condition: Expression
   ): F[Unit]
 
   /** Delete an item from a table by partition key P.
     */
   def delete[P: Encoder](
     table: PartitionKeyTable[P],
-    partitionKey: P
+    partitionKey: P,
+    condition: Expression
   ): F[Unit]
 
   /** Scan the whole table with a filter expression.

@@ -1,9 +1,9 @@
 package meteor
 package api.hi
 
-import fs2.{Pipe, RaiseThrowable}
-import cats.implicits._
 import cats.effect.Async
+import cats.implicits._
+import fs2.{Pipe, RaiseThrowable}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
@@ -126,8 +126,11 @@ case class SimpleTable[F[_]: Async, P: Encoder](
     * @param partitionKey partition key
     * @return Unit
     */
-  def delete(partitionKey: P): F[Unit] =
-    deleteOp[F, P, Unit](table, partitionKey, ReturnValue.NONE)(jClient).void
+  def delete(
+    partitionKey: P,
+    condition: Expression = Expression.empty
+  ): F[Unit] =
+    deleteOp[F, P, Unit](table, partitionKey, condition, ReturnValue.NONE)(jClient).void
 
   /** Update an item by partition key given an update expression when a condition expression is
     * fulfilled. Return Unit.
