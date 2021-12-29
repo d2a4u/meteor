@@ -9,7 +9,7 @@ import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import org.scanamo.error.DynamoReadError
+import org.scanamo.DynamoReadError
 import org.scanamo.{DynamoFormat, DynamoValue}
 
 import scala.collection.immutable
@@ -27,12 +27,8 @@ class ConversionsSpec
     Arbitrary(genNonEmptyString)
 
   def roundTrip[T: Codec: DynamoFormat](t: T): Boolean = {
-    val dynamoFormatWrite =
-      sdk1ToSdk2AttributeValue(
-        DynamoFormat[T].write(t).toAttributeValue
-      )
-    val encoderWrite =
-      sdk2ToSdk1AttributeValue(Encoder[T].write(t))
+    val dynamoFormatWrite = DynamoFormat[T].write(t).toAttributeValue
+    val encoderWrite = Encoder[T].write(t)
 
     val round1 = Decoder[T].read(dynamoFormatWrite).toOption
     val round2 = DynamoFormat[T].read(encoderWrite).toOption
@@ -42,12 +38,8 @@ class ConversionsSpec
   def roundTripOpt[T: Decoder](
     t: Option[T]
   )(implicit enc: Encoder[Option[T]], fmt: DynamoFormat[Option[T]]): Boolean = {
-    val dynamoFormatWrite =
-      sdk1ToSdk2AttributeValue(
-        fmt.write(t).toAttributeValue
-      )
-    val encoderWrite =
-      sdk2ToSdk1AttributeValue(enc.write(t))
+    val dynamoFormatWrite = fmt.write(t).toAttributeValue
+    val encoderWrite = enc.write(t)
 
     val round1 = dynamoFormatWrite.asOpt[T].toOption
     val round2 = fmt.read(encoderWrite).toOption

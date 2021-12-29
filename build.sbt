@@ -1,33 +1,34 @@
 import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
-val catsVersion = "2.6.0"
-val catsEffectVersion = "3.1.0"
-val fs2Version = "3.0.3"
+val catsVersion = "2.6.1"
+val catsEffectVersion = "3.1.1"
+val fs2Version = "3.2.4"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "org.typelevel" %% "cats-effect" % catsEffectVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.2",
-  "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.0",
-  "software.amazon.awssdk" % "dynamodb" % "2.16.72"
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.4",
+  "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
+  "software.amazon.awssdk" % "dynamodb" % "2.17.102"
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.8",
+  "org.scalatest" %% "scalatest" % "3.2.10",
   "org.scalacheck" %% "scalacheck" % "1.15.4",
-  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.6.0"
+  "org.scalatestplus" %% "scalacheck-1-15" % "3.2.10.0"
 )
 
 lazy val ItTest = config("it").extend(Test)
 
-lazy val scalaVer = "2.13.5"
+lazy val scala213 = "2.13.7"
+lazy val scala212 = "2.12.15"
 
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
-  scalaVersion := scalaVer,
-  crossScalaVersions ++= Seq("2.12.13"),
+  scalaVersion := scala213,
+  crossScalaVersions ++= Seq(scala212, scala213),
   Test / parallelExecution := true,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
@@ -55,7 +56,7 @@ lazy val commonSettings = Seq(
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
   addCompilerPlugin(
-    "org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full
+    "org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full
   ),
   scalacOptions := Seq(
     "-unchecked",
@@ -110,7 +111,7 @@ lazy val dynosaur = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.systemfw" %% "dynosaur-core" % "0.2.0"
+      "org.systemfw" %% "dynosaur-core" % "0.3.0"
     ),
     commonSettings
   ).dependsOn(awssdk)
@@ -128,7 +129,7 @@ lazy val scanamo = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.scanamo" %% "scanamo-formats" % "1.0.0-M11"
+      "org.scanamo" %% "scanamo" % "1.0.0-M17"
     ),
     commonSettings
   ).dependsOn(awssdk)
