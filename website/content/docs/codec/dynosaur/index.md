@@ -19,8 +19,8 @@ feature, hence, it is subjected to change.
 
 ```scala
 import meteor.dynosaur.formats.conversions._
-import meteor.Codec
+import meteor.codec.Codec
 
 val bookSchema: Schema[Book] = ...
-val bookCodec: Codec[Book] = implicitly[Codec[Book]]
+val bookCodec: Codec[Book] = bookSchema
 ```
