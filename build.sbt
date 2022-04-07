@@ -2,7 +2,7 @@ import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
 val catsVersion = "2.7.0"
-val catsEffectVersion = "3.3.9"
+val catsEffectVersion = "3.3.11"
 val fs2Version = "3.2.6"
 
 lazy val dependencies = Seq(
@@ -11,7 +11,7 @@ lazy val dependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.7.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-  "software.amazon.awssdk" % "dynamodb" % "2.17.160"
+  "software.amazon.awssdk" % "dynamodb" % "2.17.165"
 )
 
 lazy val testDependencies = Seq(
