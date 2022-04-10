@@ -14,7 +14,7 @@ toc: true
 ---
 
 The `meteor-scanamo` module provides integration with [Scanamo format library](https://www.scanamo.org/dynamo-format.html).
-It provides implicit conversion from `scanamo`'s `DynamoFormat` to `meteor`'s codec. 
+It provides implicit construction from `scanamo`'s `DynamoFormat` to `meteor`'s codec. 
 
 **Note:** The module uses `scanamo-format`'s version `1.0.0-M11` instead of latest because in my 
 experience, this is the most stable version. however, because it is an older version when DynamoDB
@@ -30,9 +30,9 @@ instance for `Option[T]` but only provides syntax to help to deal with optional 
 
 ```scala
 import meteor.scanamo.formats.conversions._
-import meteor.Codec
+import meteor.codec.Codec
 import org.scanamo.DynamoFormat
 
-val bookFormat: DynamoFormat[Book] = ...
+implicit val bookFormat: DynamoFormat[Book] = ...
 val bookCodec: Codec[Book] = implicitly[Codec[Book]]
 ```
