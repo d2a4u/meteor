@@ -14,13 +14,13 @@ toc: true
 ---
 
 The `meteor-dynosaur` module provides integration with [Dynosaur library](https://systemfw.org/dynosaur/#/).
-It provides implicit conversion from `Dynosaur`'s schema to `meteor`'s codec. This is an experiment
+It provides implicit construction from `Dynosaur`'s schema to `meteor`'s codec. This is an experiment
 feature, hence, it is subjected to change.
 
 ```scala
 import meteor.dynosaur.formats.conversions._
-import meteor.Codec
+import meteor.codec.Codec
 
-val bookSchema: Schema[Book] = ...
+implicit val bookSchema: Schema[Book] = ...
 val bookCodec: Codec[Book] = implicitly[Codec[Book]]
 ```
