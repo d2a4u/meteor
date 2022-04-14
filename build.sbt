@@ -25,22 +25,6 @@ lazy val ItTest = config("it").extend(Test)
 lazy val scala213 = "2.13.8"
 lazy val scala212 = "2.12.15"
 
-def scalacOpts(scalaVer: String) = {
-  Seq(
-    "-unchecked",
-    "-deprecation",
-    "-feature",
-    "-encoding",
-    "utf8",
-    "-language:higherKinds"
-  ) ++ {
-    CrossVersion.partialVersion(scalaVer) match {
-      case Some((2, 12)) => Seq("-Ypartial-unification")
-      case _             => Nil
-    }
-  }
-}
-
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
   scalaVersion := scala213,
@@ -74,7 +58,6 @@ lazy val commonSettings = Seq(
   addCompilerPlugin(
     "org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full
   ),
-  scalacOptions := scalacOpts(scalaVersion.value),
   Test / scalacOptions ~= filterConsoleScalacOptions,
   Compile / scalacOptions ~= filterConsoleScalacOptions
 )

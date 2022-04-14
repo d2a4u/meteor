@@ -159,9 +159,7 @@ private[meteor] trait SharedGetOps {
     limit: Int
   ): fs2.Stream[F, QueryRequest.Builder] = {
     val (tableName, optIndexName) = index match {
-      case PartitionKeyTable(name, _) => (name, None)
-      case PartitionKeySecondaryIndex(tableName, indexName, _) =>
-        (tableName, indexName.some)
+      case PartitionKeyTable(name, _)     => (name, None)
       case CompositeKeysTable(name, _, _) => (name, None)
       case CompositeKeysSecondaryIndex(tableName, indexName, _, _) =>
         (tableName, indexName.some)

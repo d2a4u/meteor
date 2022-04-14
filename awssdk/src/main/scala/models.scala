@@ -152,20 +152,6 @@ case class CompositeKeysTable[P, S](
   sortKeyDef: KeyDef[S]
 ) extends CompositeKeysIndex[P, S]
 
-/** Represent a secondary index which has only partition key
-  *
-  * @param tableName table's name
-  * @param indexName secondary index's name
-  * @param partitionKeyDef partition key's definition
-  * @tparam P partition key's type
-  */
-@deprecated("use meteor.api.hi.SecondarySimpleIndex instead", "2021-05-24")
-case class PartitionKeySecondaryIndex[P](
-  tableName: String,
-  indexName: String,
-  partitionKeyDef: KeyDef[P]
-) extends PartitionKeyIndex[P]
-
 /** Represent a secondary index which has both partition key and sort key
   *
   * @param tableName table's name

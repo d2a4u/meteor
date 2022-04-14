@@ -6,6 +6,7 @@ import cats.effect.Async
 import fs2.{Pipe, RaiseThrowable}
 import meteor.api._
 import meteor.codec.{Decoder, Encoder}
+import meteor.errors.UnsupportedArgument
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.ReturnValue
@@ -46,7 +47,53 @@ private[meteor] sealed abstract class CompositeIndex[
     )(jClient)
 }
 
-/** Represent a secondary index where the index has composite keys (partition key and sort key).
+/** Represent a global secondary index where the index has only partition key and no sort key.
+  *
+  * @param tableName table's name
+  * @param indexName index's name
+  * @param partitionKeyDef partition key definition
+  * @param jClient DynamoDB java async client
+  * @tparam F effect type
+  * @tparam P partition key type
+  */
+case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
+  tableName: String,
+  indexName: String,
+  partitionKeyDef: KeyDef[P],
+  jClient: DynamoDbAsyncClient
+) extends CompositeIndex[F, P, Nothing] {
+  val sortKeyDef: KeyDef[Nothing] = null
+  val index: CompositeKeysIndex[P, Nothing] =
+    CompositeKeysSecondaryIndex[P, Nothing](
+      tableName,
+      indexName,
+      partitionKeyDef,
+      sortKeyDef
+    )
+
+  override def retrieve[T: Decoder](
+    query: Query[P, Nothing],
+    consistentRead: Boolean,
+    limit: Int
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] = {
+    if (consistentRead) {
+      fs2.Stream.raiseError(
+        UnsupportedArgument("Consistent read is not supported")
+      )
+    } else {
+      super.retrieve(query, consistentRead, limit)
+    }
+  }
+
+  def retrieve[T: Decoder](
+    query: Query[P, Nothing],
+    limit: Int
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    super.retrieve(query, consistentRead = false, limit)
+}
+
+/** Represent a secondary index (local and global) where the index has composite keys
+  * (partition key and sort key).
   *
   * @param tableName table's name
   * @param indexName index's name

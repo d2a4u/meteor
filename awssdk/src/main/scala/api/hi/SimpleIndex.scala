@@ -39,25 +39,6 @@ private[meteor] sealed abstract class SimpleIndex[F[_]: Async, P: Encoder]
     )(jClient)
 }
 
-/** Represent a secondary index where the index has only partition key and no sort key.
-  *
-  * @param tableName table's name
-  * @param indexName index's name
-  * @param partitionKeyDef partition key definition
-  * @param jClient DynamoDB java async client
-  * @tparam F effect type
-  * @tparam P partition key type
-  */
-case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
-  tableName: String,
-  indexName: String,
-  partitionKeyDef: KeyDef[P],
-  jClient: DynamoDbAsyncClient
-) extends SimpleIndex[F, P] {
-  val index: PartitionKeyIndex[P] =
-    PartitionKeySecondaryIndex[P](tableName, indexName, partitionKeyDef)
-}
-
 /** Represent a table where the index has only partition key and no sort key.
   *
   * @param tableName table's name

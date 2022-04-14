@@ -127,4 +127,36 @@ class CompositeIndexSpec extends ITSpec {
       _.range.value
     )
   }
+
+  "SecondarySimpleIndex" should "filter results by given filter expression" in {
+    def retrieval(
+      index: SecondarySimpleIndex[IO, Range],
+      cond: Boolean
+    ): Stream[IO, TestData] =
+      index.retrieve[TestData](
+        Query(
+          data.range,
+          Expression(
+            "#b = :bool",
+            Map("#b" -> "bool"),
+            Map(
+              ":bool" -> Encoder[Boolean].write(cond)
+            )
+          )
+        ),
+        Int.MaxValue
+      )
+
+    secondarySimpleIndex[IO].use {
+      case (table, index) =>
+        val read = retrieval(index, data.bool).take(1).compile.toList
+        table.put[TestData](data) >> read
+    }.unsafeToFuture().futureValue match {
+      case list =>
+        list shouldEqual List(data)
+
+      case _ =>
+        fail()
+    }
+  }
 }
