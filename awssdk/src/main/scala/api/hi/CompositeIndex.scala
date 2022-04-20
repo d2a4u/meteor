@@ -56,13 +56,13 @@ private[meteor] sealed abstract class CompositeIndex[
   * @tparam F effect type
   * @tparam P partition key type
   */
-case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
+case class GlobalSecondarySimpleIndex[F[_]: Async, P: Encoder](
   tableName: String,
   indexName: String,
   partitionKeyDef: KeyDef[P],
   jClient: DynamoDbAsyncClient
 ) extends CompositeIndex[F, P, Nothing] {
-  val sortKeyDef: KeyDef[Nothing] = null
+  val sortKeyDef: KeyDef[Nothing] = KeyDef.nothing
   val index: CompositeKeysIndex[P, Nothing] =
     CompositeKeysSecondaryIndex[P, Nothing](
       tableName,
@@ -86,10 +86,10 @@ case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
   }
 
   def retrieve[T: Decoder](
-    query: Query[P, Nothing],
+    partitionKey: P,
     limit: Int
   )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
-    super.retrieve(query, consistentRead = false, limit)
+    super.retrieve(Query(partitionKey), consistentRead = false, limit)
 }
 
 /** Represent a secondary index (local and global) where the index has composite keys

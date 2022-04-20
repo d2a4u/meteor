@@ -45,6 +45,10 @@ case class KeyDef[K](
   val value: (String, DynamoDbType) = attributeName -> attributeType
 }
 
+object KeyDef {
+  val nothing: KeyDef[Nothing] = KeyDef(null, DynamoDbType.NULL)
+}
+
 private[meteor] sealed trait Index[P] {
   def partitionKeyDef: KeyDef[P]
 
@@ -151,6 +155,20 @@ case class CompositeKeysTable[P, S](
   partitionKeyDef: KeyDef[P],
   sortKeyDef: KeyDef[S]
 ) extends CompositeKeysIndex[P, S]
+
+/** Represent a secondary index which has only partition key
+  *
+  * @param tableName table's name
+  * @param indexName secondary index's name
+  * @param partitionKeyDef partition key's definition
+  * @tparam P partition key's type
+  */
+@deprecated("use meteor.api.hi.SecondarySimpleIndex instead", "2021-05-24")
+case class PartitionKeySecondaryIndex[P](
+  tableName: String,
+  indexName: String,
+  partitionKeyDef: KeyDef[P]
+) extends PartitionKeyIndex[P]
 
 /** Represent a secondary index which has both partition key and sort key
   *
@@ -282,7 +300,7 @@ object Expression {
   * @param partitionKey partition key value
   * @param sortKeyQuery sort key query
   * @param filter filter expression
-  * @tparam P parition key's type
+  * @tparam P partition key's type
   * @tparam S sort key's type (`Nothing` type for table without sort key)
   */
 case class Query[P: Encoder, S: Encoder](
@@ -295,8 +313,10 @@ case class Query[P: Encoder, S: Encoder](
     val partitionKeyExpression =
       mkPartitionKeyExpression(index.partitionKeyDef.attributeName)
 
-    val optSortKeyExpression =
-      mkSortKeyExpression(index.sortKeyDef.attributeName)
+    val optSortKeyExpression = {
+      if (index.sortKeyDef == KeyDef.nothing) None
+      else mkSortKeyExpression(index.sortKeyDef.attributeName)
+    }
 
     Monoid.maybeCombine(partitionKeyExpression, optSortKeyExpression)
   }

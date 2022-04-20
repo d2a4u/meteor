@@ -48,18 +48,24 @@ private[meteor] object Util {
   def partitionKeyTable[F[_]: Async]
     : Resource[F, (Client[F], PartitionKeyTable[Id])] =
     internalSimpleResources[F].map {
-      case (c, t, _, _, _) => (c, t)
+      case (c, t, _, _, _, _) => (c, t)
     }
 
   def simpleTable[F[_]: Async]: Resource[F, SimpleTable[F, Id]] =
     internalSimpleResources[F].map {
-      case (_, _, t, _, _) => t
+      case (_, _, t, _, _, _) => t
     }
 
   def secondarySimpleIndex[F[_]: Async]
     : Resource[F, (SimpleTable[F, Id], SecondarySimpleIndex[F, Range])] =
     internalSimpleResources[F].map {
-      case (_, _, _, t, i) => (t, i)
+      case (_, _, _, t, i, _) => (t, i)
+    }
+
+  def globalSecondarySimpleIndex[F[_]: Async]
+    : Resource[F, (SimpleTable[F, Id], GlobalSecondarySimpleIndex[F, Range])] =
+    internalSimpleResources[F].map {
+      case (_, _, _, t, _, i) => (t, i)
     }
 
   def compositeKeysTable[F[_]: Async]
@@ -114,7 +120,8 @@ private[meteor] object Util {
       PartitionKeyTable[Id],
       SimpleTable[F, Id],
       SimpleTableWithGlobIndex[F, Id],
-      SecondarySimpleIndex[F, Range]
+      SecondarySimpleIndex[F, Range],
+      GlobalSecondarySimpleIndex[F, Range]
     )
   ] = {
     val hashKey1 = KeyDef[Id]("id", DynamoDbType.S)
@@ -140,6 +147,12 @@ private[meteor] object Util {
         jClient
       )
       ssi = SecondarySimpleIndex[F, Range](
+        simpleRandomNameWithGlobIndex,
+        simpleRandomIndexName,
+        glob2ndHashKey,
+        jClient
+      )
+      gssi = GlobalSecondarySimpleIndex[F, Range](
         simpleRandomNameWithGlobIndex,
         simpleRandomIndexName,
         glob2ndHashKey,
@@ -173,7 +186,7 @@ private[meteor] object Util {
           )
         )
       )(_ => client.deleteTable(simpleRandomNameWithGlobIndex))
-    } yield (client, pkt, st, stgi, ssi)
+    } yield (client, pkt, st, stgi, ssi, gssi)
   }
 
   private def internalCompositeResources[F[_]: Async]: Resource[
@@ -281,7 +294,8 @@ private[meteor] object Util {
       new AwsCredentials {
         override def accessKeyId(): String = "DUMMY"
         override def secretAccessKey(): String = "DUMMY"
-      })
+      }
+    )
 
   def localDynamo: URI = URI.create("http://localhost:8000")
 
