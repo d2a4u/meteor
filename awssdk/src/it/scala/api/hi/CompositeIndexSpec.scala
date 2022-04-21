@@ -127,4 +127,62 @@ class CompositeIndexSpec extends ITSpec {
       _.range.value
     )
   }
+
+  "GlobalSecondarySimpleIndex" should "filter results by given filter expression" in {
+    def retrieval(
+      index: GlobalSecondarySimpleIndex[IO, Range],
+      cond: Boolean
+    ): Stream[IO, TestData] =
+      index.retrieve[TestData](
+        Query(
+          data.range,
+          Expression(
+            "#b = :bool",
+            Map("#b" -> "bool"),
+            Map(
+              ":bool" -> Encoder[Boolean].write(cond)
+            )
+          )
+        ),
+        consistentRead = false,
+        Int.MaxValue
+      )
+
+    globalSecondarySimpleIndex[IO].use {
+      case (table, index) =>
+        val read = retrieval(index, data.bool).take(1).compile.toList
+        table.put[TestData](data) >> read
+    }.attempt.unsafeToFuture().futureValue match {
+      case Left(err) =>
+        err.printStackTrace()
+        fail(err)
+
+      case Right(list) =>
+        list.head shouldEqual data
+    }
+  }
+
+  it should "retrieve multiple items for the same partition key" in {
+    val partitionKey = Range("foo")
+    val data =
+      List.fill(200)(sample[Id]).distinct.map { id =>
+        sample[TestData].copy(
+          id = id,
+          range = partitionKey
+        )
+      }
+    val result = globalSecondarySimpleIndex[IO].use {
+      case (table, index) =>
+        table.batchPut[TestData](
+          1.minute,
+          Client.BackoffStrategy.default
+        ).apply(Stream.emits(data)).compile.drain >> index.retrieve[TestData](
+          partitionKey,
+          500
+        ).take(200).compile.toList
+    }.unsafeToFuture().futureValue
+    result.sortBy(_.id.value) should contain theSameElementsAs data.sortBy(
+      _.id.value
+    )
+  }
 }

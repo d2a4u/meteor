@@ -48,6 +48,10 @@ private[meteor] sealed abstract class SimpleIndex[F[_]: Async, P: Encoder]
   * @tparam F effect type
   * @tparam P partition key type
   */
+@deprecated(
+  "use meteor.hi.GlobalSecondarySimpleIndex instead - see https://github.com/d2a4u/meteor/issues/229 for more details",
+  "2022-04-21"
+)
 case class SecondarySimpleIndex[F[_]: Async, P: Encoder](
   tableName: String,
   indexName: String,

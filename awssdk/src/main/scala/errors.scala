@@ -59,4 +59,8 @@ object errors {
   case class ConditionalCheckFailed(msg: String) extends DynamoError {
     override def getMessage: String = msg
   }
+
+  case class UnsupportedArgument(msg: String) extends DynamoError {
+    override def getMessage: String = msg
+  }
 }
