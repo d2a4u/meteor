@@ -62,7 +62,7 @@ jobs:
             ~/.sbt
             ~/.cache/coursier
       - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.34.0
+        uses: anothrNick/github-tag-action@1.39.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WITH_V: true
