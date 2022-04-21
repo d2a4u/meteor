@@ -102,7 +102,10 @@ class RetrieveOpsSpec extends ITSpec {
             case (some, none) =>
               some.isDefined && none.isEmpty
           }
-      }.unsafeToFuture().futureValue shouldEqual (Some(test), None)
+      }.unsafeToFuture().futureValue match {
+        case (Some(result), None) => result shouldEqual test
+        case _                    => fail()
+      }
   }
 
   it should "filter results by given filter expression for CompositeKeysTable" in forAll {
