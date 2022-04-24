@@ -43,7 +43,7 @@ private[meteor] trait PartitionKeyGetOps extends SharedGetOps {
       keyExpression = query.keyCondition(index),
       filterExpression = query.filter,
       consistentRead = consistentRead,
-      limit = 1
+      limit = 1.some
     ).flatMap(builder => sendQueryRequest[F, T](builder)(jClient)).compile.last
   }
 }
@@ -68,7 +68,7 @@ private[meteor] trait CompositeKeysGetOps extends SharedGetOps {
     index: CompositeKeysIndex[P, _],
     partitionKey: P,
     consistentRead: Boolean,
-    limit: Int
+    limit: Option[Int]
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
     val query = Query[P](partitionKey)
     mkQueryRequestBuilder[F, P](
@@ -89,7 +89,7 @@ private[meteor] trait CompositeKeysGetOps extends SharedGetOps {
     index: CompositeKeysIndex[P, S],
     query: Query[P, S],
     consistentRead: Boolean,
-    limit: Int
+    limit: Option[Int]
   )(jClient: DynamoDbAsyncClient): fs2.Stream[F, U] = {
     mkQueryRequestBuilder[F, P](
       index,
@@ -156,7 +156,7 @@ private[meteor] trait SharedGetOps {
     keyExpression: Expression,
     filterExpression: Expression,
     consistentRead: Boolean,
-    limit: Int
+    limit: Option[Int]
   ): fs2.Stream[F, QueryRequest.Builder] = {
     val (tableName, optIndexName) = index match {
       case PartitionKeyTable(name, _) => (name, None)
@@ -176,14 +176,14 @@ private[meteor] trait SharedGetOps {
             .tableName(tableName)
             .consistentRead(consistentRead)
             .keyConditionExpression(cond.expression)
-            .limit(limit)
         val builder1 = optIndexName.fold(builder0)(builder0.indexName)
+        val builder2 = limit.fold(builder1)(builder1.limit(_))
         if (filterExpression.isEmpty) {
-          builder1
+          builder2
             .expressionAttributeNames(cond.attributeNames.asJava)
             .expressionAttributeValues(cond.attributeValues.asJava)
         } else {
-          builder1.filterExpression(
+          builder2.filterExpression(
             filterExpression.expression
           ).expressionAttributeNames(
             (cond.attributeNames ++ filterExpression.attributeNames).asJava
