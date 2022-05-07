@@ -29,11 +29,12 @@ private[meteor] sealed abstract class CompositeIndex[
     *
     * @param query a query to filter items by key condition
     * @param consistentRead toggle to perform consistent read
-    * @param limit limit the number of items to be returned
+    * @param limit limit the number of items to be returned per API call
     * @param RT implicit evidence for RaiseThrowable
     * @tparam T return item's type
     * @return a fs2 Stream of items
     */
+  @deprecated("Use retrieve without limit", "2022-04-24")
   def retrieve[T: Decoder](
     query: Query[P, S],
     consistentRead: Boolean,
@@ -43,7 +44,27 @@ private[meteor] sealed abstract class CompositeIndex[
       index,
       query,
       consistentRead,
-      limit
+      limit.some
+    )(jClient)
+
+  /** Retrieve items from a composite index, can be a secondary index or a table which has composite
+    * keys (partition key and sort key).
+    *
+    * @param query a query to filter items by key condition
+    * @param consistentRead toggle to perform consistent read
+    * @param RT implicit evidence for RaiseThrowable
+    * @tparam T return item's type
+    * @return a fs2 Stream of items
+    */
+  def retrieve[T: Decoder](
+    query: Query[P, S],
+    consistentRead: Boolean
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    retrieveOp[F, P, S, T](
+      index,
+      query,
+      consistentRead,
+      limit = None
     )(jClient)
 }
 
@@ -71,6 +92,7 @@ case class GlobalSecondarySimpleIndex[F[_]: Async, P: Encoder](
       sortKeyDef
     )
 
+  @deprecated("Use retrieve without limit", "2022-04-24")
   override def retrieve[T: Decoder](
     query: Query[P, Nothing],
     consistentRead: Boolean,
@@ -85,11 +107,30 @@ case class GlobalSecondarySimpleIndex[F[_]: Async, P: Encoder](
     }
   }
 
+  override def retrieve[T: Decoder](
+    query: Query[P, Nothing],
+    consistentRead: Boolean
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] = {
+    if (consistentRead) {
+      fs2.Stream.raiseError(
+        UnsupportedArgument("Consistent read is not supported")
+      )
+    } else {
+      super.retrieve(query, consistentRead)
+    }
+  }
+
+  @deprecated("Use retrieve without limit", "2022-04-24")
   def retrieve[T: Decoder](
     partitionKey: P,
     limit: Int
   )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
     super.retrieve(Query(partitionKey), consistentRead = false, limit)
+
+  def retrieve[T: Decoder](
+    partitionKey: P
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    super.retrieve(Query(partitionKey), consistentRead = false)
 }
 
 /** Represent a secondary index (local and global) where the index has composite keys
@@ -119,17 +160,17 @@ case class SecondaryCompositeIndex[F[_]: Async, P: Encoder, S: Encoder](
       sortKeyDef
     )
 
-  /** Retrieve all items with the same partition key as a fs2 Stream. The number of returned items
-    * can be limited. A Stream is returned instead of a list because the number of returned items
-    * can be very large. This always performs eventually consistent reads as strong consistent is
-    * not supported for secondary index.
+  /** Retrieve all items with the same partition key as a fs2 Stream. A Stream is returned instead
+    * of a list because the number of returned items can be very large. This always performs eventually
+    * consistent reads as strong consistent is not supported for secondary index.
     *
     * @param partitionKey partition key
-    * @param limit number of items to be returned
+    * @param limit number of items to be returned per API call
     * @param RT implicit evidence for RaiseThrowable
     * @tparam T returned item's type
     * @return a fs2 Stream of items
     */
+  @deprecated("Use retrieve without limit", "2022-04-24")
   def retrieve[T: Decoder](
     partitionKey: P,
     limit: Int
@@ -138,7 +179,26 @@ case class SecondaryCompositeIndex[F[_]: Async, P: Encoder, S: Encoder](
       index,
       partitionKey,
       consistentRead = false,
-      limit
+      limit.some
+    )(jClient)
+
+  /** Retrieve all items with the same partition key as a fs2 Stream. A Stream is returned instead
+    * of a list because the number of returned items can be very large. This always performs eventually
+    * consistent reads as strong consistent is not supported for secondary index.
+    *
+    * @param partitionKey partition key
+    * @param RT implicit evidence for RaiseThrowable
+    * @tparam T returned item's type
+    * @return a fs2 Stream of items
+    */
+  def retrieve[T: Decoder](
+    partitionKey: P
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    retrieveOp[F, P, T](
+      index,
+      partitionKey,
+      consistentRead = false,
+      limit = None
     )(jClient)
 }
 
@@ -268,17 +328,17 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       jClient
     )
 
-  /** Retrieve all items with the same partition key as a fs2 Stream. The number of returned items
-    * can be limited. A Stream is returned instead of a list because the number of returned items
-    * can be very large.
+  /** Retrieve all items with the same partition key as a fs2 Stream.  A Stream is returned instead
+    * of a list because the number of returned items can be very large.
     *
     * @param partitionKey partition key
     * @param consistentRead flag to enable strongly consistent read
-    * @param limit number of items to be returned
+    * @param limit number of items to be returned per API call
     * @param RT implicit evidence for RaiseThrowable
     * @tparam T returned item's type
     * @return a fs2 Stream of items
     */
+  @deprecated("Use retrieve without limit", "2022-04-24")
   def retrieve[T: Decoder](
     partitionKey: P,
     consistentRead: Boolean,
@@ -288,7 +348,27 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
       index,
       partitionKey,
       consistentRead,
-      limit
+      limit.some
+    )(jClient)
+
+  /** Retrieve all items with the same partition key as a fs2 Stream. A Stream is returned instead
+    * of a list because the number of returned items can be very large.
+    *
+    * @param partitionKey partition key
+    * @param consistentRead flag to enable strongly consistent read
+    * @param RT implicit evidence for RaiseThrowable
+    * @tparam T returned item's type
+    * @return a fs2 Stream of items
+    */
+  def retrieve[T: Decoder](
+    partitionKey: P,
+    consistentRead: Boolean
+  )(implicit RT: RaiseThrowable[F]): fs2.Stream[F, T] =
+    retrieveOp[F, P, T](
+      index,
+      partitionKey,
+      consistentRead,
+      limit = None
     )(jClient)
 
   /** Get items by composite keys in batch. Max batch size is preset to 100 (maximum batch size
