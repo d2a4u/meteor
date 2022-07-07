@@ -3,7 +3,7 @@ import sbt.addCompilerPlugin
 
 val catsVersion = "2.7.0"
 val catsEffectVersion = "3.3.11"
-val fs2Version = "3.2.6"
+val fs2Version = "3.2.9"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
