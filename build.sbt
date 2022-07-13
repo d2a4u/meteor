@@ -121,7 +121,7 @@ lazy val scanamo = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.scanamo" %% "scanamo" % "1.0.0-M20"
+      "org.scanamo" %% "scanamo" % "1.0.0-M19"
     ),
     commonSettings
   ).dependsOn(awssdk)
