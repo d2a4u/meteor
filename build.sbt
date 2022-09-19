@@ -1,5 +1,4 @@
 import sbt.Keys.organization
-import sbt.addCompilerPlugin
 
 val catsVersion = "2.8.0"
 val catsEffectVersion = "3.3.14"
@@ -22,13 +21,13 @@ lazy val testDependencies = Seq(
 
 lazy val ItTest = config("it").extend(Test)
 
+lazy val scala3 = "3.2.0"
 lazy val scala213 = "2.13.8"
-lazy val scala212 = "2.12.16"
 
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
   scalaVersion := scala213,
-  crossScalaVersions ++= Seq(scala212, scala213),
+  crossScalaVersions ++= Seq(scala213, scala3),
   Test / parallelExecution := true,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
@@ -55,9 +54,6 @@ lazy val commonSettings = Seq(
   Global / releaseEarlyWith := SonatypePublisher,
   sonatypeProfileName := "io.github.d2a4u",
   releaseEarlyEnableSyncToMaven := true,
-  addCompilerPlugin(
-    "org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full
-  ),
   Test / scalacOptions ~= filterConsoleScalacOptions,
   Compile / scalacOptions ~= filterConsoleScalacOptions
 )
@@ -67,10 +63,17 @@ lazy val root = project
   .settings(name := "meteor", commonSettings, noPublish)
   .dependsOn(
     awssdk % "compile->compile;test->test",
-    scanamo % "compile->compile;test->test",
     dynosaur % "compile->compile;test->test"
   )
-  .aggregate(awssdk, scanamo, dynosaur)
+  .settings(
+    Compile / scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((3, _)) => Seq("-Ykind-projector")
+        case _            => Nil
+      }
+    }
+  )
+  .aggregate(awssdk, dynosaur)
 
 lazy val noPublish =
   Seq(publish := {}, publishLocal := {}, publishArtifact := false)
@@ -104,24 +107,6 @@ lazy val dynosaur = project
       _ % "test"
     ) ++ Seq(
       "org.systemfw" %% "dynosaur-core" % "0.4.0"
-    ),
-    commonSettings
-  ).dependsOn(awssdk)
-
-lazy val scanamo = project
-  .in(file("scanamo"))
-  .settings(
-    inConfig(Test)(Defaults.testSettings),
-    Test / testOptions += Tests.Argument(
-      "-oD"
-    ) // enabled time measurement for each test
-  )
-  .settings(
-    name := "meteor-scanamo",
-    libraryDependencies ++= dependencies ++ testDependencies.map(
-      _ % "test"
-    ) ++ Seq(
-      "org.scanamo" %% "scanamo" % "1.0.0-M20"
     ),
     commonSettings
   ).dependsOn(awssdk)
