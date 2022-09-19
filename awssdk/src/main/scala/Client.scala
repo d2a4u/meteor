@@ -43,6 +43,7 @@ trait Client[F[_]] {
 
   /** Get a single item of type U from a table by partition key P.
     */
+  @annotation.nowarn
   def get[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
@@ -51,6 +52,7 @@ trait Client[F[_]] {
 
   /** Get a single value from a table by partition key P and sort key S.
     */
+  @annotation.nowarn
   def get[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
@@ -60,6 +62,7 @@ trait Client[F[_]] {
 
   /** Retrieve values from a table using a query.
     */
+  @annotation.nowarn
   def retrieve[P: Encoder, U: Decoder](
     index: PartitionKeyIndex[P],
     query: Query[P, Nothing],
@@ -68,16 +71,7 @@ trait Client[F[_]] {
 
   /** Retrieve values from a table using a query.
     */
-  @deprecated("Use retrieve without limit", "2022-04-24")
-  def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    index: CompositeKeysIndex[P, S],
-    query: Query[P, S],
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U]
-
-  /** Retrieve values from a table using a query.
-    */
+  @annotation.nowarn
   def retrieve[P: Encoder, S: Encoder, U: Decoder](
     index: CompositeKeysIndex[P, S],
     query: Query[P, S],
@@ -86,19 +80,7 @@ trait Client[F[_]] {
 
   /** Retrieve values from a table by partition key P.
     */
-  @deprecated("Use retrieve without limit", "2022-04-24")
-  def retrieve[
-    P: Encoder,
-    U: Decoder
-  ](
-    index: CompositeKeysIndex[P, _],
-    partitionKey: P,
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U]
-
-  /** Retrieve values from a table by partition key P.
-    */
+  @annotation.nowarn
   def retrieve[
     P: Encoder,
     U: Decoder
@@ -140,6 +122,7 @@ trait Client[F[_]] {
 
   /** Delete an item from a table by partition key P and sort key S.
     */
+  @annotation.nowarn
   def delete[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
@@ -148,6 +131,7 @@ trait Client[F[_]] {
 
   /** Delete an item from a table by partition key P.
     */
+  @annotation.nowarn
   def delete[P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P
@@ -173,6 +157,7 @@ trait Client[F[_]] {
   /** Update an item by partition key P given an update expression.
     * A Codec of U is required to deserialize return value.
     */
+  @annotation.nowarn
   def update[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
@@ -184,6 +169,7 @@ trait Client[F[_]] {
     * when it fulfills a condition expression.
     * A Codec of U is required to deserialize return value.
     */
+  @annotation.nowarn
   def update[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
@@ -195,6 +181,7 @@ trait Client[F[_]] {
   /** Update an item by partition key P given an update expression.
     * Return Unit (ReturnValue.NONE).
     */
+  @annotation.nowarn
   def update[P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
@@ -205,6 +192,7 @@ trait Client[F[_]] {
     * when it fulfills a condition expression.
     * Return Unit (ReturnValue.NONE).
     */
+  @annotation.nowarn
   def update[P: Encoder](
     table: PartitionKeyTable[P],
     partitionKey: P,
@@ -215,6 +203,7 @@ trait Client[F[_]] {
   /** Update an item by partition key P and a sort key S, given an update expression.
     * A Codec of U is required to deserialize return value.
     */
+  @annotation.nowarn
   def update[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
@@ -227,6 +216,7 @@ trait Client[F[_]] {
     * when it fulfills a condition expression.
     * A Codec of U is required to deserialize return value.
     */
+  @annotation.nowarn
   def update[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
@@ -239,6 +229,7 @@ trait Client[F[_]] {
   /** Update an item by partition key P and a sort key S, given an update expression.
     * Return Unit (ReturnValue.NONE).
     */
+  @annotation.nowarn
   def update[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
@@ -250,6 +241,7 @@ trait Client[F[_]] {
     * when it fulfills a condition expression.
     * Return Unit (ReturnValue.NONE).
     */
+  @annotation.nowarn
   def update[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
@@ -272,6 +264,7 @@ trait Client[F[_]] {
   /** Batch get items from a table by partition key P.
     * A Codec of U is required to deserialize return value based on projection expression.
     */
+  @annotation.nowarn
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
@@ -284,6 +277,7 @@ trait Client[F[_]] {
   /** Batch get items from a table primary keys P and S.
     * A Codec of U is required to deserialize return value based on projection expression.
     */
+  @annotation.nowarn
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
@@ -296,6 +290,7 @@ trait Client[F[_]] {
   /** Batch get items from a table by partition keys P.
     * A Codec of U is required to deserialize return value based on projection expression.
     */
+  @annotation.nowarn
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
@@ -308,6 +303,7 @@ trait Client[F[_]] {
   /** Batch get items from a table by primary keys P and S.
     * A Codec of U is required to deserialize return value based on projection expression.
     */
+  @annotation.nowarn
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
@@ -320,6 +316,7 @@ trait Client[F[_]] {
   /** Batch get items from a table by partition keys P.
     * A Codec of U is required to deserialize return value based on projection expression.
     */
+  @annotation.nowarn
   def batchGet[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
     consistentRead: Boolean,
@@ -331,6 +328,7 @@ trait Client[F[_]] {
   /** Batch get items from a table by primary keys P and S.
     * A Codec of U is required to deserialize return value based on projection expression.
     */
+  @annotation.nowarn
   def batchGet[P: Encoder, S: Encoder, U: Decoder](
     table: CompositeKeysTable[P, S],
     consistentRead: Boolean,
@@ -347,6 +345,7 @@ trait Client[F[_]] {
     * same key. Order from upstream is preserved to ensure that only putting the last version of T
     * within a batch.
     */
+  @annotation.nowarn
   def batchPut[T: Encoder](
     table: Index[_],
     maxBatchWait: FiniteDuration,
@@ -361,6 +360,7 @@ trait Client[F[_]] {
     * same key. Order from upstream is preserved to ensure that only putting the last version of T
     * within a batch.
     */
+  @annotation.nowarn
   def batchPut[T: Encoder](
     table: Index[_],
     items: Iterable[T],
@@ -369,6 +369,7 @@ trait Client[F[_]] {
 
   /** Batch put unique items into a table.
     */
+  @annotation.nowarn
   def batchPutUnordered[T: Encoder](
     table: Index[_],
     items: Set[T],
@@ -382,6 +383,7 @@ trait Client[F[_]] {
     *
     * within a batch, only send deletion request for one P key and discard all duplicates.
     */
+  @annotation.nowarn
   def batchDelete[P: Encoder](
     table: PartitionKeyTable[P],
     maxBatchWait: FiniteDuration,
@@ -395,6 +397,7 @@ trait Client[F[_]] {
     *
     * within a batch, only send deletion request for one (P, S) key pair and discard all duplicates.
     */
+  @annotation.nowarn
   def batchDelete[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     maxBatchWait: FiniteDuration,
@@ -415,6 +418,7 @@ trait Client[F[_]] {
     * If the last item for that key is a put, then only perform put,
     * discard all other actions on that key.
     */
+  @annotation.nowarn
   def batchWrite[DP: Encoder, P: Encoder](
     table: PartitionKeyTable[DP],
     maxBatchWait: FiniteDuration,
@@ -435,6 +439,7 @@ trait Client[F[_]] {
     * If the last item for that key is a put, then only perform put,
     * discard all other actions on that key.
     */
+  @annotation.nowarn
   def batchWrite[DP: Encoder, DS: Encoder, P: Encoder](
     table: CompositeKeysTable[DP, DS],
     maxBatchWait: FiniteDuration,

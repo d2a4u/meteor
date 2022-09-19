@@ -45,8 +45,7 @@ class RetrieveOpsSpec extends ITSpec {
               test.id,
               SortKeyQuery.EqualTo(test.range)
             ),
-            consistentRead = false,
-            Int.MaxValue
+            consistentRead = false
           ).compile.lastOrError
           client.put[TestData](table.tableName, test) >> retrieval
       }.unsafeToFuture().futureValue
@@ -65,8 +64,7 @@ class RetrieveOpsSpec extends ITSpec {
                 input.str,
                 SortKeyQuery.EqualTo(input.int)
               ),
-              consistentRead = false,
-              Int.MaxValue
+              consistentRead = false
             ).compile.lastOrError
             client.put[TestData](table.tableName, input) >> retrieval
         }.unsafeToFuture().futureValue
@@ -131,8 +129,7 @@ class RetrieveOpsSpec extends ITSpec {
                 )
               )
             ),
-            consistentRead = false,
-            Int.MaxValue
+            consistentRead = false
           ).compile.toList
           testUpdated.traverse(i =>
             client.put[TestData](table.tableName, i)
@@ -150,8 +147,7 @@ class RetrieveOpsSpec extends ITSpec {
           val retrieval = client.retrieve[Id, Range, TestData](
             table,
             Query[Id, Range](partitionKey, SortKeyQuery.empty[Range]),
-            consistentRead = false,
-            1
+            consistentRead = false
           ).chunks.compile.toList
           input.traverse(i =>
             client.put[TestData](table.tableName, i)

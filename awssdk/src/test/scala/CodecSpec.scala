@@ -20,28 +20,29 @@ class CodecSpec
     with ScalaCheckDrivenPropertyChecks {
   behavior.of("Encoder and Decoder")
 
-  it should "successful round trip for Int" in forAll { int: Int =>
+  it should "successful round trip for Int" in forAll { (int: Int) =>
     roundTrip(int) shouldEqual Right(int)
   }
 
-  it should "successful round trip for String" in forAll { str: String =>
+  it should "successful round trip for String" in forAll { (str: String) =>
     roundTrip(str) shouldEqual Right(str)
   }
 
-  it should "successful round trip for UUID" in forAll { uuid: UUID =>
+  it should "successful round trip for UUID" in forAll { (uuid: UUID) =>
     roundTrip(uuid) shouldEqual Right(uuid)
   }
 
-  it should "successful round trip for Boolean" in forAll { bool: Boolean =>
+  it should "successful round trip for Boolean" in forAll { (bool: Boolean) =>
     roundTrip(bool) shouldEqual Right(bool)
   }
 
-  it should "successful round trip for Long" in forAll { long: Long =>
+  it should "successful round trip for Long" in forAll { (long: Long) =>
     roundTrip(long) shouldEqual Right(long)
   }
 
-  it should "successful round trip for Instant" in forAll { instant: Instant =>
-    roundTrip(instant) shouldEqual Right(instant)
+  it should "successful round trip for Instant" in forAll {
+    (instant: Instant) =>
+      roundTrip(instant) shouldEqual Right(instant)
   }
 
   it should "successful round trip for Seq[String]" in forAll {
@@ -77,7 +78,7 @@ class CodecSpec
   }
 
   it should "successful round trip for Array[Byte]" in forAll {
-    bytes: Array[Byte] =>
+    (bytes: Array[Byte]) =>
       roundTrip[Array[Byte]](bytes) match {
         case Right(b) => b should contain theSameElementsAs bytes
         case _        => fail()
@@ -85,7 +86,7 @@ class CodecSpec
   }
 
   it should "successful round trip for Seq[Array[Byte]]" in forAll {
-    bytes: List[Array[Byte]] =>
+    (bytes: List[Array[Byte]]) =>
       roundTrip[immutable.List[Array[Byte]]](bytes) match {
         case Right(b)  => b should contain theSameElementsAs bytes
         case Left(err) => fail(err)

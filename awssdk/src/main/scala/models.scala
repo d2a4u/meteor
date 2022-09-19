@@ -135,8 +135,7 @@ private[meteor] sealed trait CompositeKeysIndex[P, S] extends Index[P] {
   * @param partitionKeyDef partition key's definition
   * @tparam P partition key's type
   */
-@deprecated("use meteor.api.hi.SimpleTable instead", "2021-05-24")
-case class PartitionKeyTable[P](
+private[meteor] case class PartitionKeyTable[P](
   tableName: String,
   partitionKeyDef: KeyDef[P]
 ) extends PartitionKeyIndex[P]
@@ -149,8 +148,7 @@ case class PartitionKeyTable[P](
   * @tparam P partition key's type
   * @tparam S sort key's type
   */
-@deprecated("use meteor.api.hi.CompositeTable instead", "2021-05-24")
-case class CompositeKeysTable[P, S](
+private[meteor] case class CompositeKeysTable[P, S](
   tableName: String,
   partitionKeyDef: KeyDef[P],
   sortKeyDef: KeyDef[S]
@@ -163,8 +161,7 @@ case class CompositeKeysTable[P, S](
   * @param partitionKeyDef partition key's definition
   * @tparam P partition key's type
   */
-@deprecated("use meteor.api.hi.SecondarySimpleIndex instead", "2021-05-24")
-case class PartitionKeySecondaryIndex[P](
+private[meteor] case class PartitionKeySecondaryIndex[P](
   tableName: String,
   indexName: String,
   partitionKeyDef: KeyDef[P]
@@ -179,8 +176,7 @@ case class PartitionKeySecondaryIndex[P](
   * @tparam P partition key's type
   * @tparam S sort key's type
   */
-@deprecated("use meteor.api.hi.SecondaryCompositeIndex instead", "2021-05-24")
-case class CompositeKeysSecondaryIndex[P, S](
+private[meteor] case class CompositeKeysSecondaryIndex[P, S](
   tableName: String,
   indexName: String,
   partitionKeyDef: KeyDef[P],

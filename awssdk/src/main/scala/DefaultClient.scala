@@ -49,30 +49,9 @@ private[meteor] class DefaultClient[F[_]: Async: RaiseThrowable](
   def retrieve[P: Encoder, S: Encoder, U: Decoder](
     index: CompositeKeysIndex[P, S],
     query: Query[P, S],
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U] =
-    retrieveOp[F, P, S, U](index, query, consistentRead, limit.some)(jClient)
-
-  def retrieve[P: Encoder, S: Encoder, U: Decoder](
-    index: CompositeKeysIndex[P, S],
-    query: Query[P, S],
     consistentRead: Boolean
   ): fs2.Stream[F, U] =
     retrieveOp[F, P, S, U](index, query, consistentRead, None)(jClient)
-
-  def retrieve[
-    P: Encoder,
-    U: Decoder
-  ](
-    index: CompositeKeysIndex[P, _],
-    partitionKey: P,
-    consistentRead: Boolean,
-    limit: Int
-  ): fs2.Stream[F, U] =
-    retrieveOp[F, P, U](index, partitionKey, consistentRead, limit.some)(
-      jClient
-    )
 
   def retrieve[
     P: Encoder,
