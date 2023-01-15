@@ -170,6 +170,17 @@ trait Client[F[_]] {
     parallelism: Int
   ): fs2.Stream[F, U]
 
+  /** Scan a table. Allows to pass an initialKey from where to start
+   * scanning.
+   * Returns the stream with the lastKey. Useful to use for checkpointing.
+    */
+  def scan[U: Decoder](
+    tableName: String,
+    consistentRead: Boolean,
+    parallelism: Int,
+    initialKey: Option[java.util.Map[String, AttributeValue]] = None
+  ): fs2.Stream[F, (Option[java.util.Map[String, AttributeValue]], U)]
+
   /** Update an item by partition key P given an update expression.
     * A Codec of U is required to deserialize return value.
     */

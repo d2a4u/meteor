@@ -133,8 +133,19 @@ private[meteor] class DefaultClient[F[_]: Async: RaiseThrowable](
     tableName: String,
     consistentRead: Boolean,
     parallelism: Int
-  ): fs2.Stream[F, T] =
-    scanOp[F, T](tableName, consistentRead, parallelism)(jClient)
+  ): fs2.Stream[F, T] = {
+    scan(tableName, consistentRead, parallelism, None).evalMap { case(_, res) =>
+      Async[F].delay(res)
+    }
+  }
+
+  def scan[T: Decoder](
+    tableName: String,
+    consistentRead: Boolean,
+    parallelism: Int,
+    initialKey: Option[java.util.Map[String, AttributeValue]]
+  ): fs2.Stream[F, (Option[java.util.Map[String, AttributeValue]], T)] =
+    scanOp[F, T](tableName, consistentRead, parallelism, initialKey)(jClient)
 
   def update[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
