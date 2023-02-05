@@ -1,28 +1,28 @@
 import sbt.Keys.organization
 
-val catsVersion = "2.8.0"
-val catsEffectVersion = "3.3.14"
-val fs2Version = "3.2.14"
+val catsVersion = "2.9.0"
+val catsEffectVersion = "3.4.2"
+val fs2Version = "3.5.0"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "org.typelevel" %% "cats-effect" % catsEffectVersion,
   "co.fs2" %% "fs2-core" % fs2Version,
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-  "software.amazon.awssdk" % "dynamodb" % "2.17.274"
+  "software.amazon.awssdk" % "dynamodb" % "2.19.2"
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.13",
-  "org.scalacheck" %% "scalacheck" % "1.16.0",
+  "org.scalatest" %% "scalatest" % "3.2.15",
+  "org.scalacheck" %% "scalacheck" % "1.17.0",
   "org.scalatestplus" %% "scalacheck-1-15" % "3.2.11.0"
 )
 
 lazy val ItTest = config("it").extend(Test)
 
 lazy val scala3 = "3.2.0"
-lazy val scala213 = "2.13.8"
+lazy val scala213 = "2.13.10"
 
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
