@@ -144,7 +144,7 @@ private[meteor] trait ScanOps {
       resp <- sendPipe(initRequests)
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
       t <- fs2.Stream.fromEither(attrs.asAttributeValue.as[T])
-    } yield (Some(resp.u.lastEvaluatedKey()), t)
+    } yield (Option(resp.u.lastEvaluatedKey()), t)
   }
 
   private case class SegmentPassThrough[U](

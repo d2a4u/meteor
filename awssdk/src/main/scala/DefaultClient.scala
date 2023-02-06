@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.dynamodb.model._
 
 import scala.collection.immutable.Iterable
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 private[meteor] class DefaultClient[F[_]: Async: RaiseThrowable](
   jClient: DynamoDbAsyncClient
@@ -132,20 +133,31 @@ private[meteor] class DefaultClient[F[_]: Async: RaiseThrowable](
   def scan[T: Decoder](
     tableName: String,
     consistentRead: Boolean,
-    parallelism: Int
-  ): fs2.Stream[F, T] = {
-    scan(tableName, consistentRead, parallelism, None).evalMap { case(_, res) =>
-      Async[F].delay(res)
-    }
-  }
-
-  def scan[T: Decoder](
-    tableName: String,
-    consistentRead: Boolean,
     parallelism: Int,
-    initialKey: Option[java.util.Map[String, AttributeValue]]
-  ): fs2.Stream[F, (Option[java.util.Map[String, AttributeValue]], T)] =
-    scanOp[F, T](tableName, consistentRead, parallelism, initialKey)(jClient)
+    initialKey: Map[String, AttributeValue]
+  ): fs2.Stream[F, (Map[String, AttributeValue], T)] =
+    scanOp[F, T](
+      tableName,
+      consistentRead,
+      parallelism,
+      emptyMapAsNone(initialKey)
+    )(jClient).map { case (maybeKey, value) =>
+      (
+        maybeKey.fold(Map.empty[String, AttributeValue])(key =>
+          key.asScala.toMap
+        ),
+        value
+      )
+    }
+
+  private val emptyMapAsNone
+    : Map[String, AttributeValue] => Option[java.util.Map[
+      String,
+      AttributeValue
+    ]] = {
+    case map if map.isEmpty => None
+    case map                => Some(map.asJava)
+  }
 
   def update[P: Encoder, U: Decoder](
     table: PartitionKeyTable[P],
