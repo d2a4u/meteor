@@ -2,7 +2,7 @@ import sbt.Keys.organization
 import sbt.addCompilerPlugin
 
 val catsVersion = "2.9.0"
-val catsEffectVersion = "3.4.7"
+val catsEffectVersion = "3.4.8"
 val fs2Version = "3.6.1"
 
 lazy val dependencies = Seq(
@@ -11,7 +11,7 @@ lazy val dependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-  "software.amazon.awssdk" % "dynamodb" % "2.19.2"
+  "software.amazon.awssdk" % "dynamodb" % "2.19.33"
 )
 
 lazy val testDependencies = Seq(
@@ -103,7 +103,7 @@ lazy val dynosaur = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.systemfw" %% "dynosaur-core" % "0.4.0"
+      "org.systemfw" %% "dynosaur-core" % "0.5.0"
     ),
     commonSettings
   ).dependsOn(awssdk)
