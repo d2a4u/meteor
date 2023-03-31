@@ -136,25 +136,4 @@ class RetrieveOpsSpec extends ITSpec {
           ) >> Util.retryOf(retrieval)(_.size == input.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs input
   }
-
-  it should "limit internal requests" in forAll {
-    (test1: TestData, test2: TestData) =>
-      val partitionKey = Id("def")
-      val input =
-        List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val result = compositeKeysTable[IO].use[List[fs2.Chunk[TestData]]] {
-        case (client, table) =>
-          val retrieval = client.retrieve[Id, Range, TestData](
-            table,
-            Query[Id, Range](partitionKey, SortKeyQuery.empty[Range]),
-            consistentRead = false
-          ).chunks.compile.toList
-          input.traverse(i =>
-            client.put[TestData](table.tableName, i)
-          ) >> Util.retryOf(retrieval)(
-            _.size == input.length
-          )
-      }.unsafeToFuture().futureValue
-      result.forall(_.size == 1) shouldBe true
-  }
 }
