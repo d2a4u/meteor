@@ -1,8 +1,8 @@
 import sbt.Keys.organization
 
 val catsVersion = "2.9.0"
-val catsEffectVersion = "3.4.2"
-val fs2Version = "3.5.0"
+val catsEffectVersion = "3.4.8"
+val fs2Version = "3.6.1"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
@@ -10,7 +10,7 @@ lazy val dependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-  "software.amazon.awssdk" % "dynamodb" % "2.19.2"
+  "software.amazon.awssdk" % "dynamodb" % "2.20.26"
 )
 
 lazy val testDependencies = Seq(
@@ -26,8 +26,8 @@ lazy val scala213 = "2.13.10"
 
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
-  scalaVersion := scala213,
-  crossScalaVersions ++= Seq(scala213, scala3),
+  scalaVersion := scala3,
+  crossScalaVersions += scala213,
   Test / parallelExecution := true,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
