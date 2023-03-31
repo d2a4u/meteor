@@ -12,7 +12,7 @@ class RetrieveOpsSpec extends ITSpec {
   behavior.of("retrieve operation")
 
   it should "return multiple items of the same partition key" in forAll {
-    test: TestData =>
+    (test: TestData) =>
       val partitionKey = Id("def")
       val input =
         List(
@@ -36,7 +36,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "exact item by EqualTo key expression" in forAll {
-    test: TestData =>
+    (test: TestData) =>
       val result = compositeKeysTable[IO].use[TestData] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
@@ -53,7 +53,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "query secondary index" in forAll {
-    test: TestData =>
+    (test: TestData) =>
       val input = test.copy(str = "test", int = 0)
       val result =
         compositeKeysWithSecondaryIndexTable[IO].use {
@@ -72,7 +72,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "filter results by given filter expression for PartitionKeyTable" in forAll {
-    test: TestData =>
+    (test: TestData) =>
 
       partitionKeyTable[IO].use {
         case (client, table) =>
@@ -107,7 +107,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "filter results by given filter expression for CompositeKeysTable" in forAll {
-    test: List[TestData] =>
+    (test: List[TestData]) =>
       val unique = test.map(t => (t.id, t.range) -> t).toMap.values.toList
       val partitionKey = Id(Instant.now.toString)
       val testUpdated = unique.map(t => t.copy(id = partitionKey))

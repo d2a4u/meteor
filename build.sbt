@@ -26,8 +26,8 @@ lazy val scala213 = "2.13.8"
 
 lazy val commonSettings = Seq(
   ThisBuild / organization := "io.github.d2a4u",
-  scalaVersion := scala213,
-  crossScalaVersions ++= Seq(scala213, scala3),
+  scalaVersion := scala3,
+  crossScalaVersions += scala213,
   Test / parallelExecution := true,
   scalafmtOnCompile := true,
   licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
