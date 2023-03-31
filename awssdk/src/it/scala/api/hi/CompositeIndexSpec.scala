@@ -27,8 +27,7 @@ class CompositeIndexSpec extends ITSpec {
             )
           )
         ),
-        consistentRead = false,
-        Int.MaxValue
+        consistentRead = false
       ).compile.toList
 
     compositeTable[IO].use { table =>
@@ -61,9 +60,8 @@ class CompositeIndexSpec extends ITSpec {
         Client.BackoffStrategy.default
       ).apply(Stream.emits(data)).compile.drain >> table.retrieve[TestData](
         partitionKey,
-        consistentRead = true,
-        500
-      ).compile.toList
+        consistentRead = true
+      ).take(200).compile.toList
     }.unsafeToFuture().futureValue
     result.sortBy(_.range.value) should contain theSameElementsAs data.sortBy(
       _.range.value
@@ -84,8 +82,7 @@ class CompositeIndexSpec extends ITSpec {
             )
           )
         ),
-        consistentRead = false,
-        Int.MaxValue
+        consistentRead = false
       ).compile.toList
 
     secondaryCompositeIndex[IO].use {
@@ -119,9 +116,8 @@ class CompositeIndexSpec extends ITSpec {
           1.minute,
           Client.BackoffStrategy.default
         ).apply(Stream.emits(data)).compile.drain >> index.retrieve[TestData](
-          partitionKey,
-          500
-        ).compile.toList
+          partitionKey
+        ).take(200).compile.toList
     }.unsafeToFuture().futureValue
     result.sortBy(_.range.value) should contain theSameElementsAs data.sortBy(
       _.range.value
@@ -144,8 +140,7 @@ class CompositeIndexSpec extends ITSpec {
             )
           )
         ),
-        consistentRead = false,
-        Int.MaxValue
+        consistentRead = false
       )
 
     globalSecondarySimpleIndex[IO].use {
@@ -177,8 +172,7 @@ class CompositeIndexSpec extends ITSpec {
           1.minute,
           Client.BackoffStrategy.default
         ).apply(Stream.emits(data)).compile.drain >> index.retrieve[TestData](
-          partitionKey,
-          500
+          partitionKey
         ).take(200).compile.toList
     }.unsafeToFuture().futureValue
     result.sortBy(_.id.value) should contain theSameElementsAs data.sortBy(

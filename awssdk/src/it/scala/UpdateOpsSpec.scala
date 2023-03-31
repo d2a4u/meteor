@@ -12,7 +12,7 @@ class UpdateOpsSpec extends ITSpec {
   behavior.of("update operation")
 
   it should "return new value when condition is met" in forAll {
-    (test: TestData) =>
+    (data: TestData) =>
       // condition is int > 0
       val newInt = 2
       val input = data.copy(int = 1)
@@ -41,7 +41,7 @@ class UpdateOpsSpec extends ITSpec {
   }
 
   it should "return old value when condition is met" in forAll {
-    (test: TestData) =>
+    (data: TestData) =>
       // condition is int > 0
       val newInt = 2
       val input = data.copy(int = 1)
@@ -69,7 +69,7 @@ class UpdateOpsSpec extends ITSpec {
   }
 
   it should "raise error when condition is not met" in forAll {
-    (test: TestData) =>
+    (data: TestData) =>
       // condition is int > 0
       val newInt = 2
       val input = data.copy(int = -1)

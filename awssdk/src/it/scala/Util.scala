@@ -48,24 +48,18 @@ private[meteor] object Util {
   def partitionKeyTable[F[_]: Async]
     : Resource[F, (Client[F], PartitionKeyTable[Id])] =
     internalSimpleResources[F].map {
-      case (c, t, _, _, _, _) => (c, t)
+      case (c, t, _, _, _) => (c, t)
     }
 
   def simpleTable[F[_]: Async]: Resource[F, SimpleTable[F, Id]] =
     internalSimpleResources[F].map {
-      case (_, _, t, _, _, _) => t
-    }
-
-  def secondarySimpleIndex[F[_]: Async]
-    : Resource[F, (SimpleTable[F, Id], SecondarySimpleIndex[F, Range])] =
-    internalSimpleResources[F].map {
-      case (_, _, _, t, i, _) => (t, i)
+      case (_, _, t, _, _) => t
     }
 
   def globalSecondarySimpleIndex[F[_]: Async]
     : Resource[F, (SimpleTable[F, Id], GlobalSecondarySimpleIndex[F, Range])] =
     internalSimpleResources[F].map {
-      case (_, _, _, t, _, i) => (t, i)
+      case (_, _, _, t, i) => (t, i)
     }
 
   def compositeKeysTable[F[_]: Async]
@@ -120,7 +114,6 @@ private[meteor] object Util {
       PartitionKeyTable[Id],
       SimpleTable[F, Id],
       SimpleTableWithGlobIndex[F, Id],
-      SecondarySimpleIndex[F, Range],
       GlobalSecondarySimpleIndex[F, Range]
     )
   ] = {
@@ -144,12 +137,6 @@ private[meteor] object Util {
       stgi = SimpleTable[F, Id](
         simpleRandomNameWithGlobIndex,
         hashKey1,
-        jClient
-      )
-      ssi = SecondarySimpleIndex[F, Range](
-        simpleRandomNameWithGlobIndex,
-        simpleRandomIndexName,
-        glob2ndHashKey,
         jClient
       )
       gssi = GlobalSecondarySimpleIndex[F, Range](
@@ -186,7 +173,7 @@ private[meteor] object Util {
           )
         )
       )(_ => client.deleteTable(simpleRandomNameWithGlobIndex))
-    } yield (client, pkt, st, stgi, ssi, gssi)
+    } yield (client, pkt, st, stgi, gssi)
   }
 
   private def internalCompositeResources[F[_]: Async]: Resource[

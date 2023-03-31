@@ -10,7 +10,7 @@ lazy val dependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-  "software.amazon.awssdk" % "dynamodb" % "2.20.26"
+  "software.amazon.awssdk" % "dynamodb" % "2.20.35"
 )
 
 lazy val testDependencies = Seq(
@@ -21,7 +21,7 @@ lazy val testDependencies = Seq(
 
 lazy val ItTest = config("it").extend(Test)
 
-lazy val scala3 = "3.2.0"
+lazy val scala3 = "3.2.2"
 lazy val scala213 = "2.13.10"
 
 lazy val commonSettings = Seq(
@@ -68,8 +68,10 @@ lazy val root = project
   .settings(
     Compile / scalacOptions ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((3, _)) => Seq("-Ykind-projector")
-        case _            => Nil
+        case Some((3, _)) =>
+          Seq("-Ykind-projector:underscores")
+        case Some((2, 12 | 13)) =>
+          Seq("-Xsource:3", "-P:kind-projector:underscore-placeholders")
       }
     }
   )
@@ -106,7 +108,7 @@ lazy val dynosaur = project
     libraryDependencies ++= dependencies ++ testDependencies.map(
       _ % "test"
     ) ++ Seq(
-      "org.systemfw" %% "dynosaur-core" % "0.4.0"
+      "org.systemfw" %% "dynosaur-core" % "0.5.0"
     ),
     commonSettings
   ).dependsOn(awssdk)

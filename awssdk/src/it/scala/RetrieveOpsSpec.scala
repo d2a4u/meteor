@@ -24,8 +24,7 @@ class RetrieveOpsSpec extends ITSpec {
           val retrieval = client.retrieve[Id, TestData](
             table,
             partitionKey,
-            consistentRead = false,
-            Int.MaxValue
+            consistentRead = false
           ).compile.toList
           input.traverse(i =>
             client.put[TestData](table.tableName, i)
