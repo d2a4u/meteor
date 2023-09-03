@@ -21,7 +21,7 @@ lazy val testDependencies = Seq(
 
 lazy val ItTest = config("it").extend(Test)
 
-lazy val scala3 = "3.3.1-RC1"
+lazy val scala3 = "3.3.1-RC7"
 lazy val scala213 = "2.13.10"
 
 lazy val commonSettings = Seq(
