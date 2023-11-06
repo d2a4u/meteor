@@ -24,7 +24,7 @@ DynamoDB's actions.
 * auto remove duplication in batch actions
 * support DynamoDB's single table design
 * provides codec as a simple abstraction and syntax on top of `AttributeValue`
-* support multiple codec libraries including `Dynosaur` and `Scanamo`
+* support `Dynosaur` codec library
 
 ## Installation
 
@@ -36,17 +36,6 @@ libraryDependencies += "io.github.d2a4u" %% "meteor-awssdk" % "LATEST_VERSION"
 ```
 
 ### Modules
-
-#### [Scanamo Format](https://github.com/scanamo/scanamo)
-
-**Note:** Only version `1.0.0-M11` is supported because in my experience, this is the most stable version of
-`Scanamo`. However, because it is an older version when DynamoDB's did not support empty 
-String, this version of `Scanamo` serializes these cases: `""`, `None` and `Some("")` to Dynamo's 
-`NULL`. This is problematic because once the value is written down, reading it back is difficult.
-
-```scala
-libraryDependencies += "io.github.d2a4u" %% "meteor-scanamo" % "LATEST_VERSION"
-```
 
 #### [Dynosaur Codecs](https://systemfw.org/dynosaur)
 

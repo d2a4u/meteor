@@ -153,6 +153,6 @@ whereas it can be as simple as:
 
 * When using auto derivation, conversion is usually required to map between different layers of
   model. With the explicit codec approach, we need fewer layers of model but conversion gets more
-  boilerplate. I think the problems are the same with 2 approaches, they just being solved at 
+  boilerplate. The problems are the same with 2 approaches, they just being solved at 
   different places.
   

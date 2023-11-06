@@ -68,8 +68,10 @@ lazy val root = project
   .settings(
     Compile / scalacOptions ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((3, _)) => Seq("-Ykind-projector")
-        case _            => Nil
+        case Some((3, _)) =>
+          Seq("-Ykind-projector:underscores")
+        case Some((2, 13)) =>
+          Seq("-Xsource:3", "-P:kind-projector:underscore-placeholders")
       }
     }
   )

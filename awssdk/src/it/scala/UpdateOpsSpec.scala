@@ -15,8 +15,8 @@ class UpdateOpsSpec extends ITSpec {
     (test: TestData) =>
       // condition is int > 0
       val newInt = 2
-      val input = data.copy(int = 1)
-      val expected = data.copy(int = newInt)
+      val input = test.copy(int = 1)
+      val expected = test.copy(int = newInt)
       val result = compositeKeysTable[IO].use {
         case (client, table) =>
           client.put[TestData](table.tableName, input) >>
@@ -44,7 +44,7 @@ class UpdateOpsSpec extends ITSpec {
     (test: TestData) =>
       // condition is int > 0
       val newInt = 2
-      val input = data.copy(int = 1)
+      val input = test.copy(int = 1)
       val result = compositeKeysTable[IO].use {
         case (client, table) =>
           client.put[TestData](table.tableName, input) >>
@@ -72,7 +72,7 @@ class UpdateOpsSpec extends ITSpec {
     (test: TestData) =>
       // condition is int > 0
       val newInt = 2
-      val input = data.copy(int = -1)
+      val input = test.copy(int = -1)
       val result = compositeKeysTable[IO].use {
         case (client, table) =>
           client.put[TestData](table.tableName, input) >>
