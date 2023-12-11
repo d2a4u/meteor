@@ -44,42 +44,42 @@ class ConversionsSpec
 
   //TODO: test for Array[Byte]
   it should "cross read/write from Schema to Codec for Int" in forAll {
-    int: Int =>
+    (int: Int) =>
       roundTrip(int) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for non empty String" in forAll {
-    str: String =>
+    (str: String) =>
       roundTrip(str) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Boolean" in forAll {
-    bool: Boolean =>
+    (bool: Boolean) =>
       roundTrip(bool) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Long" in forAll {
-    long: Long =>
+    (long: Long) =>
       roundTrip(long) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Float" in forAll {
-    float: Float =>
+    (float: Float) =>
       roundTrip(float) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Double" in forAll {
-    double: Double =>
+    (double: Double) =>
       roundTrip(double) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Short" in forAll {
-    short: Short =>
+    (short: Short) =>
       roundTrip(short) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Option[Int]" in forAll {
-    opt: Option[Int] =>
+    (opt: Option[Int]) =>
       roundTripOpt[Int](
         Encoder[Option[Int]],
         Schema.nullable[Int],
@@ -88,17 +88,17 @@ class ConversionsSpec
   }
 
   it should "cross read/write from Schema to Codec for List[Int]" in forAll {
-    list: List[Int] =>
+    (list: List[Int]) =>
       roundTrip(list) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Seq[Int]" in forAll {
-    seq: immutable.Seq[Int] =>
+    (seq: immutable.Seq[Int]) =>
       roundTrip(seq) shouldBe true
   }
 
   it should "cross read/write from Schema to Codec for Map[String, Int]" in forAll {
-    map: Map[String, Int] =>
+    (map: Map[String, Int]) =>
       roundTrip(map) shouldBe true
   }
 }

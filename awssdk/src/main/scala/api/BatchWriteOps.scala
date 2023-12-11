@@ -28,7 +28,7 @@ private[meteor] trait SharedBatchWriteOps extends DedupOps {
     table: Index[_],
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): Pipe[F, I, Unit] = { in: Stream[F, I] =>
+  )(jClient: DynamoDbAsyncClient): Pipe[F, I, Unit] = { (in: Stream[F, I]) =>
     mkPutRequestInOrdered[F, I](table, maxBatchWait).apply(
       in
     ).flatMap {
@@ -42,7 +42,7 @@ private[meteor] trait SharedBatchWriteOps extends DedupOps {
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): Pipe[F, I, Unit] = { in: Stream[F, I] =>
+  )(jClient: DynamoDbAsyncClient): Pipe[F, I, Unit] = { (in: Stream[F, I]) =>
     in.groupWithin(MaxBatchWriteSize, maxBatchWait).map { chunk =>
       val reqs =
         chunk.foldLeft(Map.empty[I, jMap[String, AttributeValue]]) {
@@ -217,7 +217,7 @@ private[meteor] trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
     parallelism: Int,
     backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, (P, S), Unit] = {
-    in: Stream[F, (P, S)] =>
+    (in: Stream[F, (P, S)]) =>
       mkDeleteRequestOutOrdered[F, P, S](
         table,
         maxBatchWait,
@@ -238,7 +238,7 @@ private[meteor] trait CompositeKeysBatchWriteOps extends SharedBatchWriteOps {
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, Either[(P, S), I], Unit] = {
-    in: Stream[F, Either[(P, S), I]] =>
+    (in: Stream[F, Either[(P, S), I]]) =>
       mkRequestInOrdered[F, P, S, I](table, maxBatchWait).apply(
         in
       ).flatMap {
@@ -326,7 +326,7 @@ private[meteor] trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
     maxBatchWait: FiniteDuration,
     parallelism: Int,
     backoffStrategy: BackoffStrategy
-  )(jClient: DynamoDbAsyncClient): Pipe[F, P, Unit] = { in: Stream[F, P] =>
+  )(jClient: DynamoDbAsyncClient): Pipe[F, P, Unit] = { (in: Stream[F, P]) =>
     mkDeleteRequestOutOrdered[F, P](table, maxBatchWait).apply(in).map {
       req =>
         sendHandleLeftOver(req, backoffStrategy)(jClient)
@@ -342,7 +342,7 @@ private[meteor] trait PartitionKeyBatchWriteOps extends SharedBatchWriteOps {
     maxBatchWait: FiniteDuration,
     backoffStrategy: BackoffStrategy
   )(jClient: DynamoDbAsyncClient): Pipe[F, Either[DP, P], Unit] = {
-    in: Stream[F, Either[DP, P]] =>
+    (in: Stream[F, Either[DP, P]]) =>
       mkRequestInOrdered[F, DP, P](table, maxBatchWait).apply(
         in
       ).flatMap {

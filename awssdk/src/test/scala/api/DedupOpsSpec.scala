@@ -15,7 +15,7 @@ class DedupOpsSpec
     with ScalaCheckDrivenPropertyChecks {
 
   "deduplication" should "remove duplicated items" in forAll {
-    input: List[Int] =>
+    (input: List[Int]) =>
       val expect = input.distinct
       val dedupped =
         DedupOps.dedupInOrdered[Try, Int, Int, Int](
@@ -25,7 +25,7 @@ class DedupOpsSpec
   }
 
   it should "not remove none duplicated items" in forAll {
-    input: List[Int] =>
+    (input: List[Int]) =>
       val expect = input.distinct
       val dedupped =
         BatchGetOps.dedupInOrdered[Try, Int, Int, Int](Chunk(input: _*))(

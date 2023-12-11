@@ -12,7 +12,7 @@ class RetrieveOpsSpec extends ITSpec {
   behavior.of("retrieve operation")
 
   it should "return multiple items of the same partition key" in forAll {
-    test: TestData =>
+    (test: TestData) =>
       val partitionKey = Id("def")
       val input =
         List(
@@ -24,8 +24,7 @@ class RetrieveOpsSpec extends ITSpec {
           val retrieval = client.retrieve[Id, TestData](
             table,
             partitionKey,
-            consistentRead = false,
-            Int.MaxValue
+            consistentRead = false
           ).compile.toList
           input.traverse(i =>
             client.put[TestData](table.tableName, i)
@@ -36,7 +35,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "exact item by EqualTo key expression" in forAll {
-    test: TestData =>
+    (test: TestData) =>
       val result = compositeKeysTable[IO].use[TestData] {
         case (client, table) =>
           val retrieval = client.retrieve[Id, Range, TestData](
@@ -45,8 +44,7 @@ class RetrieveOpsSpec extends ITSpec {
               test.id,
               SortKeyQuery.EqualTo(test.range)
             ),
-            consistentRead = false,
-            Int.MaxValue
+            consistentRead = false
           ).compile.lastOrError
           client.put[TestData](table.tableName, test) >> retrieval
       }.unsafeToFuture().futureValue
@@ -54,7 +52,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "query secondary index" in forAll {
-    test: TestData =>
+    (test: TestData) =>
       val input = test.copy(str = "test", int = 0)
       val result =
         compositeKeysWithSecondaryIndexTable[IO].use {
@@ -65,8 +63,7 @@ class RetrieveOpsSpec extends ITSpec {
                 input.str,
                 SortKeyQuery.EqualTo(input.int)
               ),
-              consistentRead = false,
-              Int.MaxValue
+              consistentRead = false
             ).compile.lastOrError
             client.put[TestData](table.tableName, input) >> retrieval
         }.unsafeToFuture().futureValue
@@ -74,7 +71,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "filter results by given filter expression for PartitionKeyTable" in forAll {
-    test: TestData =>
+    (test: TestData) =>
 
       partitionKeyTable[IO].use {
         case (client, table) =>
@@ -109,7 +106,7 @@ class RetrieveOpsSpec extends ITSpec {
   }
 
   it should "filter results by given filter expression for CompositeKeysTable" in forAll {
-    test: List[TestData] =>
+    (test: List[TestData]) =>
       val unique = test.map(t => (t.id, t.range) -> t).toMap.values.toList
       val partitionKey = Id(Instant.now.toString)
       val testUpdated = unique.map(t => t.copy(id = partitionKey))
@@ -131,34 +128,11 @@ class RetrieveOpsSpec extends ITSpec {
                 )
               )
             ),
-            consistentRead = false,
-            Int.MaxValue
+            consistentRead = false
           ).compile.toList
           testUpdated.traverse(i =>
             client.put[TestData](table.tableName, i)
           ) >> Util.retryOf(retrieval)(_.size == input.length)
       }.unsafeToFuture().futureValue should contain theSameElementsAs input
-  }
-
-  it should "limit internal requests" in forAll {
-    (test1: TestData, test2: TestData) =>
-      val partitionKey = Id("def")
-      val input =
-        List(test1.copy(id = partitionKey), test2.copy(id = partitionKey))
-      val result = compositeKeysTable[IO].use[List[fs2.Chunk[TestData]]] {
-        case (client, table) =>
-          val retrieval = client.retrieve[Id, Range, TestData](
-            table,
-            Query[Id, Range](partitionKey, SortKeyQuery.empty[Range]),
-            consistentRead = false,
-            1
-          ).chunks.compile.toList
-          input.traverse(i =>
-            client.put[TestData](table.tableName, i)
-          ) >> Util.retryOf(retrieval)(
-            _.size == input.length
-          )
-      }.unsafeToFuture().futureValue
-      result.forall(_.size == 1) shouldBe true
   }
 }

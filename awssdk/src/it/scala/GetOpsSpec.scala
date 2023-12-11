@@ -9,7 +9,7 @@ class GetOpsSpec extends ITSpec {
   behavior.of("get operation")
 
   it should "return inserted item using partition key and range key" in forAll {
-    test: TestData =>
+    (test: TestData) =>
       compositeKeysTable[IO].use[Option[TestData]] {
         case (client, table) =>
           client.put[TestData](table.tableName, test) >>
@@ -23,7 +23,7 @@ class GetOpsSpec extends ITSpec {
   }
 
   it should "return inserted item using partition key only (table doesn't have range key)" in forAll {
-    test: TestDataSimple =>
+    (test: TestDataSimple) =>
       partitionKeyTable[IO].use[Option[TestDataSimple]] {
         case (client, table) =>
           client.put[TestDataSimple](table.tableName, test) >>
