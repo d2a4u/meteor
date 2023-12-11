@@ -35,7 +35,7 @@ jobs:
       - name: Build API Docs
         run: |
           sbt awssdk/doc
-          cp -rf ./awssdk/target/scala-2.13/api ./website/static
+          cp -rf ./awssdk/target/scala-3.*/api ./website/static
 
       - name: Build
         run: |
