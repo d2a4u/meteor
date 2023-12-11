@@ -275,8 +275,8 @@ case class CompositeTable[F[_]: Async, P: Encoder, S: Encoder](
     * @param sortKey sort key
     * @return Unit
     */
-  def delete(partitionKey: P, sortKey: S): F[Unit] =
-    deleteOp[F, P, S, Unit](table, partitionKey, sortKey, ReturnValue.NONE)(
+  def delete(partitionKey: P, sortKey: S, condition: Expression): F[Unit] =
+    deleteOp[F, P, S, Unit](table, partitionKey, sortKey, condition, ReturnValue.NONE)(
       jClient
     ).void
 

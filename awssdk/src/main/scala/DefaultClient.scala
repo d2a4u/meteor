@@ -88,17 +88,19 @@ private[meteor] class DefaultClient[F[_]: Async: RaiseThrowable](
   def delete[P: Encoder, S: Encoder](
     table: CompositeKeysTable[P, S],
     partitionKey: P,
-    sortKey: S
+    sortKey: S,
+    condition: Expression
   ): F[Unit] =
-    deleteOp[F, P, S, Unit](table, partitionKey, sortKey, ReturnValue.NONE)(
+    deleteOp[F, P, S, Unit](table, partitionKey, sortKey, condition, ReturnValue.NONE)(
       jClient
     ).void
 
   def delete[P: Encoder](
     table: PartitionKeyTable[P],
-    partitionKey: P
+    partitionKey: P,
+    condition: Expression
   ): F[Unit] =
-    deleteOp[F, P, Unit](table, partitionKey, ReturnValue.NONE)(jClient).void
+    deleteOp[F, P, Unit](table, partitionKey, condition, ReturnValue.NONE)(jClient).void
 
   def scan[T: Decoder](
     tableName: String,

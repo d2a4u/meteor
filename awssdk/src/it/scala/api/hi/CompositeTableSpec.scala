@@ -64,7 +64,8 @@ class CompositeTableSpec extends ITSpec {
     def write(table: CompositeTable[IO, Id, Range]) =
       table.put[TestData, TestData](data, Expression.empty) >> table.delete(
         data.id,
-        data.range
+        data.range,
+        Expression.empty
       )
 
     testRoundTrip(
