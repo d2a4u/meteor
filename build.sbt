@@ -10,7 +10,7 @@ lazy val dependencies = Seq(
   "co.fs2" %% "fs2-core" % fs2Version,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0",
   "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
-  "software.amazon.awssdk" % "dynamodb" % "2.23.21"
+  "software.amazon.awssdk" % "dynamodb" % "2.25.19"
 )
 
 lazy val testDependencies = Seq(
