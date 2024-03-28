@@ -2,7 +2,7 @@ import sbt.Keys.organization
 
 val catsVersion = "2.10.0"
 val catsEffectVersion = "3.5.4"
-val fs2Version = "3.9.4"
+val fs2Version = "3.10.2"
 
 lazy val dependencies = Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
