@@ -91,8 +91,10 @@ private[meteor] trait ScanOps {
   private[meteor] def scanOp[F[_]: Async: RaiseThrowable, T: Decoder](
     tableName: String,
     consistentRead: Boolean,
-    parallelism: Int
-  )(jClient: DynamoDbAsyncClient): fs2.Stream[F, T] = {
+    parallelism: Int,
+    initialKey: Option[java.util.Map[String, AttributeValue]] = None
+  )(jClient: DynamoDbAsyncClient)
+    : fs2.Stream[F, (Option[java.util.Map[String, AttributeValue]], T)] = {
 
     def requestBuilder(
       startKey: Option[java.util.Map[String, AttributeValue]]
@@ -108,7 +110,7 @@ private[meteor] trait ScanOps {
 
     lazy val initRequests =
       Stream.range(0, parallelism).map { index =>
-        val builder = requestBuilder(None)
+        val builder = requestBuilder(initialKey)
         SegmentPassThrough(builder.segment(index).build(), index)
       }
 
@@ -142,7 +144,7 @@ private[meteor] trait ScanOps {
       resp <- sendPipe(initRequests)
       attrs <- fs2.Stream.emits(resp.u.items().asScala.toList)
       t <- fs2.Stream.fromEither(attrs.asAttributeValue.as[T])
-    } yield t
+    } yield (Option(resp.u.lastEvaluatedKey()), t)
   }
 
   private case class SegmentPassThrough[U](
