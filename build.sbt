@@ -14,7 +14,7 @@ lazy val dependencies = Seq(
 )
 
 lazy val testDependencies = Seq(
-  "org.scalatest" %% "scalatest" % "3.2.18",
+  "org.scalatest" %% "scalatest" % "3.2.19",
   "org.scalacheck" %% "scalacheck" % "1.18.0",
   "org.scalatestplus" %% "scalacheck-1-16" % "3.2.14.0"
 )
